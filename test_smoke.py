@@ -10,6 +10,11 @@ import sys
 import tempfile
 from pathlib import Path
 
+# Windows 控制台默认 GBK，最后打印 ✅ 会抛 UnicodeEncodeError 把整轮测试拖成失败退出。
+# 统一走 UTF-8 输出（Linux 沙箱下是无操作）。
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 tmp = tempfile.mkdtemp(prefix="subdrive-test-")
 os.environ["DATA_DIR"] = tmp
 os.environ["SEAFILE_MODE"] = "stub"

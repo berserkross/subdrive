@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# 运行时数据：SQLite、stub 存储、上传临时文件（DATA_DIR 默认 ./data）
+data/
+*.db
+*.db-journal
+*.db-wal
+*.sqlite3
+
+# 机密：令牌/口令只经服务器 chmod 600 的 env 文件注入，永不入仓
+.env
+.env.*
+!.env.example
+
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log

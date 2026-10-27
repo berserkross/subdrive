@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SubDrive · 子用户网盘</title>
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- ================= 登录 / 注册 ================= -->
+<section id="view-auth" class="auth-wrap hidden">
+  <div class="auth-brand">
+    <div class="aurora a1"></div>
+    <div class="aurora a2"></div>
+    <div class="aurora a3"></div>
+    <div class="brand-inner">
+      <img class="brand-logo" src="/static/logo.png" alt="Ourmetaverse">
+      <h1 class="brand-name">SubDrive</h1>
+      <p class="brand-sub">子用户网盘</p>
+      <p class="brand-tag">你的私人文件空间<br>简单、安全、随时取用</p>
+    </div>
+  </div>
+  <div class="auth-main">
+    <div class="auth-card">
+      <div class="auth-card-head">
+        <img class="auth-mini-logo" src="/static/logo.png" alt="">
+        <div class="tabs" role="tablist">
+          <button id="tab-login" class="tab active" type="button">登录</button>
+          <button id="tab-register" class="tab" type="button">注册</button>
+        </div>
+      </div>
+
+      <form id="form-login" class="auth-form">
+        <label class="field">
+          <span>用户名</span>
+          <input id="login-username" type="text" autocomplete="username" placeholder="你的用户名" required>
+        </label>
+        <label class="field">
+          <span>密码</span>
+          <input id="login-password" type="password" autocomplete="current-password" placeholder="••••••••" required>
+        </label>
+        <p class="form-error" id="login-error"></p>
+        <button class="btn-primary btn-block" type="submit">登 录</button>
+        <p class="form-hint">还没有账号？用邀请码在「注册」页开通。</p>
+      </form>
+
+      <form id="form-register" class="auth-form hidden">
+        <label class="field">
+          <span>邀请码</span>
+          <input id="reg-invite" type="text" placeholder="SD-XXXX-XXXX-…（首个用户免填）" autocomplete="off">
+        </label>
+        <label class="field">
+          <span>用户名</span>
+          <input id="reg-username" type="text" autocomplete="username" placeholder="3–24 位，小写字母开头" required>
+          <small class="field-note">仅小写字母、数字、下划线、连字符；注册后不可修改</small>
+        </label>
+        <label class="field">
+          <span>昵称（可选）</span>
+          <input id="reg-nickname" type="text" placeholder="展示用的名字">
+        </label>
+        <label class="field">
+          <span>密码</span>
+          <input id="reg-password" type="password" autocomplete="new-password" placeholder="至少 8 位" required>
+        </label>
+        <p class="form-error" id="reg-error"></p>
+        <button class="btn-primary btn-block" type="submit">注册并开通网盘</button>
+      </form>
+    </div>
+    <p class="auth-foot">Ourmetaverse · 自托管服务</p>
+  </div>
+</section>
+
+<!-- ================= 网盘 ================= -->
+<section id="view-drive" class="drive-wrap hidden">
+  <header class="topbar">
+    <div class="topbar-left">
+      <img class="top-logo" src="/static/logo.png" alt="">
+      <div class="top-title">
+        <strong>SubDrive</strong>
+        <span>子用户网盘</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button id="btn-admin" class="btn-ghost hidden" type="button">管理后台</button>
+      <div class="user-chip">
+        <div class="avatar" id="user-avatar">?</div>
+        <div class="user-meta">
+          <strong id="user-name">—</strong>
+          <span id="user-sub">—</span>
+        </div>
+      </div>
+      <button id="btn-chpw" class="btn-ghost" type="button">改密码</button>
+      <button id="btn-logout" class="btn-ghost" type="button">退出</button>
+    </div>
+  </header>
+
+  <main class="drive-main">
+    <div class="quota-card">
+      <div class="quota-text">
+        <span class="quota-label">存储空间</span>
+        <strong id="quota-text">—</strong>
+        <span class="quota-pct" id="quota-pct"></span>
+      </div>
+      <div class="quota-bar"><div class="quota-fill" id="quota-fill"></div></div>
+    </div>
+
+    <div class="toolbar">
+      <nav class="crumbs" id="crumbs"></nav>
+      <div class="toolbar-actions">
+        <button id="btn-mkdir" class="btn-soft" type="button">＋ 新建文件夹</button>
+        <button id="btn-vault-new" class="btn-soft" type="button">🔒 加密文件夹</button>
+        <button id="btn-speed" class="btn-soft" type="button">⚡ 测速</button>
+        <button id="btn-upload" class="btn-primary" type="button">⬆ 上传文件</button>
+        <button id="btn-upload-folder" class="btn-soft" type="button">⬆ 上传文件夹</button>
+        <input id="file-input" type="file" multiple hidden>
+        <input id="folder-input" type="file" webkitdirectory directory hidden>
+      </div>
+    </div>
+
+    <div id="vault-bar" class="vault-bar hidden">
+      <span>🔒 <strong>加密文件夹</strong> · 文件名与内容只在你的浏览器里解密；服务器只看得到密文的大小与数量。</span>
+      <button id="btn-vault-lock" class="btn-ghost" type="button">锁定</button>
+    </div>
+
+    <div class="list-card" id="dropzone">
+      <div class="drop-hint" id="drop-hint">
+        <div class="drop-hint-inner">松开，把文件或文件夹放进来</div>
+      </div>
+      <div class="list-head">
+        <span class="col-name">名称</span>
+        <span class="col-size">大小</span>
+        <span class="col-time">修改时间</span>
+        <span class="col-act"></span>
+      </div>
+      <div id="vault-lock" class="vault-lock hidden">
+        <div class="vault-lock-icon">🔒</div>
+        <h3>这是一个加密文件夹</h3>
+        <p>文件名与内容都经过加密，服务器上只存有密文。<br>输入这个文件夹的密码才能查看——密码只在你的浏览器里使用，不会发送给服务器。</p>
+        <button id="btn-vault-unlock" class="btn-primary" type="button">输入密码解锁</button>
+      </div>
+      <div id="file-list"></div>
+      <div id="empty-state" class="empty hidden">
+        <svg viewBox="0 0 120 90" class="empty-art" aria-hidden="true">
+          <defs>
+            <linearGradient id="eg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#5b5bd6"/><stop offset="1" stop-color="#8b5cf6"/>
+            </linearGradient>
+          </defs>
+          <path d="M14 26a8 8 0 0 1 8-8h22l10 12h52a8 8 0 0 1 8 8v34a8 8 0 0 1-8 8H22a8 8 0 0 1-8-8z" fill="url(#eg)" opacity=".16"/>
+          <path d="M14 30a8 8 0 0 1 8-8h22l10 12h52a8 8 0 0 1 8 8v30a8 8 0 0 1-8 8H22a8 8 0 0 1-8-8z" fill="none" stroke="url(#eg)" stroke-width="2.5"/>
+          <circle cx="60" cy="54" r="11" fill="none" stroke="url(#eg)" stroke-width="2.5"/>
+          <path d="M60 48v12M54 54h12" stroke="url(#eg)" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+        <h3>这里空空如也</h3>
+        <p>点「上传文件 / 上传文件夹」，或把文件、文件夹直接拖到这里</p>
+      </div>
+      <div id="list-loading" class="list-loading hidden">加载中…</div>
+    </div>
+    <p class="drive-foot">文件保存在你的专属空间里，只有你能访问。</p>
+  </main>
+</section>
+
+<!-- ================= 管理后台 ================= -->
+<section id="view-admin" class="admin-wrap hidden">
+  <header class="topbar">
+    <div class="topbar-left">
+      <button id="btn-back-drive" class="btn-ghost" type="button">← 返回网盘</button>
+      <div class="top-title"><strong>管理后台</strong><span>邀请码 · 用户 · 用量</span></div>
+    </div>
+    <div class="topbar-right"><span class="admin-badge">ADMIN</span></div>
+  </header>
+  <main class="admin-main">
+    <div class="admin-card">
+      <div class="admin-card-head">
+        <h2>邀请码</h2>
+        <form id="form-invite" class="invite-form">
+          <input id="inv-note" type="text" placeholder="备注（发给谁）">
+          <label class="inv-field">有效期
+            <input id="inv-days" type="number" value="7" min="0" step="1"> 天
+          </label>
+          <label class="inv-field">可用次数
+            <input id="inv-uses" type="number" value="1" min="1" step="1">
+          </label>
+          <button class="btn-primary" type="submit">签发新码</button>
+        </form>
+      </div>
+      <div id="new-code-box" class="new-code hidden">
+        <span>新邀请码（请复制后发给对方）：</span>
+        <code id="new-code-text"></code>
+        <button id="btn-copy-code" class="btn-soft" type="button">复制</button>
+      </div>
+      <div class="table-wrap">
+        <table class="table" id="invite-table">
+          <thead><tr><th>邀请码</th><th>备注</th><th>状态</th><th>使用</th><th>到期</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-card-head"><h2>用户</h2><span class="admin-total" id="admin-total"></span></div>
+      <div class="table-wrap">
+        <table class="table" id="user-table">
+          <thead><tr><th>用户</th><th>状态</th><th>用量 / 配额</th><th>最后登录</th><th>操作</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</section>
+
+<!-- ================= 弹窗 / 提示 ================= -->
+<div id="modal-overlay" class="overlay hidden">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h3 id="modal-title">标题</h3>
+    <div id="modal-body"></div>
+    <div class="modal-actions">
+      <button id="modal-cancel" class="btn-soft" type="button">取消</button>
+      <button id="modal-ok" class="btn-primary" type="button">确定</button>
+    </div>
+  </div>
+</div>
+
+<div id="preview-overlay" class="overlay hidden">
+  <div class="preview-box" role="dialog" aria-modal="true">
+    <div class="preview-head">
+      <span id="preview-title">预览</span>
+      <span class="preview-actions">
+        <button id="preview-download" class="btn-soft" type="button">下载</button>
+        <button id="preview-close" class="btn-ghost" type="button">✕ 关闭</button>
+      </span>
+    </div>
+    <div id="preview-body" class="preview-body"></div>
+  </div>
+</div>
+
+<div id="speed-panel" class="speed-panel hidden">
+  <div class="speed-head"><strong>⚡ 上下行测速</strong><button id="speed-close" type="button">✕</button></div>
+  <p class="speed-note" id="speed-note"></p>
+  <div class="speed-controls">
+    <label class="inv-field">数据量
+      <select id="speed-size">
+        <option value="10">10 MB</option>
+        <option value="25" selected>25 MB</option>
+        <option value="50">50 MB</option>
+      </select>
+    </label>
+    <button id="speed-run" class="btn-primary" type="button">开始测速</button>
+  </div>
+  <div class="speed-row"><span class="speed-lab">下载</span>
+    <div class="u-bar"><div class="u-fill" id="speed-down-fill"></div></div>
+    <span class="speed-val" id="speed-down-val">—</span></div>
+  <div class="speed-row"><span class="speed-lab">上传</span>
+    <div class="u-bar"><div class="u-fill" id="speed-up-fill"></div></div>
+    <span class="speed-val" id="speed-up-val">—</span></div>
+  <div id="speed-result" class="speed-result"></div>
+</div>
+
+<div id="upload-panel" class="upload-panel hidden">
+  <div class="upload-panel-head"><strong>上传进度</strong><button id="upload-close" type="button">✕</button></div>
+  <div id="upload-items"></div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="/static/vault.js"></script>
+<script src="/static/uploadplan.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

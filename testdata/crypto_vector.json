@@ -1,0 +1,28 @@
+{
+  "comment": "SDV1 fixed test vector — see CRYPTO.md. All binary values base64 unless suffixed _hex.",
+  "password": "correct horse battery staple",
+  "kdf": {
+    "algo": "PBKDF2-SHA256",
+    "iterations": 210000,
+    "salt_b64": "AAECAwQFBgcICQoLDA0ODw=="
+  },
+  "derived_key_hex": "18465cade096c185b5f60765891fca3f74477e23fd9b6fc88faf7831a91753ac",
+  "check": {
+    "iv_b64": "ICEiIyQlJicoKSor",
+    "plaintext_ascii": "SUBDRIVE-VAULT-CHECK-v1",
+    "blob_b64": "U0RWMQEgISIjJCUmJygpKishgE8yiWkL3NQiu9qfghAj27rqMFcjKJFJ7nR8/mlqF+iY9H4WVMo="
+  },
+  "file": {
+    "id": "0123456789abcdeffedcba9876543210",
+    "name": "向量测试.txt",
+    "mime": "text/plain",
+    "plaintext_b64": "U3ViRHJpdmUg5Yqg5a+G5rWL6K+V5ZCR6YePIOKAlCBoZWxsbyB2YXVsdCEK",
+    "iv_b64": "EBESExQVFhcYGRob",
+    "blob_b64": "U0RWMQEQERITFBUWFxgZGhtKmte9wvsc/OdmZn5grxAIVsRSAKbUU9EeiKrC8b39z2+/0o3T8nyPOi1Cwz4nlN1vMYWr6QBFd8XO1lmt"
+  },
+  "manifest": {
+    "plaintext_utf8": "{\"version\":1,\"files\":[{\"id\":\"0123456789abcdeffedcba9876543210\",\"name\":\"向量测试.txt\",\"size\":45,\"mime\":\"text/plain\",\"added_at\":\"2026-01-01T00:00:00.000Z\"}]}",
+    "iv_b64": "MDEyMzQ1Njc4OTo7",
+    "blob_b64": "U0RWMQEwMTIzNDU2Nzg5Ojt5YWMdbVoS019qDpS4hb1Zh1/0V8jdSWPFBwBuKGvQBEWizX0GYBP/NQevs64VOa7bc0QvtAtYenkCd7Vhq/CC/3q9Gy+5enaQspjlG48VcGKyaluh4Q+oIBiELZ/2T3tqcDci2TzhPuFwFdCIowhtfExe9eD3mVkYFQw9mr6jHme9KEUdGpkp4wIs6LFZG7oqcg+31rj/Jm5GsUE9kkBE1nqEDYZ1U/CryU6XnsP5"
+  }
+}

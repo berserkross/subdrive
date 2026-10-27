@@ -1,0 +1,24 @@
+services:
+  subdrive:
+    build: .
+    container_name: subdrive
+    ports:
+      - "127.0.0.1:8001:8000"   # 只监听本机，由 Caddy 反代做 HTTPS（子域名待定）
+    volumes:
+      - subdrive-data:/data
+    environment:
+      # 一期先 stub 验证；切真实 Seafile 时改 live 并填下面三项（令牌从 chmod 600 的
+      # env 文件注入，不要写进本文件、不要进聊天）
+      SEAFILE_MODE: "stub"
+      # SEAFILE_BASE_URL: "https://drive.ourmetaverse.cn"
+      # SEAFILE_API_TOKEN: ""        # 只经服务器 env 文件注入
+      # SEAFILE_REPO_ID: ""          # 专用库 subdrive 的 repo_id
+      # SEAFILE_REPO_NAME: "subdrive"
+      # SUBDRIVE_ADMIN_USERNAME: ""  # 初始化管理员（首次启动时创建）
+      # SUBDRIVE_ADMIN_PASSWORD: ""
+      DEFAULT_QUOTA_BYTES: "21474836480"   # 20GB
+      MAX_FILE_BYTES: "2147483648"         # 2GB
+    restart: unless-stopped
+
+volumes:
+  subdrive-data:

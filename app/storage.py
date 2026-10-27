@@ -69,7 +69,7 @@ class BaseStorage:
         raise NotImplementedError
 
     def download_iter(self, full: str, start: int = 0, length: int | None = None):
-        """返回 (chunk_iterator, size_bytes)；start/length 给定时只读该字节区间（Range）。"""
+        """返回 (chunk_iterator, size_bytes or None)；未知长度不伪造为 0。"""
         raise NotImplementedError
 
     def stat(self, full: str) -> dict:
@@ -262,7 +262,7 @@ class LiveStorage(BaseStorage):
         headers = kw.pop("headers", {})
         headers["Authorization"] = f"Token {self.token}"
         try:
-            with self._httpx.Client(timeout=self._httpx.Timeout(60.0, read=None)) as client:
+            with self._httpx.Client(timeout=self._httpx.Timeout(60.0)) as client:
                 resp = client.request(method, self.base + path, headers=headers, **kw)
         except Exception as exc:  # 网络层失败
             raise StorageError(f"Seafile 不可达：{exc}", code="seafile_unreachable", status=503)
@@ -330,7 +330,7 @@ class LiveStorage(BaseStorage):
         size = Path(src_path).stat().st_size
         headers = {"Authorization": f"Token {self.token}"}
         try:
-            with open(src_path, "rb") as f, self._httpx.Client(timeout=self._httpx.Timeout(60.0, read=None)) as client:
+            with open(src_path, "rb") as f, self._httpx.Client(timeout=self._httpx.Timeout(60.0)) as client:
                 r = client.post(upload_url, headers=headers,
                                 data={"parent_dir": dir_full},
                                 files={"file": (filename, f)})
@@ -363,26 +363,36 @@ class LiveStorage(BaseStorage):
             raise StorageError("Seafile 未返回下载地址", status=502)
         if location.startswith("/"):
             location = self.base + location
-        client = self._httpx.Client(timeout=self._httpx.Timeout(60.0, read=None))
-        headers = {}
+        client = self._httpx.Client(timeout=self._httpx.Timeout(60.0))
+        headers = {"Accept-Encoding": "identity"}
         if start or length is not None:
             end = "" if length is None else str(start + length - 1)
             headers["Range"] = f"bytes={start}-{end}"
-        req = client.build_request("GET", location, headers=headers)
-        r = client.send(req, stream=True, follow_redirects=True)
+        try:
+            req = client.build_request("GET", location, headers=headers)
+            r = client.send(req, stream=True, follow_redirects=True)
+        except Exception as exc:
+            client.close()
+            raise StorageError("下载连接失败或超时，请稍后重试", code="seafile_unreachable", status=503) from exc
         if r.status_code == 401:
+            r.close()
             client.close()
             raise StorageAuthError()
         if r.status_code >= 400:
+            r.close()
             client.close()
             raise StorageError(f"下载返回 {r.status_code}", status=502)
         # 若文件服务器忽略 Range 回了 200 全量，则在转发流里手动跳过/截断到目标区间
         skip = start if (start and r.status_code == 200) else 0
         cap = length if (r.status_code == 200) else None
-        size = int(r.headers.get("content-length", 0))
-        if r.status_code == 200 and (skip or cap is not None):
+        raw_size = r.headers.get("content-length")
+        size = int(raw_size) if raw_size and raw_size.isdigit() else None
+        # iter_bytes decodes content encodings; the wire length would be wrong.
+        if r.headers.get("content-encoding", "identity").lower() != "identity":
+            size = None
+        if size is not None and r.status_code == 200 and (skip or cap is not None):
             total = size
-            size = total - skip if cap is None else min(cap, total - skip)
+            size = max(0, total - skip) if cap is None else max(0, min(cap, total - skip))
 
         def gen():
             try:
@@ -456,7 +466,9 @@ def make_storage(data_dir: Path) -> BaseStorage:
         if not base or not token or not repo_id:
             raise RuntimeError("live 模式必须设置 SEAFILE_BASE_URL / SEAFILE_API_TOKEN / SEAFILE_REPO_ID")
         storage = LiveStorage(base, token, repo_id, repo_name)
-        storage.ping()  # 启动即验令牌，失败停机（fail closed）
+        if not storage.ping():  # 启动即验令牌，失败停机（fail closed）
+            raise StorageAuthError()
         return storage
     stub_root = Path(os.environ.get("STUB_STORAGE_DIR", data_dir / "stub_storage"))
     return StubStorage(stub_root, repo_name)
+

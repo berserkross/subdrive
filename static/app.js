@@ -7,6 +7,7 @@ let token = localStorage.getItem("subdrive_token") || "";
 let me = null;
 let curPath = ""; // "" = 根目录；否则 "a/b"
 let quota = null;
+const downloadJobs = new Map();
 
 /* ---- 加密文件夹（SDV1，格式见 CRYPTO.md）状态 ---- */
 let vault = null; // 已解锁：{ path, key, manifest }；key 只在内存
@@ -188,6 +189,11 @@ function logout(callApi = true) {
   if (callApi && token) {
     api("/api/auth/logout", { method: "POST" }).catch(() => {});
   }
+  for (const controller of downloadJobs.values()) controller.abort();
+  downloadJobs.clear();
+  $("#download-tasks").replaceChildren();
+  vault = null; vaultRootPath = null;
+  closePreview();
   token = ""; me = null; curPath = "";
   localStorage.removeItem("subdrive_token");
   show("view-auth");
@@ -367,15 +373,33 @@ function actionBtn(svg, title, fn, danger = false) {
 }
 
 async function downloadFile(rel, name) {
+  if (downloadJobs.has(rel)) { toast("该文件正在下载，可在进度栏查看或取消"); return; }
+  if (downloadJobs.size >= 2) { toast("已有两个下载任务，请稍后再试"); return; }
+  const controller = new AbortController();
+  downloadJobs.set(rel, controller);
+  const row = document.createElement("div");
+  row.className = "download-task";
+  row.innerHTML = '<div><strong></strong><span class="download-state" role="status"></span></div>' +
+    '<progress aria-label="文件下载进度"></progress><button type="button" class="mini-btn">取消</button>';
+  $("strong", row).textContent = name;
+  const state = $(".download-state", row), progress = $("progress", row), button = $("button", row);
+  state.textContent = "正在连接，请稍候…";
+  button.onclick = () => controller.abort();
+  $("#download-tasks").prepend(row);
+  let lastUpdate = 0;
   try {
     const resp = await fetch("/api/files/download?path=" + encodeURIComponent("/" + rel), {
       headers: { Authorization: "Bearer " + token },
+      signal: controller.signal,
     });
-    if (!resp.ok) {
-      const d = await resp.json().catch(() => null);
-      throw new Error((d && d.detail && d.detail.message) || "下载失败");
-    }
-    const blob = await resp.blob();
+    const blob = await SDDownload.readResponse(resp, ({ loaded, total }) => {
+      const now = Date.now();
+      if (now - lastUpdate < 150 && loaded !== total) return;
+      lastUpdate = now;
+      state.textContent = total ? `已接收 ${fmtBytes(loaded)} / ${fmtBytes(total)}` : `已接收 ${fmtBytes(loaded)}`;
+      if (total) { progress.max = total; progress.value = loaded; }
+    });
+    if (controller.signal.aborted) throw new DOMException("已取消", "AbortError");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = name;
@@ -383,7 +407,16 @@ async function downloadFile(rel, name) {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-  } catch (e) { toast(e.message, true); }
+    progress.max = 1; progress.value = 1;
+    state.textContent = `已接收 ${fmtBytes(blob.size)}，已请求浏览器保存`;
+  } catch (e) {
+    state.textContent = e.name === "AbortError" ? "已取消下载" : e.message;
+    if (e.name !== "AbortError") toast(e.message, true);
+  } finally {
+    if (downloadJobs.get(rel) === controller) downloadJobs.delete(rel);
+    button.textContent = "关闭";
+    button.onclick = () => row.remove();
+  }
 }
 
 /* ---- 弹窗 ---- */
@@ -955,13 +988,13 @@ function vaultDelete(entry) {
 const PREVIEW_TEXT_CAP = 512 * 1024;
 function previewKind(name) {
   const ext = extOf(name);
-  if (["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "avif", "ico"].includes(ext)) return "image";
+  if (["png", "jpg", "jpeg", "gif", "webp", "bmp", "avif", "ico"].includes(ext)) return "image";
   if (ext === "pdf") return "pdf";
   if (["mp4", "webm", "mov", "m4v"].includes(ext)) return "video";
   if (["mp3", "wav", "flac", "m4a", "ogg", "aac", "opus"].includes(ext)) return "audio";
   if (ext === "md" || ext === "markdown") return "markdown";
   if (["txt", "log", "json", "csv", "js", "ts", "tsx", "jsx", "py", "html", "css", "sh",
-       "go", "rs", "java", "c", "h", "cpp", "sql", "yml", "yaml", "toml", "xml", "ini", "conf"]
+       "go", "rs", "java", "c", "h", "cpp", "sql", "yml", "yaml", "toml", "xml", "svg", "ini", "conf"]
       .includes(ext)) return "text";
   return null;
 }
@@ -1312,7 +1345,7 @@ async function loadUsers() {
         }, true);
       }
     }
-    if (u.status === "active") {
+    if (u.status === "active" && !u.is_owner && u.id !== me.id && (!u.is_admin || me.is_owner)) {
       mkBtn("禁用", async () => {
         openModal("禁用用户", `<p class="modal-text">禁用「${esc(u.username)}」后，其所有登录立即失效，但文件会保留。确定禁用吗？</p>`,
           "禁用", async () => {
@@ -1321,7 +1354,7 @@ async function loadUsers() {
             loadUsers();
           }, true);
       }, true);
-    } else {
+    } else if (u.status === "disabled") {
       mkBtn("启用", async () => {
         await api(`/api/admin/users/${u.id}/enable`, { method: "POST" });
         toast("已启用");
@@ -1343,3 +1376,4 @@ async function loadAdmin() {
   }
   show("view-auth");
 })();
+

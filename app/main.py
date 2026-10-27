@@ -23,10 +23,10 @@ from pathlib import Path
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.paths import USERNAME_RE, PathRejected, full_path, normalize_rel_path, validate_name, validate_username
-from app.storage import StorageError, make_storage
+from app.storage import StorageError, StorageConflict, make_storage
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", BASE_DIR / "data"))
@@ -62,9 +62,19 @@ def now_dt() -> datetime:
 _db_lock = threading.Lock()
 
 
+class ClosingConnection(sqlite3.Connection):
+    """Commit/rollback on context exit, then release the SQLite connection."""
+    def __exit__(self, *args):
+        try:
+            return super().__exit__(*args)
+        finally:
+            self.close()
+
+
 def get_db() -> sqlite3.Connection:
     # autocommit：避免在 with 块内抛 HTTPException 时把限速计数/审计写入一并回滚
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False, isolation_level=None)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False, isolation_level=None,
+                           timeout=30, factory=ClosingConnection)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
@@ -426,7 +436,7 @@ class InviteCreateIn(BaseModel):
 
 
 class QuotaIn(BaseModel):
-    quota_bytes: int | None = None
+    quota_bytes: int | None = Field(default=None, ge=0)
 
 
 class AdminFlagIn(BaseModel):
@@ -450,6 +460,9 @@ def register(data: RegisterIn, request: Request):
 
     with _db_lock, get_db() as db:
         # 首个用户免邀请码自动成为管理员（沿用 private-chat 约定；正式部署走环境变量初始化）
+        # Reserve an invitation in a DB transaction before remote folder creation.
+        # A process-local lock alone cannot protect multiple Uvicorn workers.
+        db.execute("BEGIN IMMEDIATE")
         user_count = db.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
         first_user = user_count == 0
         invite = None
@@ -471,6 +484,7 @@ def register(data: RegisterIn, request: Request):
             if problem:
                 _record_failure(db, f"reg:{ip}")
                 audit(db, None, "register", "", None, ip, "denied", problem)
+                db.commit()  # Retain rate-limit/audit records on rejection.
                 raise err(400, "bad_invite", problem)
         if db.execute("SELECT 1 FROM users WHERE username = ?", (username,)).fetchone():
             raise err(400, "username_taken", "用户名已被占用")
@@ -480,31 +494,41 @@ def register(data: RegisterIn, request: Request):
             "INSERT INTO users (username, nickname, password_hash, password_salt, is_admin,"
             " status, invite_code_id, folder_created, created_at) VALUES (?,?,?,?,?,?,?,0,?)",
             (username, nickname, hash_password(data.password, salt), salt,
-             1 if first_user else 0, "active", invite["id"] if invite else None, now_iso()),
+             1 if first_user else 0, "pending", invite["id"] if invite else None, now_iso()),
         )
         user_id = cur.lastrowid
         db.execute("INSERT INTO usage_cache (user_id) VALUES (?)", (user_id,))
+        if invite:
+            db.execute(
+                "UPDATE invite_codes SET used_count = used_count + 1,"
+                " status = CASE WHEN used_count + 1 >= max_uses THEN 'used_up' ELSE 'active' END"
+                " WHERE id = ?", (invite["id"],))
 
     # 建投影文件夹；失败则整体回滚（不建号、不消耗邀请码）
     try:
         if storage.user_folder_exists(username):
             raise StorageConflict("Seafile 侧已存在同名文件夹")
         storage.ensure_user_folder(username)
-    except StorageError as e:
+    except Exception:
         with _db_lock, get_db() as db:
+            db.execute("BEGIN IMMEDIATE")
             db.execute("DELETE FROM users WHERE id = ?", (user_id,))
             db.execute("DELETE FROM usage_cache WHERE user_id = ?", (user_id,))
-        raise e
+            if invite:
+                db.execute(
+                    "UPDATE invite_codes SET used_count = MAX(0, used_count - 1),"
+                    " status = CASE WHEN status = 'used_up' AND used_count - 1 < max_uses"
+                    " THEN 'active' ELSE status END WHERE id = ?", (invite["id"],))
+        raise
 
     with _db_lock, get_db() as db:
-        db.execute("UPDATE users SET folder_created = 1 WHERE id = ?", (user_id,))
+        db.execute("BEGIN IMMEDIATE")
+        db.execute("UPDATE users SET folder_created = 1, status = 'active' WHERE id = ?", (user_id,))
         if invite:
-            used = invite["used_count"] + 1
-            status = "used_up" if used >= invite["max_uses"] else "active"
             db.execute(
-                "UPDATE invite_codes SET used_count = ?, status = ?, used_by_user_id = ?,"
+                "UPDATE invite_codes SET used_by_user_id = ?,"
                 " used_at = ? WHERE id = ?",
-                (used, status, user_id, now_iso(), invite["id"]),
+                (user_id, now_iso(), invite["id"]),
             )
         token = create_session(db, user_id, request)
         db.execute("UPDATE users SET last_login_at = ? WHERE id = ?", (now_iso(), user_id))
@@ -666,10 +690,10 @@ async def files_upload(request: Request, path: str = Query(""),
     return {"ok": True, "name": filename, "size": stored}
 
 
-# 预览用的 MIME 映射（按扩展名）；未列出的回退 mimetypes，再回退 octet-stream
+# 仅允许明确列出的预览类型；主动内容按纯文本返回，未知类型回退 octet-stream。
 _PREVIEW_MIME = {
     "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "gif": "image/gif",
-    "webp": "image/webp", "svg": "image/svg+xml", "bmp": "image/bmp", "avif": "image/avif",
+    "webp": "image/webp", "bmp": "image/bmp", "avif": "image/avif", "ico": "image/x-icon",
     "pdf": "application/pdf",
     "mp4": "video/mp4", "webm": "video/webm", "mov": "video/quicktime",
     "mp3": "audio/mpeg", "wav": "audio/wav", "flac": "audio/flac",
@@ -684,9 +708,10 @@ def _mime_for(name: str) -> str:
     ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
     if ext in _PREVIEW_MIME:
         return _PREVIEW_MIME[ext]
-    import mimetypes
-
-    return mimetypes.guess_type(name)[0] or "application/octet-stream"
+    if ext in {"svg", "html", "htm", "xml", "js", "ts", "tsx", "jsx", "py", "css", "sh",
+               "go", "rs", "java", "c", "h", "cpp", "sql", "yml", "yaml", "toml", "ini", "conf"}:
+        return "text/plain; charset=utf-8"
+    return "application/octet-stream"
 
 
 def _range_span(header: str | None, size: int):
@@ -698,6 +723,8 @@ def _range_span(header: str | None, size: int):
         return None  # 非 bytes 单位/多段：忽略，走 200 全量
     start_s, _, end_s = rng.partition("-")
     try:
+        if size <= 0 or not re.fullmatch(r"\d*-\d*", rng):
+            raise ValueError
         if start_s == "":
             n = int(end_s)
             if n <= 0:
@@ -735,15 +762,20 @@ def _serve_file(request: Request, inline: bool, action: str):
     headers = {
         "Accept-Ranges": "bytes",
         "Content-Disposition": f"{disposition}; filename*=UTF-8''{quote(name)}",
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
     }
     media = _mime_for(name) if inline else "application/octet-stream"
     if span is None:
         gen, out_size = storage.download_iter(full)
-        headers["Content-Length"] = str(out_size)
+        if out_size is not None:
+            headers["Content-Length"] = str(out_size)
         return StreamingResponse(gen, media_type=media, headers=headers)
     start, end = span
     gen, out_size = storage.download_iter(full, start, end - start + 1)
-    headers["Content-Length"] = str(out_size)
+    if out_size is not None:
+        headers["Content-Length"] = str(out_size)
     headers["Content-Range"] = f"bytes {start}-{end}/{size}"
     return StreamingResponse(gen, status_code=206, media_type=media, headers=headers)
 
@@ -911,9 +943,22 @@ def admin_users(request: Request):
 def admin_disable(user_id: int, request: Request):
     admin = require_admin(request)
     with _db_lock, get_db() as db:
+        db.execute("BEGIN IMMEDIATE")
         target = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
         if not target:
             raise err(404, "not_found", "用户不存在")
+        if is_owner(target):
+            raise err(400, "owner_protected", "系统所有者不可禁用")
+        if target["id"] == admin["id"]:
+            raise err(400, "self_protected", "不能禁用当前登录账号")
+        if target["is_admin"]:
+            if not is_owner(admin):
+                raise err(403, "owner_required", "仅系统所有者可禁用管理员")
+            count = db.execute(
+                "SELECT COUNT(*) FROM users WHERE is_admin = 1 AND status = 'active'"
+            ).fetchone()[0]
+            if target["status"] == "active" and count <= 1:
+                raise err(400, "last_admin", "不能禁用最后一位有效管理员")
         db.execute("UPDATE users SET status = 'disabled' WHERE id = ?", (user_id,))
         db.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))  # 立即失效
         audit(db, admin["id"], "admin_disable", f"/{target['username']}", None,
@@ -1045,3 +1090,4 @@ def index():
 
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+

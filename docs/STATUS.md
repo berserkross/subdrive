@@ -10,9 +10,12 @@
   `tests/test_storage_live.py` 15 + `tests/test_crypto.mjs` 10 + `tests/test_uploadplan.mjs` 13，全部 exit 0）。
   后端功能用本地 stub，Seafile 适配用 `httpx.MockTransport` 打桩（不需要真令牌）。
   Windows 控制台跑 Python 测试要先 `PYTHONIOENCODING=utf-8`，否则结尾那个 ✅ 会 `UnicodeEncodeError` 把退出码弄成 1。
-- 浏览器端到端 26 项通过（`tests/e2e/test_e2e_browser.py`，Playwright 驱动本机 Chrome，自起 stub 服务 +
-  临时 `DATA_DIR`）：注册→建夹→上传→重命名→建共享→被授权者进入并上传→落点与配额归属→删除→退出。
+- 浏览器端到端 **37** 项通过（`tests/e2e/test_e2e_browser.py`，Playwright 驱动本机 Chrome，自起 stub 服务 +
+  临时 `DATA_DIR`）：注册→建夹→上传→重命名→批量勾选/全选/批量移动/批量删除→建共享→被授权者进入并上传
+  →落点与配额归属→删除→退出。
   它当场抓到两个后端测试看不见的 bug（见 D32）。
+- 批量操作已落地（D33）：行首复选框 + 表头全选 + 底部操作条（下载/移动/删除/取消），一批只作用于当前目录，
+  多文件下载逐个串行、文件夹跳过。
 - 共享文件夹已全链路落地（后端 + 前端入口，D27–D32）：创建即共享、名单可改、名单留空＝全员、
   配额算上传者、只有上传者能删、成员可在自己那一格里改名/移动/删除、落点不再多套一层用户名、
   **只有管理员能创建共享文件夹**（B1，前端同步隐藏入口）。

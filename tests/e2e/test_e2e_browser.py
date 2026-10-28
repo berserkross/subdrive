@@ -120,6 +120,10 @@ def wait_row(page, name: str, timeout: int = 20000) -> None:
     page.wait_for_selector(f'.row:has(.row-name:text-is("{name}"))', timeout=timeout)
 
 
+def wait_row_gone(page, name: str, timeout: int = 20000) -> None:
+    page.wait_for_selector(f'.row:has(.row-name:text-is("{name}"))', state="detached", timeout=timeout)
+
+
 def run() -> int:
     port = free_port()
     base = f"http://127.0.0.1:{port}"
@@ -172,6 +176,55 @@ def run() -> int:
             boss.click("#modal-ok")
             wait_row(boss, "hi.txt")
             check("重命名后旧名消失新名出现", row(boss, "hello.txt").count() == 0)
+
+            # ---- 4.5 批量操作（行首勾选 → 底部操作条）----
+            fa = work_dir / "a.txt"
+            fb = work_dir / "b.txt"
+            fa.write_text("a\n", encoding="utf-8")
+            fb.write_text("b\n", encoding="utf-8")
+            boss.set_input_files("#file-input", [str(fa), str(fb)])
+            wait_row(boss, "a.txt")
+            wait_row(boss, "b.txt")
+            row(boss, "a.txt").locator(".row-sel").check()
+            row(boss, "b.txt").locator(".row-sel").check()
+            need("勾选后底部操作条出现", boss.is_visible("#batch-bar"))
+            check("计数显示已选 2 项", "已选 2 项" in boss.inner_text("#batch-count"),
+                  boss.inner_text("#batch-count"))
+            check("勾选没有触发打开或下载", row(boss, "a.txt").count() == 1)
+            check("部分勾选时表头全选为不确定态",
+                  boss.evaluate("() => document.querySelector('#sel-all').indeterminate"))
+            boss.click("#batch-clear")
+            check("取消后操作条收起", not boss.is_visible("#batch-bar"))
+            row(boss, "docs").locator(".row-sel").check()
+            check("只勾文件夹时下载按钮禁用",
+                  boss.evaluate("() => document.querySelector('#batch-download').disabled"))
+            boss.click("#batch-clear")
+            boss.check("#sel-all")
+            total = boss.locator("#file-list .row").count()
+            checked = boss.locator("#file-list .row-sel:checked").count()
+            check("表头全选勾中所有行", total > 0 and checked == total, f"{checked} / {total}")
+            boss.click("#batch-clear")
+            row(boss, "a.txt").locator(".row-sel").check()
+            row(boss, "b.txt").locator(".row-sel").check()
+            boss.click("#batch-move")
+            boss.click('#modal-body .folder-pick button[data-dir="docs"]')
+            boss.click("#modal-ok")
+            wait_row_gone(boss, "a.txt")
+            check("批量移动后原目录不再有这两个文件",
+                  row(boss, "a.txt").count() == 0 and row(boss, "b.txt").count() == 0)
+            boss.locator('.row:has(.row-name:text-is("docs")) .row-name').click()
+            wait_row(boss, "a.txt")
+            check("批量移动后目标目录出现两个文件",
+                  row(boss, "a.txt").count() == 1 and row(boss, "b.txt").count() == 1)
+            boss.check("#sel-all")
+            boss.click("#batch-delete")
+            boss.click("#modal-ok")
+            wait_row_gone(boss, "a.txt")
+            check("批量删除后目录清空", boss.locator("#file-list .row").count() == 0,
+                  f"剩 {boss.locator('#file-list .row').count()} 行")
+            boss.locator("#crumbs button").first.click()
+            wait_row(boss, "hi.txt")
+            check("面包屑能回到根目录", boss.locator('.row:has(.row-name:text-is("docs"))').count() == 1)
 
             # ---- 5. 创建共享文件夹（名单留空＝全员可见）----
             row(boss, "docs").locator('button[title="共享此文件夹"]').click()

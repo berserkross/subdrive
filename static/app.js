@@ -9,6 +9,8 @@ let curPath = ""; // "" = 根目录；否则 "a/b"
 let curOwner = ""; // "" = 自己的网盘；否则正在浏览谁的共享文件夹
 let quota = null;
 let sharedMine = []; // 我创建的共享文件夹（来自 /api/shared/list，is_mine）
+const selected = new Set(); // 批量勾选：当前目录下的相对路径
+let currentEntries = []; // 当前目录的条目，批量操作取 name/type 用
 
 /* owner 只在浏览别人的共享目录时出现；服务端会按 owner+path 复核授权 */
 const ownerQS = (prefix) =>
@@ -371,6 +373,8 @@ async function refreshList() {
   // 导航离开加密文件夹 → 立即锁定（密钥只留在内存，离开即弃）
   if (vault && curPath !== vault.path) vault = null;
   renderCrumbs();
+  selected.clear();
+  updateBatchBar();
   $("#foreign-bar").classList.toggle("hidden", !curOwner);
   if (curOwner) $("#foreign-owner").textContent = curOwner;
   $("#list-loading").classList.remove("hidden");
@@ -436,6 +440,7 @@ async function probeVaultDirs(entries) {
 function renderEntries(entries) {
   const box = $("#file-list");
   box.innerHTML = "";
+  currentEntries = entries;
   $("#empty-state").classList.toggle("hidden", entries.length > 0);
   for (const entry of entries) {
     const { cls, svg } = iconFor(entry);
@@ -455,6 +460,22 @@ function renderEntries(entries) {
       <span class="col-time">${timeText}</span>
       <span class="col-act"></span>`;
     const rel = (curPath ? curPath + "/" : "") + entry.name;
+    const sel = document.createElement("label");
+    sel.className = "sel-cell";
+    sel.title = "勾选后可批量操作";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.className = "row-sel";
+    cb.checked = selected.has(rel);
+    cb.addEventListener("click", (e) => e.stopPropagation());
+    cb.addEventListener("change", () => {
+      if (cb.checked) selected.add(rel); else selected.delete(rel);
+      row.classList.toggle("selected", cb.checked);
+      updateBatchBar();
+    });
+    sel.appendChild(cb);
+    row.insertBefore(sel, row.firstChild);
+    row.classList.toggle("selected", cb.checked);
     if (entry.type === "dir" && !curOwner && vaultDirMarks.has(rel)) {
       $(".file-icon", row).classList.add("vault-icon");
       $(".row-name", row).insertAdjacentHTML("beforeend",
@@ -488,6 +509,7 @@ function renderEntries(entries) {
     }
     row.addEventListener("click", (ev) => {
       if (ev.target.closest(".col-act")) return;
+      if (ev.target.closest(".sel-cell")) return;
       if (entry.type === "dir") { curPath = rel; refreshList(); }
       else if (previewKind(entry.name)) openPreview(rel, entry);
       else downloadFile(rel, entry.name);
@@ -504,6 +526,105 @@ function actionBtn(svg, title, fn, danger = false) {
   b.addEventListener("click", (e) => { e.stopPropagation(); fn(); });
   return b;
 }
+
+/* ---------------- 批量操作（行首勾选 → 底部操作条） ---------------- */
+function relOf(entry) { return (curPath ? curPath + "/" : "") + entry.name; }
+function updateBatchBar() {
+  const bar = $("#batch-bar");
+  if (!bar) return;
+  const n = selected.size;
+  bar.classList.toggle("hidden", n === 0);
+  $("#batch-count").textContent = `已选 ${n} 项`;
+  const files = currentEntries.filter((e) => e.type === "file" && selected.has(relOf(e)));
+  const dl = $("#batch-download");
+  dl.disabled = files.length === 0;
+  dl.title = files.length ? `下载选中的 ${files.length} 个文件（文件夹会跳过）` : "选中项里没有文件";
+  const all = currentEntries.length > 0 && currentEntries.every((e) => selected.has(relOf(e)));
+  const allBox = $("#sel-all");
+  if (allBox) { allBox.checked = all; allBox.indeterminate = !all && n > 0; }
+}
+function clearSelection() {
+  selected.clear();
+  $$("#file-list .row").forEach((row) => {
+    const cb = $(".row-sel", row);
+    if (cb) cb.checked = false;
+    row.classList.remove("selected");
+  });
+  updateBatchBar();
+}
+async function runBatch(list, fn, verb) {
+  let ok = 0, fail = 0, firstErr = "";
+  for (const rel of list) {
+    try { await fn(rel); ok++; } catch (e) { fail++; if (!firstErr) firstErr = e.message; }
+  }
+  if (fail) toast(`已${verb} ${ok} 项，${fail} 项失败：${firstErr}`, true);
+  else toast(`已${verb} ${ok} 项`);
+}
+function batchDelete() {
+  const list = [...selected];
+  if (!list.length) return;
+  openModal("批量删除", `<p class="modal-text">删除选中的 ${list.length} 项？文件夹会连同里面的内容一起删掉。</p>`,
+    "删除", async () => {
+      await runBatch(list, (rel) =>
+        api("/api/files/delete" + ownerQS("?"), { method: "POST", body: { path: "/" + rel } }), "删除");
+      refreshList();
+      refreshQuota();
+    }, true);
+}
+async function batchMove() {
+  const list = [...selected];
+  if (!list.length) return;
+  /* 共享目录里只在自己的那一格里找落点（同 moveItem） */
+  const parts = curPath.split("/");
+  const idx = me ? parts.indexOf(me.username) : -1;
+  const rootDir = curOwner && idx >= 0 ? parts.slice(0, idx + 1).join("/") : "";
+  let dirs;
+  try { dirs = await collectDirs(rootDir); } catch (e) { toast(e.message, true); return; }
+  const srcDirs = new Set(list.map((rel) => (rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "")));
+  dirs = dirs.filter((d) => !srcDirs.has(d) && !list.some((rel) => d === rel || d.startsWith(rel + "/")));
+  let chosen = rootDir;
+  openModal("批量移动", `
+    <p class="modal-text">把选中的 ${list.length} 项移动到：</p>
+    <div class="folder-pick">${dirs.map((d) =>
+      `<button type="button" data-dir="${esc(d)}">📁 ${d === "" ? "我的网盘（根目录）" : esc("/" + d)}</button>`).join("")}
+    </div>`, "移动", async () => {
+      await runBatch(list, (rel) => api("/api/files/move" + ownerQS("?"),
+        { method: "POST", body: { path: "/" + rel, dest_dir: chosen ? "/" + chosen : "" } }), "移动");
+      refreshList();
+    });
+  $$("#modal-body .folder-pick button").forEach((b) => {
+    if (b.dataset.dir === chosen) b.classList.add("selected");
+    b.addEventListener("click", () => {
+      chosen = b.dataset.dir;
+      $$("#modal-body .folder-pick button").forEach((x) => x.classList.toggle("selected", x === b));
+    });
+  });
+}
+async function batchDownload() {
+  const files = currentEntries.filter((e) => e.type === "file" && selected.has(relOf(e)));
+  if (!files.length) return;
+  const skipped = selected.size - files.length;
+  for (const e of files) await downloadFile(relOf(e), e.name);
+  if (skipped > 0) toast(`已下载 ${files.length} 个文件，跳过 ${skipped} 个文件夹`);
+}
+$("#sel-all").addEventListener("change", (e) => {
+  const on = e.target.checked;
+  currentEntries.forEach((entry) => {
+    const rel = relOf(entry);
+    if (on) selected.add(rel); else selected.delete(rel);
+  });
+  $$("#file-list .row").forEach((row) => {
+    const cb = $(".row-sel", row);
+    if (!cb) return;
+    cb.checked = on;
+    row.classList.toggle("selected", on);
+  });
+  updateBatchBar();
+});
+$("#batch-clear").addEventListener("click", clearSelection);
+$("#batch-download").addEventListener("click", batchDownload);
+$("#batch-move").addEventListener("click", batchMove);
+$("#batch-delete").addEventListener("click", batchDelete);
 
 async function downloadFile(rel, name) {
   try {

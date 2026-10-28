@@ -142,6 +142,7 @@
         <div class="drop-hint-inner">松开，把文件或文件夹放进来</div>
       </div>
       <div class="list-head">
+        <label class="sel-cell" title="全选"><input type="checkbox" id="sel-all"></label>
         <span class="col-name">名称</span>
         <span class="col-size">大小</span>
         <span class="col-time">修改时间</span>
@@ -277,6 +278,15 @@
 </div>
 
 <div id="toast" class="toast hidden"></div>
+
+<!-- 批量操作条：勾选任意行后浮出 -->
+<div id="batch-bar" class="hidden">
+  <span id="batch-count">已选 0 项</span>
+  <button id="batch-download" type="button">下载</button>
+  <button id="batch-move" type="button">移动</button>
+  <button id="batch-delete" type="button" class="danger">删除</button>
+  <button id="batch-clear" type="button" class="ghost">取消</button>
+</div>
 
 <script src="/static/vault.js"></script>
 <script src="/static/uploadplan.js"></script>

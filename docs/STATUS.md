@@ -6,12 +6,16 @@
 
 ## 已完成
 
-- 本地检查 133 项通过（`test_smoke.py` 27 + `test_features.py` 43 + `test_shared.py` 40 +
-  `test_crypto.mjs` 10 + `test_uploadplan.mjs` 13，全部 exit 0）。后端功能用本地 stub，
-  Seafile 适配用模拟响应；`test_storage_live.py` 需真实 Seafile，未在本轮跑。
+- 本地检查 161 项通过（`test_smoke.py` 27 + `test_features.py` 43 + `test_shared.py` 53 +
+  `test_storage_live.py` 15 + `test_crypto.mjs` 10 + `test_uploadplan.mjs` 13，全部 exit 0）。
+  后端功能用本地 stub，Seafile 适配用 `httpx.MockTransport` 打桩（不需要真令牌）。
+  Windows 控制台跑 Python 测试要先 `PYTHONIOENCODING=utf-8`，否则结尾那个 ✅ 会 `UnicodeEncodeError` 把退出码弄成 1。
+- 共享文件夹已全链路落地（后端 + 前端入口，D27–D30）：创建即共享、名单可改、配额算上传者、
+  只有上传者能删、成员可在自己那一格里改名/移动/删除、落点不再多套一层用户名。
+- GitHub 原仓库 `berserkross/subdrive` 已同步 `main`（此前本地领先 13 个提交、长期未推）。
 - 已修：邀请码并发重复使用、管理员可被误禁用、负配额输入、预览内容类型、空文件 Range 下载边界。
 - 存储层下载地址解析兼容 `302 + Location` 与 `200 + JSON`，含回归测试。
-- 变更整理为 GitHub 草稿 PR（会话结束时仍在整理，未合并、未上线）。
+- 变更已直接提交到 `main`（14 个提交），未走 PR；`main` 已加分支保护（禁止强推与删除，管理员不强制）。
 
 ## 进行中
 

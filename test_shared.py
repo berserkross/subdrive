@@ -174,6 +174,52 @@ def main():
     check("S4 能删自己上传的文件", r.status_code == 200, r.text)
     check("S4 删完配额回冲", used(c, tok_b) == 0, str(used(c, tok_b)))
 
+    print("\n— S4b 成员能管自己那一格（改名/移动），但那一格本身不许改名 —")
+    # S4 已经把 公共资料/2026/bob 整个删掉了，这里用一次上传把那一格重建回来
+    upload(c, tok_b, "公共资料/2026", "我的笔记.txt", b"note", owner="alice")
+    r = c.post("/api/files/mkdir", headers=auth(tok_b), params={"owner": "alice"},
+               json={"path": "公共资料/2026", "name": "子目录"})
+    check("S4b 我那一格里能建子目录", r.status_code == 200
+          and r.json()["path"] == "公共资料/2026/bob/子目录", r.text)
+
+    r = c.post("/api/files/rename", headers=auth(tok_b), params={"owner": "alice"},
+               json={"path": "公共资料/2026/bob/我的笔记.txt", "new_name": "改名后.txt"})
+    check("S4b 能给自己那格里的文件改名", r.status_code == 200, r.text)
+    r = c.get("/api/files/list", params={"path": "公共资料/2026/bob", "owner": "alice"},
+              headers=auth(tok_b))
+    names = [e["name"] for e in r.json()["entries"]]
+    check("S4b 改名生效", "改名后.txt" in names and "我的笔记.txt" not in names, str(names))
+
+    r = c.post("/api/files/move", headers=auth(tok_b), params={"owner": "alice"},
+               json={"path": "公共资料/2026/bob/改名后.txt",
+                     "dest_dir": "公共资料/2026/bob/子目录"})
+    check("S4b 能把自己那格里的文件移到格内子目录", r.status_code == 200, r.text)
+    r = c.get("/api/files/list", params={"path": "公共资料/2026/bob/子目录", "owner": "alice"},
+              headers=auth(tok_b))
+    names = [e["name"] for e in r.json()["entries"]]
+    check("S4b 移动生效", "改名后.txt" in names, str(names))
+
+    r = c.post("/api/files/rename", headers=auth(tok_b), params={"owner": "alice"},
+               json={"path": "公共资料/2026/bob", "new_name": "bob2"})
+    check("S4b 不能给自己那一格改名（400 cell_rename）", r.status_code == 400
+          and r.json()["detail"]["error"] == "cell_rename", r.text)
+    r = c.post("/api/files/move", headers=auth(tok_b), params={"owner": "alice"},
+               json={"path": "公共资料/2026/bob", "dest_dir": "公共资料/2026/bob/子目录"})
+    check("S4b 不能把自己那一格移走（400 cell_move）", r.status_code == 400
+          and r.json()["detail"]["error"] == "cell_move", r.text)
+
+    r = c.post("/api/files/rename", headers=auth(tok_b), params={"owner": "alice"},
+               json={"path": "公共资料/2026/议程.txt", "new_name": "议程2.txt"})
+    check("S4b 不能给创建者的文件改名（403）", r.status_code == 403, r.text)
+    r = c.post("/api/files/move", headers=auth(tok_b), params={"owner": "alice"},
+               json={"path": "公共资料/2026/议程.txt", "dest_dir": "公共资料/2026/bob"})
+    check("S4b 不能把创建者的文件移走（403）", r.status_code == 403, r.text)
+
+    upload(c, tok_a, "公共资料/2026", "创建者的.txt", b"owner")
+    r = c.post("/api/files/rename", headers=auth(tok_a),
+               json={"path": "公共资料/2026/创建者的.txt", "new_name": "创建者的-改.txt"})
+    check("S4b 创建者改名照旧可用（新判断不误伤本人）", r.status_code == 200, r.text)
+
     print("\n— S5 共享目录本身的保护 —")
     r = c.post("/api/files/rename", headers=auth(tok_a),
                json={"path": "公共资料/2026", "new_name": "改名了"})

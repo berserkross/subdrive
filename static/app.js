@@ -14,6 +14,12 @@ let sharedMine = []; // 我创建的共享文件夹（来自 /api/shared/list，
 const ownerQS = (prefix) =>
   curOwner ? prefix + "owner=" + encodeURIComponent(curOwner) : "";
 
+/* 浏览别人的共享目录时，只有进到自己那一格（<共享目录>/…/<我的用户名>/）才给改名/移动/删除 */
+const inOwnCell = () => !!curOwner && !!me && curPath.split("/").includes(me.username);
+/* 那一格文件夹本身：名字就是归属标记，留着不给改 */
+const isOwnCellDir = (entry) =>
+  !!curOwner && !!me && entry.type === "dir" && entry.name === me.username;
+
 /* ---- 加密文件夹（SDV1，格式见 CRYPTO.md）状态 ---- */
 let vault = null; // 已解锁：{ path, key, manifest }；key 只在内存
 let vaultRootPath = null; // 当前目录被识别为加密文件夹根时的路径（未解锁）
@@ -474,7 +480,7 @@ function renderEntries(entries) {
         act.appendChild(actionBtn(ICONS.unshare, "取消共享", () => revokeShare(shared), true));
       }
     }
-    if (!curOwner) {
+    if ((!curOwner || inOwnCell()) && !isOwnCellDir(entry)) {
       act.appendChild(actionBtn(ICONS.rename, "重命名", () => renameItem(rel, entry.name)));
       act.appendChild(actionBtn(ICONS.move, "移动", () => moveItem(rel, entry.name)));
       act.appendChild(actionBtn(ICONS.trash, "删除", () => deleteItem(rel, entry.name), true));
@@ -550,7 +556,8 @@ function renameItem(rel, name) {
     "保存", async () => {
       const newName = $("#m-name").value.trim();
       if (!newName || newName === name) return;
-      await api("/api/files/rename", { method: "POST", body: { path: "/" + rel, new_name: newName } });
+      await api("/api/files/rename" + ownerQS("?"),
+        { method: "POST", body: { path: "/" + rel, new_name: newName } });
       toast("已重命名");
       refreshList();
     });
@@ -558,15 +565,16 @@ function renameItem(rel, name) {
 function deleteItem(rel, name) {
   openModal("删除", `<p class="modal-text">确定删除「${esc(name)}」吗？删除后文件会进入回收站，此操作无法在本页面撤销。</p>`,
     "删除", async () => {
-      await api("/api/files/delete", { method: "POST", body: { path: "/" + rel } });
+      await api("/api/files/delete" + ownerQS("?"), { method: "POST", body: { path: "/" + rel } });
       toast("已删除");
       refreshList(); refreshQuota();
     }, true);
 }
-async function collectDirs() {
-  const dirs = [""];
+async function collectDirs(root = "") {
+  const dirs = [root];
   async function walk(p) {
-    const data = await api("/api/files/list?path=" + encodeURIComponent(p ? "/" + p : ""));
+    const data = await api("/api/files/list?path=" + encodeURIComponent(p ? "/" + p : "")
+      + ownerQS("&"));
     for (const e of data.entries || []) {
       if (e.type === "dir") {
         const full = (p ? p + "/" : "") + e.name;
@@ -575,26 +583,31 @@ async function collectDirs() {
       }
     }
   }
-  await walk("");
+  await walk(root);
   return dirs;
 }
 async function moveItem(rel, name) {
+  /* 共享目录里只在自己的那一格里找落点：从我那一格开始走，列表才不会被 403 打断 */
+  const parts = curPath.split("/");
+  const idx = me ? parts.indexOf(me.username) : -1;
+  const rootDir = curOwner && idx >= 0 ? parts.slice(0, idx + 1).join("/") : "";
   let dirs;
-  try { dirs = await collectDirs(); } catch (e) { toast(e.message, true); return; }
+  try { dirs = await collectDirs(rootDir); } catch (e) { toast(e.message, true); return; }
   const srcDir = rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "";
   dirs = dirs.filter((d) => d !== rel && d !== srcDir && !d.startsWith(rel + "/"));
-  let chosen = "";
+  let chosen = rootDir;
   openModal("移动到", `
     <p class="modal-text">把「${esc(name)}」移动到：</p>
     <div class="folder-pick">${dirs.map((d) =>
       `<button type="button" data-dir="${esc(d)}">📁 ${d === "" ? "我的网盘（根目录）" : esc("/" + d)}</button>`).join("")}
     </div>`, "移动", async () => {
-      await api("/api/files/move", { method: "POST", body: { path: "/" + rel, dest_dir: chosen ? "/" + chosen : "" } });
+      await api("/api/files/move" + ownerQS("?"),
+        { method: "POST", body: { path: "/" + rel, dest_dir: chosen ? "/" + chosen : "" } });
       toast("已移动");
       refreshList();
     });
   $$("#modal-body .folder-pick button").forEach((b) => {
-    if (b.dataset.dir === "") b.classList.add("selected");
+    if (b.dataset.dir === chosen) b.classList.add("selected");
     b.addEventListener("click", () => {
       chosen = b.dataset.dir;
       $$("#modal-body .folder-pick button").forEach((x) => x.classList.toggle("selected", x === b));

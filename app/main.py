@@ -749,6 +749,16 @@ def _user_full(user, rel_raw, owner_raw=None, write: bool = False) -> tuple[str,
     return rel, full
 
 
+def _is_own_cell(user, owner_raw, rel: str) -> bool:
+    """rel 的最后一段是不是本人用户名 —— 也就是「自己那一格」这个文件夹本身。
+
+    那一格的文件夹名就是归属标记：改名/移走会让随后上传的落点算错，
+    所以在共享目录里单独拦一条（owner 是本人时不算，自己的同名文件夹照旧可动）。
+    """
+    owner = (owner_raw or "").strip() or user["username"]
+    return bool(rel) and owner != user["username"] and rel.rsplit("/", 1)[-1] == user["username"]
+
+
 @app.get("/api/files/list")
 def files_list(request: Request, path: str = Query(""), owner: str = Query("")):
     user = require_user(request)
@@ -959,9 +969,12 @@ def files_preview(request: Request, path: str = Query(...)):
 @app.post("/api/files/rename")
 def files_rename(data: RenameIn, request: Request, owner: str = Query("")):
     user = require_user(request)
-    rel, full = _user_full(user, data.path, owner)
+    # write=True：他人目录里只能动自己那一格里的东西（与上传/建夹同一条归属规则）
+    rel, full = _user_full(user, data.path, owner, write=True)
     if rel == "":
         raise err(400, "bad_path", "根文件夹（用户名）禁止改名")
+    if _is_own_cell(user, owner, rel):
+        raise err(400, "cell_rename", "不能改自己那一格的文件夹名：它就是你在共享目录里的归属标记")
     new_name = validate_name(data.new_name)
     with _db_lock, get_db() as db:
         if _shadows_shared(db, user, rel):
@@ -980,6 +993,8 @@ def files_move(data: MoveIn, request: Request, owner: str = Query("")):
     rel, full = _user_full(user, data.path, owner, write=True)
     if rel == "":
         raise err(400, "bad_path", "根文件夹禁止移动")
+    if _is_own_cell(user, owner, rel):
+        raise err(400, "cell_move", "不能移动自己那一格的文件夹：它就是你在共享目录里的归属标记")
     drel, dfull = _user_full(user, data.dest_dir, owner, write=True)
     with _db_lock, get_db() as db:
         if _shadows_shared(db, user, rel):

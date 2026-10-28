@@ -233,6 +233,7 @@ input { font-family: inherit; font-size: 15px; color: var(--text); }
   background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border);
 }
 .seg-btn:hover { background: var(--surface-3); }
+.seg-scope { margin: 0 0 12px; }
 .seg-btn.selected { background: var(--accent-soft, rgba(91, 91, 214, .18)); color: var(--text); border-color: var(--accent); }
 
 .list-card {

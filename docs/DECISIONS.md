@@ -168,3 +168,11 @@
   为什么不把 username 也做成可改：它出现在物理路径（`<共享目录>/<username>/`）与 `shared_grants` 的授权前缀里，改名等于同时搬目录、改授权、刷审计，收益（换个登录名）远小于代价。显示层要的「换名字」由 nickname 满足。
   入口：顶栏 `.user-chip`（头像 + 用户名）可点，弹「改名字」；保存后顶栏、内存里的 `me` 与后端一次到位。为什么不做成头像下拉菜单：用户真正要做的事只有「改名字」一件，一个只装一个选项的下拉等于让人多点一次。
   测试：`test_shared.py` 追加 S9 8 项（69 → 77）；`tests/e2e/test_e2e_browser.py` 追加 8 + 4 项（51 → 63）。
+
+- **D39 公共区域 = 顶栏第二格 + 一个只读索引视图，不是第二棵目录树**｜用户第三条迭代：主页要不要「我的网盘 / 公共区域」两个入口，公共区域里能看到各个共享文件夹，像 Win11 资源管理器里的 OneDrive。
+  做法：`static/index.html` 主区顶部加 `<nav class="seg seg-scope" id="nav-scope">` 两格按钮；新增 `<section id="public-panel" class="list-card hidden">`（`#public-list`、`#public-empty`、`#public-hint`）。`static/app.js` 加 `let scope`（mine/public）与 `let fromPublic`；把 refreshShared 里拼条目的那段抽成 `sharedItemEl(f)`（卡片与公共区域共用），再加 `applyScope()` 与 `setScope(next)`；`refreshShared()` 同时灌 `#shared-list` 与 `#public-list`；`renderCrumbs()` 在 `fromPublic` 时第一格是「公共区域」（点击回 `setScope("public")`）。
+  为什么不新建左侧栏：这一版没有侧栏，硬加一列会把三栏挤窄，手机端更糟；顶栏两格已经能表达「我在哪一层」。
+  为什么公共区域只能是只读索引：它列的是「我有权看到的共享文件夹」（`/api/shared/list` 已按 owner/grants 过滤，不泄露存在性），点进去才是真正可写的那一层（落点仍由服务端改写到「我的那一格」）。若允许在公共区域里直接建目录，等于凭空造出一个既不属于任何人、又人人可写的空间，配额归属立刻说不清（D27 的前提）。
+  边界：不做「虚拟根 + 完整目录树」——那要把路径模型从单串 `curPath` 改成 `(owner, path)` 二元组，面包屑/批量/上传落点/e2e 全要跟着重写。真要做，等有人抱怨导航慢再说。
+  已知取舍：从公共区域点进自己的共享文件夹时，面包屑是「公共区域 › docs」而不是「我的网盘 › docs」。同一个目录两个入口，记住你从哪来比统一入口更有用。
+  测试：`tests/e2e/test_e2e_browser.py` 追加 5 项（63 → 68）。

@@ -205,6 +205,7 @@ function logout(callApi = true) {
     api("/api/auth/logout", { method: "POST" }).catch(() => {});
   }
   token = ""; me = null; curPath = ""; curOwner = ""; sharedMine = [];
+  scope = "mine"; fromPublic = false;
   localStorage.removeItem("subdrive_token");
   show("view-auth");
 }
@@ -234,6 +235,10 @@ $("#btn-my-cell").addEventListener("click", () => {
   curPath = (root ? root + "/" : "") + me.username;
   refreshList();
 });
+$("#nav-scope").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-scope]");
+  if (btn) setScope(btn.getAttribute("data-scope"));
+});
 
 /* ---------------- 网盘 ---------------- */
 async function enterDrive() {
@@ -245,6 +250,9 @@ async function enterDrive() {
   $("#user-sub").textContent = "@" + me.username;
   $("#btn-admin").classList.toggle("hidden", !me.is_admin);
   show("view-drive");
+  scope = "mine";
+  fromPublic = false;
+  applyScope();
   curOwner = "";
   await Promise.all([refreshList(), refreshQuota(), refreshShared()]);
   if (location.hash === "#admin" && me.is_admin) {
@@ -253,7 +261,24 @@ async function enterDrive() {
   }
 }
 
-/* ---------------- 共享文件夹 ---------------- */
+/* ---------------- 共享文件夹 / 公共区域 ---------------- */
+let scope = "mine";      // mine | public：顶栏那两格
+let fromPublic = false;  // 当前目录是从「公共区域」点进来的（面包屑第一格跟着变）
+
+function sharedItemEl(f) {
+  const el = document.createElement("div");
+  el.className = "shared-item" + (f.is_mine ? " mine" : "");
+  const capBytes = f.max_bytes ? fmtBytes(f.max_bytes) : "不限";
+  const capMem = f.max_members ? f.max_members : "全员";
+  const memText = f.members.length ? f.members.length + " 人" : "全员";
+  el.innerHTML = `<span>🔗 ${esc(f.path)}</span>`
+    + `<span class="si-owner">${f.is_mine ? "我创建" : esc(f.owner)}</span>`
+    + `<span class="si-meta">${memText}/${capMem} · ${fmtBytes(f.bytes || 0)}/${capBytes}</span>`;
+  el.title = f.is_mine ? "点进入；在目录里点「管理共享」改名单" : `${f.owner} 分享给你`;
+  el.addEventListener("click", () => enterShared(f));
+  return el;
+}
+
 async function refreshShared() {
   let folders = [];
   try {
@@ -265,27 +290,59 @@ async function refreshShared() {
   const card = $("#shared-card");
   const list = $("#shared-list");
   list.innerHTML = "";
-  card.classList.toggle("hidden", folders.length === 0);
+  card.classList.toggle("hidden", scope !== "mine" || folders.length === 0);
   $("#shared-hint").textContent = folders.length
     ? "被授权的共享文件夹可查看、下载、上传；配额算上传者自己"
     : "";
-  for (const f of folders) {
-    const el = document.createElement("div");
-    el.className = "shared-item" + (f.is_mine ? " mine" : "");
-    const capBytes = f.max_bytes ? fmtBytes(f.max_bytes) : "不限";
-    const capMem = f.max_members ? f.max_members : "不限";
-    el.innerHTML = `<span>🔗 ${esc(f.path)}</span>`
-      + `<span class="si-owner">${f.is_mine ? "我创建" : esc(f.owner)}</span>`
-      + `<span class="si-meta">${f.members.length ? f.members.length + " 人" : "全员"}`
-      + `/${capMem} · ${fmtBytes(f.bytes || 0)}/${capBytes}</span>`;
-    el.title = f.is_mine ? "点进入；在目录里点「管理共享」改名单" : `${f.owner} 分享给你`;
-    el.addEventListener("click", () => enterShared(f));
-    list.appendChild(el);
+  for (const f of folders) list.appendChild(sharedItemEl(f));
+  const pub = $("#public-list");
+  pub.innerHTML = "";
+  for (const f of folders) pub.appendChild(sharedItemEl(f));
+  $("#public-empty").classList.toggle("hidden", folders.length > 0);
+  $("#public-hint").textContent = folders.length
+    ? "点进去就是那个共享目录；配额算上传者自己"
+    : "";
+}
+
+function applyScope() {
+  const pub = scope === "public";
+  for (const b of document.querySelectorAll("#nav-scope .seg-btn")) {
+    b.classList.toggle("selected", b.getAttribute("data-scope") === scope);
   }
+  $("#public-panel").classList.toggle("hidden", !pub);
+  document.querySelector(".toolbar").classList.toggle("hidden", pub);
+  $("#dropzone").classList.toggle("hidden", pub);
+  if (pub) {
+    $("#shared-card").classList.add("hidden");
+    $("#foreign-bar").classList.add("hidden");
+    $("#vault-bar").classList.add("hidden");
+  }
+}
+
+function setScope(next) {
+  if (next === scope) {
+    if (next === "public") refreshShared();
+    return;
+  }
+  scope = next;
+  fromPublic = false;
+  if (next === "public") {
+    // 公共区域是全局视图：先把当前位置清掉，免得点回「我的网盘」时还停在别人目录里
+    curOwner = "";
+    curPath = "";
+    applyScope();
+    refreshShared();
+    return;
+  }
+  applyScope();
+  refreshList();
 }
 
 function enterShared(f) {
   // 进的是那个共享目录本身：owner 是目录主人，path 是共享目录的相对路径。
+  scope = "mine";
+  fromPublic = true;
+  applyScope();
   curOwner = f.is_mine ? "" : f.owner;
   curPath = f.path;
   vault = null;
@@ -362,39 +419,57 @@ function renderCrumbs() {
   const nav = $("#crumbs");
   nav.innerHTML = "";
   const parts = curPath ? curPath.split("/") : [];
+  const sep = () => {
+    const s = document.createElement("span");
+    s.className = "crumb-sep";
+    s.textContent = "›";
+    nav.appendChild(s);
+  };
   const mk = (label, path, current, owner = curOwner) => {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "crumb" + (current ? " current" : "");
     b.textContent = label;
-    b.addEventListener("click", () => { curPath = path; curOwner = owner; refreshList(); });
+    b.addEventListener("click", () => {
+      fromPublic = false;
+      curPath = path;
+      curOwner = owner;
+      refreshList();
+    });
     return b;
   };
+  const trail = (owner) => {
+    parts.forEach((p, i) => {
+      sep();
+      nav.appendChild(mk(p, parts.slice(0, i + 1).join("/"),
+        i === parts.length - 1, owner));
+    });
+  };
+  if (fromPublic) {
+    // 从「公共区域」点进来的目录：第一格回公共区域，而不是回到我的网盘
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "crumb";
+    b.textContent = "公共区域";
+    b.addEventListener("click", () => setScope("public"));
+    nav.appendChild(b);
+    if (curOwner) {
+      sep();
+      nav.appendChild(mk(curOwner + " 的共享", "", parts.length === 0, curOwner));
+    }
+    trail(curOwner);
+    return;
+  }
   if (curOwner) {
     // 别人的共享目录：第一格回到自己的网盘，第二格是共享根
     nav.appendChild(mk("我的网盘", "", false, ""));
-    const sep0 = document.createElement("span");
-    sep0.className = "crumb-sep";
-    sep0.textContent = "›";
-    nav.appendChild(sep0);
+    sep();
     nav.appendChild(mk(curOwner + " 的共享", "", parts.length === 0, curOwner));
-    parts.forEach((p, i) => {
-      const sep = document.createElement("span");
-      sep.className = "crumb-sep";
-      sep.textContent = "›";
-      nav.appendChild(sep);
-      nav.appendChild(mk(p, parts.slice(0, i + 1).join("/"), i === parts.length - 1, curOwner));
-    });
+    trail(curOwner);
     return;
   }
   nav.appendChild(mk("我的网盘", "", parts.length === 0));
-  parts.forEach((p, i) => {
-    const sep = document.createElement("span");
-    sep.className = "crumb-sep";
-    sep.textContent = "›";
-    nav.appendChild(sep);
-    nav.appendChild(mk(p, parts.slice(0, i + 1).join("/"), i === parts.length - 1));
-  });
+  trail("");
 }
 
 let lastEntries = [];

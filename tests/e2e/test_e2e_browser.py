@@ -310,6 +310,27 @@ def run() -> int:
                  any(f["path"] == "docs" and f["is_mine"] for f in shared["folders"]),
                  str(shared))
 
+            # ---- 5a. 公共区域：切过去看得到，点得进去，面包屑能回来 ----
+            boss.click('#nav-scope [data-scope="public"]')
+            boss.wait_for_selector("#public-panel:not(.hidden)", timeout=10000)
+            check("公共区域列出共享文件夹", "docs" in boss.inner_text("#public-list"),
+                  boss.inner_text("#public-list"))
+            check("公共区域里文件列表收起", not boss.is_visible("#dropzone"))
+            boss.click("#public-list .shared-item")
+            boss.wait_for_selector("#dropzone:not(.hidden)", timeout=10000)
+            boss.wait_for_function(
+                "() => document.querySelector('#crumbs') &&"
+                " document.querySelector('#crumbs').textContent.includes('docs')",
+                timeout=10000)
+            check("面包屑第一格是公共区域",
+                  "公共区域" in boss.inner_text("#crumbs"), boss.inner_text("#crumbs"))
+            boss.click('#crumbs button:has-text("公共区域")')
+            boss.wait_for_selector("#public-panel:not(.hidden)", timeout=10000)
+            check("面包屑能回到公共区域", boss.is_visible("#public-panel"))
+            boss.click('#nav-scope [data-scope="mine"]')
+            boss.wait_for_selector("#dropzone:not(.hidden)", timeout=10000)
+            check("切回我的网盘显示文件列表", boss.is_visible("#dropzone"))
+
             # ---- 5b. 每目录上限（D35）：在「管理共享」里设成员上限 ----
             row(boss, "docs").locator('button[title="管理共享"]').click()
             boss.wait_for_selector("#s-maxmem", timeout=10000)

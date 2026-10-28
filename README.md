@@ -124,7 +124,7 @@ DATA_DIR=./data SEAFILE_MODE=stub .venv/bin/uvicorn app.main:app --host 127.0.0.
 - JS 密码学测试（10 项，全过）：`node tests/test_crypto.mjs` —— 与 Python/Dart 共验 SDV1 测试向量；
   Flutter 端同向量 5 项见 `~/workspace/subdrive-app/test/crypto_vector_test.dart`。
 - 上传计划测试（13 项，全过）：`node tests/test_uploadplan.mjs`
-- 浏览器端到端（63 项，全过）：`.venv/bin/python tests/e2e/test_e2e_browser.py` ——Playwright 驱动本机已装 Chrome
+- 浏览器端到端（68 项，全过）：`.venv/bin/python tests/e2e/test_e2e_browser.py` ——Playwright 驱动本机已装 Chrome
   （`channel="chrome"`，不下载浏览器），自起 stub 服务 + 临时 `DATA_DIR`，从注册一路点到退出；
   装不上 playwright 时打 `[SKIP]` 并 exit 0，发版前必须看到全绿。
 

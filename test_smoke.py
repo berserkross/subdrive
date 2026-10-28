@@ -141,7 +141,9 @@ def main():
     # 12. 路径穿越电池：含真 .. 段/反斜杠的必须 403 拒绝；
     #     "..;"、"...." 这类只是本人空间内的怪名字（无法逃逸），404 亦算安全。
     evil_strict = ["../bob", "/../bob", "..\\bob", "//../bob", "%2e%2e/bob",
-                   "%252e%252e/bob", "a/../../bob", "/%2e%2e%2fbob", "/alice/../../bob"]
+                   "%252e%252e/bob", "a/../../bob", "/%2e%2e%2fbob", "/alice/../../bob",
+                   # 尾随空格/点的 ..、Windows 静默裁剪、NUL 截断：必须 403
+                   ".. /bob", ".../bob", "a. /b", "a\x00b"]
     for p in evil_strict:
         r = c.get("/api/files/list", params={"path": p}, headers=auth(alice_token))
         assert r.status_code == 403, (p, r.status_code, r.text)

@@ -46,6 +46,25 @@ def _mtime_iso(ts: float) -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(ts))
 
 
+def _assert_full_path(full: str) -> None:
+    """完整 Seafile 路径的形状体检，stub 与 live 共用。
+
+    存储层不知道「当前用户是谁」，所以这里只挡形状非法；用户隔离仍由调用方
+    `app.paths.full_path()` 负责。但这层必须存在：live 侧原来零校验，
+    `../bob/a.jpg` 会被原样拼进请求 URL 发给真实 Seafile。
+    """
+    if not isinstance(full, str) or not full.startswith("/"):
+        raise StorageError("路径必须以 / 开头", code="path_rejected", status=403)
+    segs = full.split("/")[1:]
+    if not segs or not segs[0]:
+        raise StorageError("路径缺少用户前缀", code="path_rejected", status=403)
+    for seg in segs:
+        if seg in ("", ".", "..") or seg != seg.rstrip(" ."):
+            raise StorageError("非法路径", code="path_rejected", status=403)
+        if "\\" in seg or any(ord(c) < 0x20 or ord(c) == 0x7F for c in seg):
+            raise StorageError("路径包含非法字符", code="path_rejected", status=403)
+
+
 # ------------------------------------------------------------------ 基类
 
 class BaseStorage:
@@ -117,6 +136,7 @@ class StubStorage(BaseStorage):
 
     def _resolve(self, full: str) -> Path:
         # full 形如 /alice/a/b —— 逐段拼接并断言不逃出 repo 目录
+        _assert_full_path(full)
         parts = [p for p in PurePosixPath(full).parts if p not in ("/",)]
         p = self.repo_dir
         for part in parts:
@@ -283,11 +303,13 @@ class LiveStorage(BaseStorage):
     def _dir_url(self, full: str) -> str:
         from urllib.parse import quote
 
+        _assert_full_path(full)
         return f"/api2/repos/{self.repo_id}/dir/?p={quote(full)}"
 
     def _file_url(self, full: str) -> str:
         from urllib.parse import quote
 
+        _assert_full_path(full)
         return f"/api2/repos/{self.repo_id}/file/?p={quote(full)}"
 
     def list_dir(self, full: str) -> list:

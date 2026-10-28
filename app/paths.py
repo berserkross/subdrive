@@ -67,6 +67,10 @@ def normalize_rel_path(raw) -> str:
             continue
         if seg == "..":
             raise PathRejected("路径包含 ..")
+        if seg != seg.rstrip(" ."):
+            # Windows 会静默裁掉段尾的空格与点：`a ` 与 `a` 落到同一个文件，
+            # `.. ` 又能骗过上面那次精确比对。所以尾随空格/点一律拒。
+            raise PathRejected("路径段不得以空格或点结尾")
         _check_chars(seg, "路径段")
         if len(seg) > _MAX_SEGMENT_LEN:
             raise PathRejected("路径段过长")

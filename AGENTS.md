@@ -106,9 +106,9 @@ DATA_DIR=./data SEAFILE_MODE=stub .venv/bin/python -m uvicorn app.main:app --hos
   + `full_path`，名字走 `validate_name`，用户名走 `validate_username`。**不许在别处自己
   `split` / `join` / `os.path` 拼路径**（那是第二实现，必然漏边界）。已知现存例外一处：
   `app/main.py:616` 的 `f"{full}/{name}"`（`name` 先过 `validate_name`，当前不可利用，但别再学）。
-  **注意 `app/storage.py` 不是第二道防线**：`_resolve()`（`storage.py:118-129`）只断言不逃出 repo
-  根，**不校验 `/<username>` 前缀**，`LiveStorage` 侧完全无校验。用户隔离只有 `_user_full`
-  （`main.py:587-590`）这一道门，新增路由必须自己走它。
+  `app/storage.py` 现在有形状体检 `_assert_full_path()`（绝对路径 + 无 `..`/反斜杠/控制字符/
+  尾随空格点），stub 与 live 都过；但它**不知道当前用户是谁，挡不住跨用户冒名**。用户隔离
+  真正的门只有 `_user_full`（`main.py:587-590`），新增路由必须自己走它。
 - **错误形状**：业务错误用 `err(status, code, message)` 抛 `HTTPException`，响应是
   `{"detail": {"error": <snake_case 英文 code>, "message": <中文，给用户看>}}`；存储层与路径异常
   由 app 级 `exception_handler` 返回**扁平** `{"error": ..., "message": ...}`。前端两种都读
@@ -136,8 +136,9 @@ DATA_DIR=./data SEAFILE_MODE=stub .venv/bin/python -m uvicorn app.main:app --hos
    变量清单见 `.env.example`。细节见下节「密钥纪律」。
 2. **路径安全只允许改 `app/paths.py`**。其它模块不得自行拼接或规范化用户输入路径
    （规格 §7-1：这条防线不许有第二实现）。改动后必须让 `test_smoke.py` 的穿越电池保持全绿
-   ——**现状是 13 例**（`test_smoke.py:132-143`：`evil_strict` 9 例必须 403 + `evil_loose` 4 例
-   404 亦可，但都不许逃逸），项数会打印在结果里，改动后对一遍。
+   ——**现状是 17 例**（`evil_strict` 13 例必须 403 + `evil_loose` 4 例 404 亦可；含尾随空格/
+   点的 `..`、NUL、超长段等形态，项数会打印在结果里，改动后对一遍）。**加规则必须同时加用例**，
+   否则下一个人重构时会把这条防线悄悄改回去。
 3. **默认 `SEAFILE_MODE=stub`**：本地与 CI 一律不联网，任何改动不得让 stub 路径依赖真实 Seafile。
 4. 文本一律 UTF-8，界面文案中文。文件内容与文件名保持 ASCII 路径（云端跨平台安全）。
 5. 加密文件夹的格式受 `CRYPTO.md`（SDV1）约束，改格式必须同步 `test_crypto.mjs`、

@@ -23,7 +23,7 @@ SubDrive —— FastAPI 后端 + 原生 JS 单页前端的多用户网盘。文�
 | `testdata/crypto_vector.json` | SDV1 跨端固定向量，只由 `tools/gen_vector.py` 生成 |
 | `tools/gen_vector.py` | 重新生成上面那份向量（`tools/` 下唯一的脚本，不是测试） |
 | `CRYPTO.md` | SDV1 加密格式规范（Web / Flutter / Python 三端共用） |
-| `docs/` | 本项目的长期记忆：`DECISIONS.md`（已定决策+为什么）/ `DEAD-ENDS.md`（试过并放弃的方案）/ `STATUS.md`（现状+未决问题）。**动手前先读 `docs/STATUS.md` 的「未决问题」，别把已否掉的方案重新提一遍** |
+| `docs/` | 本项目的长期记忆：`DECISIONS.md`（已定决策+为什么）/ `DEAD-ENDS.md`（试过并放弃的方案）/ `STATUS.md`（现状+未决问题）。**动手前先读 `docs/STATUS.md` 的「未决问题」，别把已否掉的方案重新提一遍**。`PROPOSAL-shared-folders.md` 是**待拍板**的共享目录权限模型提案——不是已定方案，别照着它开写 |
 | `scripts/codex-setup.sh` | 云端环境的依赖安装脚本（Codex 环境里设为 setup 脚本） |
 | `screenshots/` | README 引用的 13 张界面截图（明/暗 × 登录/文件/后台/测速/保险库/预览 + 移动端） |
 | `Dockerfile` / `docker-compose.yml` / `.env.example` | 部署与配置（镜像内监听 8000，compose 把 `127.0.0.1:8001` 映射到容器的 8000） |

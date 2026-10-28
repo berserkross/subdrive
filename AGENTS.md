@@ -167,7 +167,9 @@ DATA_DIR=./data SEAFILE_MODE=stub .venv/bin/python -m uvicorn app.main:app --hos
 | `Dockerfile`、`docker-compose.yml`、`scripts/codex-setup.sh` | 部署与云端环境配置 |
 | `.gitattributes`、`.gitignore` | 行尾归一化与忽略规则，动了会污染全仓 diff |
 
-- git 只用只读命令考古；**不 `pull` / `push` / `commit` / `git add`**，提交由人来做。
+- git：`status` / `log` / `diff` / `show` 等只读命令随便用。**本地 `commit` 允许**，但只在五条测试
+  全绿之后、且一次只提交你确实改过的文件（先 `git status --short` 核对，别 `git add -A`）。
+  **`push` / `pull` / `rebase` / 任何重写历史的操作一律等人来做**——什么时候上线是人的决定。
 - 运行、测试、调试只允许往 `DATA_DIR` 及其临时目录写，别在仓库根留下 `data/` 或临时上传文件。
 
 ## 已知空白（改到相关处顺手补，别假装有）

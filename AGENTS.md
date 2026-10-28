@@ -92,7 +92,7 @@ DATA_DIR=./data SEAFILE_MODE=stub .venv/bin/python -m uvicorn app.main:app --hos
 | `.\.venv\Scripts\python.exe test_smoke.py` | 23 | 邀请码注册（无效/过期/撤销/复用）、建夹投影、登录与会话、路径穿越电池 14 例、跨用户隔离、上传→列表→下载字节一致、配额拦截与删除释放、改密码、禁用/启用、登录限速、用量校准、文件详情 |
 | `.\.venv\Scripts\python.exe test_features.py` | 43 | F1 加密文件夹 10（后端无明文名/明文内容、往返字节一致、错密码被拒、blob 大小=明文+33、密文计配额）；F2 测速 6（需登录、字节数精确、不计配额不落盘、并发 409、锁释放）；F3 预览与 Range 12（类型与 inline、Markdown 以纯文本下发、跨用户被拦、206 闭区间/后缀段/开放段、越界 416、无 Range 回退 200）；F4 管理员 15（`owner_protected` / `owner_required`、被提升者可用会话、审计、404） |
 | `.\.venv\Scripts\python.exe test_storage_live.py` | 15 | `LiveStorage` 的 HTTP 形状：删除必须是 `HTTP DELETE`、`p` 参数百分号编码、下载地址 `200+JSON 字符串` 与 `302+Location` 两种形式、Range 分片、全程无 POST、无未命中路由 |
-| `.\.venv\Scripts\python.exe test_shared.py` | 35 | 共享文件夹（D27）：创建/重复 409/成员不存在 400、被授权者能列能下、未授权者与上级目录 403、往共享目录上传落到 `<目录>/<自己用户名>/`、配额记上传者且创建者不变、覆盖写只记增量、只能删自己传的、共享目录（及其上级）禁止 rename/move/delete、名单清空后立即 403、取消共享退回私有且内容仍在、审计含 share/share_members/unshare |
+| `.\.venv\Scripts\python.exe test_shared.py` | 40 | 共享文件夹（D27）：创建/重复 409/成员不存在 400、被授权者能列能下、未授权者与上级目录 403、往共享目录上传落到 `<目录>/<自己用户名>/`、建夹与上传同一条落点规则（含在共享根建夹）、配额记上传者且创建者不变、覆盖写只记增量、只能删自己传的、共享目录（及其上级）禁止 rename/move/delete、名单清空后立即 403、取消共享退回私有且内容仍在、审计含 share/share_members/unshare |
 | `node test_crypto.mjs` | 10 | SDV1 向量与自洽：派生密钥一致、文件/清单/校验块可解、错密码必失败、信封 33 字节开销与魔数版本、roundtrip、GCM 拒绝篡改 |
 | `node test_uploadplan.mjs` | 13 | `planFolderUpload`：散文件、目录去重、父目录先于子目录、空目录进 `extraDirs`、路径清洗、垃圾输入跳过、`..` 段不被吞 |
 
@@ -137,6 +137,8 @@ DATA_DIR=./data SEAFILE_MODE=stub .venv/bin/python -m uvicorn app.main:app --hos
   正是为了让 Node 测试 `eval()` 它们——改成模块会同时打断 `index.html` 和两个 `.mjs` 测试。
   渲染用户内容只许 `textContent` 或转义后写入；Markdown 先转义再渲染，原始 HTML 永不进 DOM，
   链接只放行 `http/https/mailto`。
+  第三方目录（共享文件夹）用全局 `curOwner` 表示「正在看谁的目录」，所有请求的 `?owner=` 一律经
+  `ownerQS()` 拼接，别在各处手写；离开共享目录或退出登录必须清空它。
 - **依赖**：不新增。`httpx` 在 live 模式里延迟 `import`。
 - **编码**：源码与文案 UTF-8，界面中文；文件 LF（`.gitattributes` 的 `* text=auto`）。
 

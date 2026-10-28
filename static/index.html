@@ -119,6 +119,19 @@
       </div>
     </div>
 
+    <div id="foreign-bar" class="vault-bar hidden">
+      <span>你正在浏览 <strong id="foreign-owner">—</strong> 的共享文件夹；你上传或新建的内容会存进以你用户名命名的子文件夹。</span>
+      <button id="btn-my-cell" class="btn-ghost" type="button">只看我的</button>
+    </div>
+
+    <section id="shared-card" class="shared-card hidden">
+      <div class="shared-head">
+        <strong>共享文件夹</strong>
+        <span id="shared-hint" class="shared-hint"></span>
+      </div>
+      <div id="shared-list" class="shared-list"></div>
+    </section>
+
     <div id="vault-bar" class="vault-bar hidden">
       <span>🔒 <strong>加密文件夹</strong> · 文件名与内容只在你的浏览器里解密；服务器只看得到密文的大小与数量。</span>
       <button id="btn-vault-lock" class="btn-ghost" type="button">锁定</button>

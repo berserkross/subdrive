@@ -6,7 +6,13 @@ const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 let token = localStorage.getItem("subdrive_token") || "";
 let me = null;
 let curPath = ""; // "" = 根目录；否则 "a/b"
+let curOwner = ""; // "" = 自己的网盘；否则正在浏览谁的共享文件夹
 let quota = null;
+let sharedMine = []; // 我创建的共享文件夹（来自 /api/shared/list，is_mine）
+
+/* owner 只在浏览别人的共享目录时出现；服务端会按 owner+path 复核授权 */
+const ownerQS = (prefix) =>
+  curOwner ? prefix + "owner=" + encodeURIComponent(curOwner) : "";
 
 /* ---- 加密文件夹（SDV1，格式见 CRYPTO.md）状态 ---- */
 let vault = null; // 已解锁：{ path, key, manifest }；key 只在内存
@@ -98,6 +104,8 @@ const ICONS = {
   rename: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17z"/><path d="m13.5 6.5 3 3"/></svg>',
   move: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12h13M13 6.5 18.5 12 13 17.5"/><path d="M3.5 5.5v13"/></svg>',
   trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4.5A.5.5 0 0 1 9.5 4h5a.5.5 0 0 1 .5.5V7"/><path d="M6.5 7 7.4 19a2 2 0 0 0 2 1.9h5.2a2 2 0 0 0 2-1.9L17.5 7"/><path d="M10 11v6M14 11v6"/></svg>',
+  share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="17.5" cy="6" r="2.6"/><circle cx="6.5" cy="12" r="2.6"/><circle cx="17.5" cy="18" r="2.6"/><path d="m8.8 10.7 6.4-3.4M8.8 13.3l6.4 3.4"/></svg>',
+  unshare: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="17.5" cy="6" r="2.6"/><circle cx="6.5" cy="12" r="2.6"/><circle cx="17.5" cy="18" r="2.6"/><path d="m8.8 10.7 6.4-3.4M8.8 13.3l6.4 3.4"/><path d="M4 20 20 4"/></svg>',
 };
 function extOf(name) {
   return (name.split(".").pop() || "").toLowerCase();
@@ -188,11 +196,18 @@ function logout(callApi = true) {
   if (callApi && token) {
     api("/api/auth/logout", { method: "POST" }).catch(() => {});
   }
-  token = ""; me = null; curPath = "";
+  token = ""; me = null; curPath = ""; curOwner = ""; sharedMine = [];
   localStorage.removeItem("subdrive_token");
   show("view-auth");
 }
 $("#btn-logout").addEventListener("click", () => logout(true));
+$("#btn-my-cell").addEventListener("click", () => {
+  if (!curOwner || !me) return;
+  // 共享根是路径第一段；我那一格固定叫我的用户名
+  const root = curPath.split("/")[0];
+  curPath = (root ? root + "/" : "") + me.username;
+  refreshList();
+});
 
 /* ---------------- 网盘 ---------------- */
 async function enterDrive() {
@@ -204,11 +219,92 @@ async function enterDrive() {
   $("#user-sub").textContent = "@" + me.username;
   $("#btn-admin").classList.toggle("hidden", !me.is_admin);
   show("view-drive");
-  await Promise.all([refreshList(), refreshQuota()]);
+  curOwner = "";
+  await Promise.all([refreshList(), refreshQuota(), refreshShared()]);
   if (location.hash === "#admin" && me.is_admin) {
     show("view-admin");
     loadAdmin();
   }
+}
+
+/* ---------------- 共享文件夹 ---------------- */
+async function refreshShared() {
+  let folders = [];
+  try { folders = (await api("/api/shared/list")).folders || []; } catch { folders = []; }
+  sharedMine = folders.filter((f) => f.is_mine);
+  const card = $("#shared-card");
+  const list = $("#shared-list");
+  list.innerHTML = "";
+  card.classList.toggle("hidden", folders.length === 0);
+  $("#shared-hint").textContent = folders.length
+    ? "被授权的共享文件夹可查看、下载、上传；配额算上传者自己"
+    : "";
+  for (const f of folders) {
+    const el = document.createElement("div");
+    el.className = "shared-item" + (f.is_mine ? " mine" : "");
+    el.innerHTML = `<span>🔗 ${esc(f.path)}</span>`
+      + `<span class="si-owner">${f.is_mine ? "我创建" : esc(f.owner)}</span>`
+      + `<span class="si-meta">${f.members.length ? f.members.length + " 人" : "全员"}</span>`;
+    el.title = f.is_mine ? "点进入；在目录里点「管理共享」改名单" : `${f.owner} 分享给你`;
+    el.addEventListener("click", () => enterShared(f));
+    list.appendChild(el);
+  }
+}
+
+function enterShared(f) {
+  if (f.is_mine) { curOwner = ""; curPath = f.path; }
+  else { curOwner = f.owner; curPath = ""; }
+  vault = null;
+  vaultRootPath = null;
+  refreshList();
+}
+
+/* ---------------- 共享对话框 ---------------- */
+function revokeShare(folder) {
+  openModal("取消共享",
+    `<p class="modal-text">「${esc(folder.path)}」将退回私有文件夹：成员立刻失去访问权限，目录里的内容全部保留。</p>`,
+    "取消共享", async () => {
+      try {
+        await api("/api/shared/" + folder.id, { method: "DELETE" });
+        toast("已取消共享");
+        await refreshShared();
+        refreshList();
+      } catch (e) { toast(e.message, true); }
+    }, true);
+}
+
+async function openShareDialog(path, grant) {
+  let folders = [];
+  try { folders = (await api("/api/shared/list")).folders || []; } catch (e) { toast(e.message, true); return; }
+  const mineOne = folders.find((f) => f.is_mine && f.path === path) || null;
+  const isMine = !!(grant && grant.is_mine) || !!mineOne;
+  const members = (mineOne || grant || {}).members || [];
+  const body = isMine
+    ? `<p class="modal-hint">「${esc(path)}」已共享。不填成员＝所有注册成员可见；成员可查看、下载、上传（各自配额）。</p>
+       <label class="field-label">授权成员用户名（每行一个，留空＝全员）</label>
+       <textarea id="share-members" class="field-input" rows="5">${esc(members.join("\n"))}</textarea>`
+    : `<p class="modal-hint">把「${esc(path)}」变成共享文件夹：名单内成员可查看、下载、上传，上传内容存进各自用户名子文件夹；配额算上传者自己。创建后即公开，可随时改名单或取消共享。</p>
+       <label class="field-label">授权成员用户名（每行一个，留空＝全员）</label>
+       <textarea id="share-members" class="field-input" rows="5" placeholder="alice
+bob"></textarea>`;
+  openModal("共享文件夹", body, isMine ? "保存名单" : "创建共享", async () => {
+    const raw = ($("#share-members").value || "").split(/[\s,，、]+/).filter(Boolean);
+    try {
+      if (isMine) {
+        await api("/api/shared/" + mineOne.id + "/members", {
+          method: "POST", body: { members: raw },
+        });
+        toast("成员名单已更新");
+      } else {
+        await api("/api/shared/create", {
+          method: "POST", body: { path: "/" + path, members: raw },
+        });
+        toast("已创建共享文件夹");
+      }
+      await refreshShared();
+      refreshList();
+    } catch (e) { toast(e.message, true); }
+  });
 }
 
 async function refreshQuota() {
@@ -228,14 +324,31 @@ function renderCrumbs() {
   const nav = $("#crumbs");
   nav.innerHTML = "";
   const parts = curPath ? curPath.split("/") : [];
-  const mk = (label, path, current) => {
+  const mk = (label, path, current, owner = curOwner) => {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "crumb" + (current ? " current" : "");
     b.textContent = label;
-    b.addEventListener("click", () => { curPath = path; refreshList(); });
+    b.addEventListener("click", () => { curPath = path; curOwner = owner; refreshList(); });
     return b;
   };
+  if (curOwner) {
+    // 别人的共享目录：第一格回到自己的网盘，第二格是共享根
+    nav.appendChild(mk("我的网盘", "", false, ""));
+    const sep0 = document.createElement("span");
+    sep0.className = "crumb-sep";
+    sep0.textContent = "›";
+    nav.appendChild(sep0);
+    nav.appendChild(mk(curOwner + " 的共享", "", parts.length === 0, curOwner));
+    parts.forEach((p, i) => {
+      const sep = document.createElement("span");
+      sep.className = "crumb-sep";
+      sep.textContent = "›";
+      nav.appendChild(sep);
+      nav.appendChild(mk(p, parts.slice(0, i + 1).join("/"), i === parts.length - 1, curOwner));
+    });
+    return;
+  }
   nav.appendChild(mk("我的网盘", "", parts.length === 0));
   parts.forEach((p, i) => {
     const sep = document.createElement("span");
@@ -251,12 +364,16 @@ async function refreshList() {
   // 导航离开加密文件夹 → 立即锁定（密钥只留在内存，离开即弃）
   if (vault && curPath !== vault.path) vault = null;
   renderCrumbs();
+  $("#foreign-bar").classList.toggle("hidden", !curOwner);
+  if (curOwner) $("#foreign-owner").textContent = curOwner;
   $("#list-loading").classList.remove("hidden");
   try {
-    const data = await api("/api/files/list?path=" + encodeURIComponent(curPath ? "/" + curPath : ""));
+    const data = await api("/api/files/list?path="
+      + encodeURIComponent(curPath ? "/" + curPath : "") + ownerQS("&"));
     const entries = data.entries || [];
     lastEntries = entries;
-    const isVaultRoot = entries.some((e) => e.type === "file" && e.name === ".sdvault.json");
+    const isVaultRoot = !curOwner
+      && entries.some((e) => e.type === "file" && e.name === ".sdvault.json");
     if (isVaultRoot) {
       vaultRootPath = curPath;
       vaultDirMarks.add(curPath);
@@ -282,8 +399,8 @@ function updateVaultChrome() {
   const atVault = vaultRootPath !== null && vaultRootPath === curPath;
   const unlocked = atVault && !!vault;
   $("#vault-bar").classList.toggle("hidden", !unlocked);
-  $("#btn-mkdir").classList.toggle("hidden", atVault);
-  $("#btn-vault-new").classList.toggle("hidden", atVault);
+  $("#btn-mkdir").classList.toggle("hidden", atVault || !!curOwner);
+  $("#btn-vault-new").classList.toggle("hidden", atVault || !!curOwner);
   $("#btn-upload").classList.toggle("hidden", atVault && !unlocked);
   $("#btn-upload-folder").classList.toggle("hidden", atVault && !unlocked);
   if (!atVault) $("#vault-lock").classList.add("hidden");
@@ -331,11 +448,17 @@ function renderEntries(entries) {
       <span class="col-time">${timeText}</span>
       <span class="col-act"></span>`;
     const rel = (curPath ? curPath + "/" : "") + entry.name;
-    if (entry.type === "dir" && vaultDirMarks.has(rel)) {
+    if (entry.type === "dir" && !curOwner && vaultDirMarks.has(rel)) {
       $(".file-icon", row).classList.add("vault-icon");
       $(".row-name", row).insertAdjacentHTML("beforeend",
         ' <span class="vault-badge">🔒 加密</span>');
       $(".row-sub", row).textContent = "加密文件夹 · 需密码打开";
+    }
+    const shared = entry.type === "dir" && !curOwner
+      ? sharedMine.find((s) => s.path === rel) : null;
+    if (shared) {
+      $(".row-name", row).insertAdjacentHTML("beforeend",
+        ' <span class="shared-badge">🔗 共享</span>');
     }
     const act = $(".col-act", row);
     if (entry.type === "file") {
@@ -344,9 +467,18 @@ function renderEntries(entries) {
       }
       act.appendChild(actionBtn(ICONS.download, "下载", () => downloadFile(rel, entry.name)));
     }
-    act.appendChild(actionBtn(ICONS.rename, "重命名", () => renameItem(rel, entry.name)));
-    act.appendChild(actionBtn(ICONS.move, "移动", () => moveItem(rel, entry.name)));
-    act.appendChild(actionBtn(ICONS.trash, "删除", () => deleteItem(rel, entry.name), true));
+    if (entry.type === "dir" && !curOwner && !vaultDirMarks.has(rel)) {
+      act.appendChild(actionBtn(ICONS.share, shared ? "管理共享" : "共享此文件夹",
+        () => openShareDialog(rel, shared)));
+      if (shared) {
+        act.appendChild(actionBtn(ICONS.unshare, "取消共享", () => revokeShare(shared), true));
+      }
+    }
+    if (!curOwner) {
+      act.appendChild(actionBtn(ICONS.rename, "重命名", () => renameItem(rel, entry.name)));
+      act.appendChild(actionBtn(ICONS.move, "移动", () => moveItem(rel, entry.name)));
+      act.appendChild(actionBtn(ICONS.trash, "删除", () => deleteItem(rel, entry.name), true));
+    }
     row.addEventListener("click", (ev) => {
       if (ev.target.closest(".col-act")) return;
       if (entry.type === "dir") { curPath = rel; refreshList(); }
@@ -368,7 +500,7 @@ function actionBtn(svg, title, fn, danger = false) {
 
 async function downloadFile(rel, name) {
   try {
-    const resp = await fetch("/api/files/download?path=" + encodeURIComponent("/" + rel), {
+    const resp = await fetch("/api/files/download?path=" + encodeURIComponent("/" + rel) + ownerQS("&"), {
       headers: { Authorization: "Bearer " + token },
     });
     if (!resp.ok) {
@@ -659,7 +791,7 @@ async function enqueuePlanned(entries, extraDirs = []) {
       uploadsPendingRefresh = true;
       continue;
     }
-    uploadQueue.push({ file: pf.ref, item, targetDir: joinRel(baseDir, pf.dirRel) });
+    uploadQueue.push({ file: pf.ref, item, targetDir: joinRel(baseDir, pf.dirRel), owner: curOwner });
   }
   pumpUploads();
 }
@@ -673,14 +805,15 @@ function pumpUploads() {
   uploading = true;
   uploadOne(next).finally(() => { uploading = false; pumpUploads(); });
 }
-function uploadOne({ file, item, targetDir }) {
+function uploadOne({ file, item, targetDir, owner }) {
   return new Promise((resolve) => {
     const fill = $(".u-fill", item);
     const state = $(".u-state", item);
     state.textContent = "上传中…";
     const xhr = new XMLHttpRequest();
-    // 目标目录用入队时定死的 targetDir，不读实时 curPath，避免上传途中导航传错地方
-    xhr.open("POST", "/api/files/upload?path=" + encodeURIComponent(targetDir ? "/" + targetDir : ""));
+    // 目标目录用入队时定死的 targetDir/owner，不读实时 curPath，避免上传途中导航传错地方
+    xhr.open("POST", "/api/files/upload?path=" + encodeURIComponent(targetDir ? "/" + targetDir : "")
+      + (owner ? "&owner=" + encodeURIComponent(owner) : ""));
     xhr.setRequestHeader("Authorization", "Bearer " + token);
     xhr.upload.addEventListener("progress", (e) => {
       if (e.lengthComputable) {
@@ -1008,7 +1141,7 @@ async function openPreview(rel, entry) {
     if (entry.size > PREVIEW_TEXT_CAP) { setPreviewContent(previewFallbackHtml(entry)); return; }
     setPreviewContent('<div class="list-loading">加载中…</div>');
     try {
-      const resp = await fetch("/api/files/preview?path=" + encodeURIComponent("/" + rel), {
+      const resp = await fetch("/api/files/preview?path=" + encodeURIComponent("/" + rel) + ownerQS("&"), {
         headers: { Authorization: "Bearer " + token },
       });
       if (!resp.ok) throw new Error("预览加载失败");
@@ -1016,7 +1149,7 @@ async function openPreview(rel, entry) {
     } catch { setPreviewContent(previewFallbackHtml(entry)); }
     return;
   }
-  const url = "/api/files/preview?path=" + encodeURIComponent("/" + rel) +
+  const url = "/api/files/preview?path=" + encodeURIComponent("/" + rel) + ownerQS("&") +
               "&token=" + encodeURIComponent(token);
   fillMediaPreview(kind, entry.name, url);
 }

@@ -144,6 +144,27 @@ def main():
                headers=auth(tok_c), files={"file": ("bad.txt", b"nope", "text/plain")})
     check("S3 未授权者不能往共享目录传（403）", r.status_code == 403, r.text)
 
+    print("\n— S3b 建文件夹与上传同一条落点规则 —")
+    r = c.post("/api/files/mkdir", headers=auth(tok_b),
+               params={"owner": "alice"}, json={"path": "公共资料/2026", "name": "bob的相册"})
+    check("S3b 建夹成功并回报落点", r.status_code == 200
+          and r.json()["path"] == "公共资料/2026/bob/bob的相册", r.text)
+    r = c.get("/api/files/list", params={"path": "公共资料/2026/bob", "owner": "alice"},
+              headers=auth(tok_b))
+    names = [e["name"] for e in r.json()["entries"]]
+    check("S3b 新夹出现在我那一格里", "bob的相册" in names, str(names))
+    r = c.get("/api/files/list", params={"path": "公共资料/2026", "owner": "alice"},
+              headers=auth(tok_b))
+    names = [e["name"] for e in r.json()["entries"]]
+    check("S3b 共享目录本体没多出同名夹", "bob的相册" not in names, str(names))
+    r = c.post("/api/files/mkdir", headers=auth(tok_c),
+               params={"owner": "alice"}, json={"path": "公共资料/2026", "name": "偷偷的"})
+    check("S3b 未授权者不能建夹（403）", r.status_code == 403, r.text)
+    r = c.post("/api/files/mkdir", headers=auth(tok_b),
+               params={"owner": "alice"}, json={"path": "公共资料", "name": "在共享根建"})
+    check("S3b 在共享根建夹也落进自己那格", r.status_code == 200
+          and r.json()["path"] == "公共资料/bob/在共享根建", r.text)
+
     print("\n— S4 只能删自己传的 —")
     r = c.post("/api/files/delete", headers=auth(tok_b),
                json={"path": "公共资料/2026/议程.txt"}, params={"owner": "alice"})

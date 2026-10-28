@@ -6,7 +6,7 @@
 
 ## 已完成
 
-- 本地检查 128 项通过（`test_smoke.py` 27 + `test_features.py` 43 + `test_shared.py` 35 +
+- 本地检查 133 项通过（`test_smoke.py` 27 + `test_features.py` 43 + `test_shared.py` 40 +
   `test_crypto.mjs` 10 + `test_uploadplan.mjs` 13，全部 exit 0）。后端功能用本地 stub，
   Seafile 适配用模拟响应；`test_storage_live.py` 需真实 Seafile，未在本轮跑。
 - 已修：邀请码并发重复使用、管理员可被误禁用、负配额输入、预览内容类型、空文件 Range 下载边界。
@@ -52,11 +52,15 @@
    `.. `／`...`／`a. ` 现在走 403，不再能绕过 `main.py:793` 的根目录删除保护。
 4. **穿越电池已补齐**：HTTP 层 13 → 17 例（`test_smoke.py:143-146`），另加 12b 段直调存储层
    形状门 6 拒 3 放（`test_smoke.py:158-170`），不依赖路由即可回归。
-5. **共享文件夹后端已落地（D27），前端入口未做**：`shared_folders` / `shared_grants` 两张表、
-   `/api/shared/create|list|{id}/members|DELETE {id}` 四条路由、归属门按「被授权前缀」放行
-   （`paths.py` 的 ContextVar 携带前缀）、文件路由全部接受 `owner=` 参数。共享目录及其上级
-   被禁止 `rename`/`move`/`delete`（返回 `shared_rename`/`shared_move`/`shared_delete`），
-   避免授权表静默失配。回归见 `test_shared.py`（35 项）。
+5. ~~**共享文件夹后端已落地（D27），前端入口未做**~~ **前端入口已完成**：`shared_folders` /
+   `shared_grants` 两张表、`/api/shared/create|list|{id}/members|DELETE {id}` 四条路由、归属门按
+   「被授权前缀」放行（`paths.py` 的 ContextVar 携带前缀）、文件路由全部接受 `owner=` 参数。
+   共享目录及其上级被禁止 `rename`/`move`/`delete`（返回 `shared_rename`/`shared_move`/`shared_delete`），
+   避免授权表静默失配。网页端：工具栏下「共享文件夹」卡片（我创建的 + 分享给我的）、目录行
+   「共享此文件夹 / 管理共享 / 取消共享」、浏览他人共享目录时的顶部提示条与「只看我的」跳转；
+   `?owner=` 由 `static/app.js` 的 `ownerQS()` 统一拼接（列表/下载/预览/上传/新建都走它）。
+   成员在共享目录里只保留上传与下载（改名/移动/删除按钮不渲染，后端同样拒绝）。
+   回归见 `test_shared.py`（40 项，含 S3b 建夹落点与越权 403）。
 
 ## 下一步
 

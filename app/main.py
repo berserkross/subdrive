@@ -770,13 +770,26 @@ def files_detail(request: Request, path: str = Query(""), owner: str = Query("")
 def files_mkdir(data: MkdirIn, request: Request, owner: str = Query("")):
     user = require_user(request)
     name = validate_name(data.name)
-    owner_name, rel, _ = _target(user, data.path, owner, write=True)
+    owner_name = (owner or "").strip() or user["username"]
+    if owner_name != user["username"]:
+        # 与上传同一条落点规则：建夹也强制落进自己那一格
+        base = _foreign_target(user, owner_name, data.path, write=False)
+        rel = _foreign_target(
+            user, owner_name, f"{base}/{user['username']}" if base else user["username"],
+            write=True)
+    else:
+        rel = _user_full(user, data.path)[0]
     rel_new = f"{rel}/{name}" if rel else name
+    if owner_name != user["username"]:
+        try:
+            storage.mkdir(full_path(owner_name, rel))
+        except StorageConflict:
+            pass
     storage.mkdir(full_path(owner_name, rel_new))
     with _db_lock, get_db() as db:
         audit(db, user["id"], "mkdir", "/" + rel_new, None, client_ip(request), "ok",
               "" if owner_name == user["username"] else f"in {owner_name}")
-    return {"ok": True, "name": name}
+    return {"ok": True, "name": name, "owner": owner_name, "path": rel_new}
 
 
 @app.post("/api/files/upload")

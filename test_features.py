@@ -170,11 +170,11 @@ def f1_encrypted_folders(c, admin_token, stub_lib):
     check("F1 blob 以不透明名存储且大小=明文+33", stored_blob.is_file()
           and stored_blob.stat().st_size == len(secret_body) + 33)
 
-    # 配额按密文计：增量轨记录每次写入（含清单覆盖写的旧版本，与既有记账语义一致），
-    # 校准轨对齐磁盘真实占用（清单只剩最后一份）
+    # 配额按密文计：覆盖写只记增量（旧版本先退再记新大小，否则每覆盖一次配额就多算一份，
+    # D27 之后共享目录里的文件也这样记），校准轨对齐磁盘真实占用
     q = c.get("/api/quota", headers=auth(tok)).json()
-    incremental = s_desc + s_man0 + s_man + s_blob
-    check("F1 配额按密文大小记账（增量轨）", q["used_bytes"] == incremental,
+    incremental = s_desc + s_man + s_blob
+    check("F1 配额按密文大小记账（增量轨，覆盖写不重复计）", q["used_bytes"] == incremental,
           f'{q["used_bytes"]} != {incremental}')
     r = c.post(f"/api/admin/users/{uid}/recalibrate", headers=auth(admin_token))
     assert r.status_code == 200, r.text

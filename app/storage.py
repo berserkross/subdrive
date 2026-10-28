@@ -15,7 +15,7 @@ import shutil
 import time
 from pathlib import Path, PurePosixPath
 
-from .paths import USERNAME_RE, current_is_admin, current_user
+from .paths import USERNAME_RE, current_is_admin, current_user, is_within_grant
 
 CHUNK = 1024 * 1024
 
@@ -64,7 +64,8 @@ def _assert_full_path(full: str) -> None:
         raise StorageError("首段不是合法用户名", code="path_rejected", status=403)
     owner = current_user()
     if owner is not None and not current_is_admin() \
-            and full != f"/{owner}" and not full.startswith(f"/{owner}/"):
+            and full != f"/{owner}" and not full.startswith(f"/{owner}/") \
+            and not is_within_grant(full):
         raise StorageError("路径不属于当前用户", code="path_rejected", status=403)
     for seg in segs:
         if seg in ("", ".", "..") or seg != seg.rstrip(" ."):

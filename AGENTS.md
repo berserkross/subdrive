@@ -92,13 +92,15 @@ DATA_DIR=./data SEAFILE_MODE=stub .venv/bin/python -m uvicorn app.main:app --hos
 | `.\.venv\Scripts\python.exe test_smoke.py` | 23 | 邀请码注册（无效/过期/撤销/复用）、建夹投影、登录与会话、路径穿越电池 14 例、跨用户隔离、上传→列表→下载字节一致、配额拦截与删除释放、改密码、禁用/启用、登录限速、用量校准、文件详情 |
 | `.\.venv\Scripts\python.exe test_features.py` | 43 | F1 加密文件夹 10（后端无明文名/明文内容、往返字节一致、错密码被拒、blob 大小=明文+33、密文计配额）；F2 测速 6（需登录、字节数精确、不计配额不落盘、并发 409、锁释放）；F3 预览与 Range 12（类型与 inline、Markdown 以纯文本下发、跨用户被拦、206 闭区间/后缀段/开放段、越界 416、无 Range 回退 200）；F4 管理员 15（`owner_protected` / `owner_required`、被提升者可用会话、审计、404） |
 | `.\.venv\Scripts\python.exe test_storage_live.py` | 15 | `LiveStorage` 的 HTTP 形状：删除必须是 `HTTP DELETE`、`p` 参数百分号编码、下载地址 `200+JSON 字符串` 与 `302+Location` 两种形式、Range 分片、全程无 POST、无未命中路由 |
+| `.\.venv\Scripts\python.exe test_shared.py` | 35 | 共享文件夹（D27）：创建/重复 409/成员不存在 400、被授权者能列能下、未授权者与上级目录 403、往共享目录上传落到 `<目录>/<自己用户名>/`、配额记上传者且创建者不变、覆盖写只记增量、只能删自己传的、共享目录（及其上级）禁止 rename/move/delete、名单清空后立即 403、取消共享退回私有且内容仍在、审计含 share/share_members/unshare |
 | `node test_crypto.mjs` | 10 | SDV1 向量与自洽：派生密钥一致、文件/清单/校验块可解、错密码必失败、信封 33 字节开销与魔数版本、roundtrip、GCM 拒绝篡改 |
 | `node test_uploadplan.mjs` | 13 | `planFolderUpload`：散文件、目录去重、父目录先于子目录、空目录进 `extraDirs`、路径清洗、垃圾输入跳过、`..` 段不被吞 |
 
 改动 SDV1 格式时才需要跑生成器：`.\.venv\Scripts\python.exe tools\gen_vector.py`（会重写
 `testdata/crypto_vector.json`，跑完必须让三端测试重新全绿）。
 
-五项全绿才算完成；任一失败就是真失败，不要跳过、不要改断言来凑。没有 CI，这五条就是唯一门禁。
+五项全绿才算完成（`test_storage_live.py` 需要真实 Seafile，本地改为其余五项全绿）；
+任一失败就是真失败，不要跳过、不要改断言来凑。没有 CI，这几条就是唯一门禁。
 
 ## 代码风格与错误契约（从现有代码归纳，新增代码照做）
 
@@ -113,8 +115,10 @@ DATA_DIR=./data SEAFILE_MODE=stub .venv/bin/python -m uvicorn app.main:app --hos
   所以新增路由**只要走 `require_user`，隔离自动生效**，不必再记得传 username。
   路径前缀断言用**真 `raise`**，不许退回 `assert`——`assert` 在 `python -O` 下会被整条剥离，
   那道检查会静默消失。
-- **同名覆盖**：`storage.upload()` 目前仍静默截断同名文件。已定策略见 `DECISIONS.md` D26
-  （按上传者分目录），**尚未实施**——别以为它已经修好了。
+- **同名覆盖**：`storage.upload()` 仍是 `wb` 截断（不报错、不留版本）。策略见 `DECISIONS.md`
+  D27：写别人的共享目录时落点被强制成 `<共享目录>/<自己用户名>/`，所以跨人不可能撞名；
+  覆盖自己的同名文件允许，上传路由按 `stored - prior` 记增量，不让配额漂。改这块必须同步
+  `test_shared.py` S3 的两条覆盖写断言。
 - **错误形状**：业务错误用 `err(status, code, message)` 抛 `HTTPException`，响应是
   `{"detail": {"error": <snake_case 英文 code>, "message": <中文，给用户看>}}`；存储层与路径异常
   由 app 级 `exception_handler` 返回**扁平** `{"error": ..., "message": ...}`。前端两种都读

@@ -1,0 +1,202 @@
+"""共享文件夹（D27）测试：公开共享目录能看/能下/能传、配额跟上传者、只能删自己传的。
+
+与 test_smoke.py / test_features.py 一样是 main() 脚本，不是 pytest 用例：
+直接 `python test_shared.py`。stub 模式，不接触真实 Seafile。
+"""
+import os
+import sys
+import tempfile
+
+# Windows 控制台默认 GBK，最后打印 ✅ 会抛 UnicodeEncodeError 把整轮测试拖成失败退出。
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+tmp = tempfile.mkdtemp(prefix="subdrive-shared-")
+os.environ["DATA_DIR"] = tmp
+os.environ["SEAFILE_MODE"] = "stub"
+os.environ["CALIBRATE_INTERVAL_SECONDS"] = "0"
+os.environ["SUBDRIVE_ADMIN_USERNAME"] = "boss"
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from fastapi.testclient import TestClient
+
+from app.main import app, get_db, _db_lock
+
+PASSED = []
+
+
+def check(name, cond, extra=""):
+    assert cond, f"FAIL: {name} {extra}"
+    PASSED.append(name)
+    print(f"{len(PASSED):2d}. {name} OK")
+
+
+def auth(token):
+    return {"Authorization": f"Bearer {token}"}
+
+
+def register(c, admin_token, username, password="sharedpass1"):
+    r = c.post("/api/admin/invite-codes", headers=auth(admin_token), json={"note": username})
+    code = r.json()["code"]
+    r = c.post("/api/auth/register",
+               json={"username": username, "password": password, "invite_code": code})
+    assert r.status_code == 200, r.text
+    return r.json()["token"]
+
+
+def upload(c, token, path, filename, data, owner=""):
+    params = {"path": path}
+    if owner:
+        params["owner"] = owner
+    r = c.post("/api/files/upload", params=params, headers=auth(token),
+               files={"file": (filename, data, "application/octet-stream")})
+    assert r.status_code == 200, (filename, r.text)
+    return r.json()
+
+
+def used(c, token):
+    return c.get("/api/quota", headers=auth(token)).json()["used_bytes"]
+
+
+def main():
+    c = TestClient(app)
+
+    # 第一个注册的是所有者（管理员）
+    r = c.post("/api/auth/register", json={"username": "boss", "password": "bosspass1"})
+    assert r.status_code == 200, r.text
+    boss = r.json()["token"]
+
+    tok_a = register(c, boss, "alice")     # 共享文件夹创建者
+    tok_b = register(c, boss, "bob")       # 被授权成员
+    tok_c = register(c, boss, "carol")     # 未授权者
+
+    print("\n— S1 创建共享文件夹 —")
+    r = c.post("/api/files/mkdir", headers=auth(tok_a), json={"path": "", "name": "公共资料"})
+    assert r.status_code == 200, r.text
+    r = c.post("/api/files/mkdir", headers=auth(tok_a),
+               json={"path": "公共资料", "name": "2026"})
+    assert r.status_code == 200, r.text
+    upload(c, tok_a, "公共资料/2026", "议程.txt", b"agenda-v1")
+
+    r = c.post("/api/shared/create", headers=auth(tok_a),
+               json={"path": "公共资料/2026", "members": ["bob"]})
+    check("S1 创建者能共享自己的文件夹", r.status_code == 200, r.text)
+    folder_id = r.json()["id"]
+
+    r = c.post("/api/shared/create", headers=auth(tok_a),
+               json={"path": "公共资料/2026", "members": []})
+    check("S1 同一文件夹不能重复共享（409）", r.status_code == 409, r.text)
+
+    r = c.post("/api/shared/create", headers=auth(tok_a),
+               json={"path": "公共资料", "members": ["nobody"]})
+    check("S1 不存在的成员被拒（400）", r.status_code == 400, r.text)
+
+    print("\n— S2 授权可见性 —")
+    r = c.get("/api/shared/list", headers=auth(tok_b)).json()["folders"]
+    check("S2 被授权者能看到这条共享", len(r) == 1 and r[0]["owner"] == "alice"
+          and r[0]["path"] == "公共资料/2026" and r[0]["is_mine"] is False, str(r))
+    check("S2 被授权者看到名单", r[0]["members"] == ["bob"], str(r))
+    r = c.get("/api/shared/list", headers=auth(tok_c)).json()["folders"]
+    check("S2 未授权者看不到", r == [], str(r))
+
+    r = c.get("/api/files/list", params={"path": "公共资料/2026", "owner": "alice"},
+              headers=auth(tok_b))
+    check("S2 被授权者能列共享目录本身", r.status_code == 200, r.text)
+    names = [e["name"] for e in r.json()["entries"]]
+    check("S2 列目录看到创建者传的文件", "议程.txt" in names, str(names))
+
+    r = c.get("/api/files/list", params={"path": "", "owner": "alice"}, headers=auth(tok_b))
+    check("S2 授权只覆盖那一个目录，上级不可见（403）", r.status_code == 403, r.text)
+
+    r = c.get("/api/files/download", params={"path": "公共资料/2026/议程.txt", "owner": "alice"},
+              headers=auth(tok_b))
+    check("S2 被授权者能下载", r.status_code == 200 and r.content == b"agenda-v1", r.text)
+
+    r = c.get("/api/files/list", params={"path": "", "owner": "alice"}, headers=auth(tok_c))
+    check("S2 未授权者访问他人目录被拒（403）", r.status_code == 403, r.text)
+
+    print("\n— S3 往别人的共享目录上传 —")
+    a_before = used(c, tok_a)
+    r = c.post("/api/shared/create", headers=auth(tok_a),
+               json={"path": "公共资料", "members": ["bob"]})
+    assert r.status_code == 200, r.text
+    outer_id = r.json()["id"]
+
+    size = upload(c, tok_b, "公共资料/2026", "bob的笔记.txt", b"x" * 100,
+                  owner="alice")["size"]
+    check("S3 上传成功并回报大小", size == 100, str(size))
+    check("S3 配额记在被授权者头上", used(c, tok_b) == 100, str(used(c, tok_b)))
+    check("S3 创建者的配额不变", used(c, tok_a) == a_before, f"{used(c, tok_a)} != {a_before}")
+
+    r = c.get("/api/files/list", params={"path": "公共资料/2026/bob", "owner": "alice"},
+              headers=auth(tok_b))
+    check("S3 文件落在上传者自己的同名子目录", r.status_code == 200, r.text)
+    names = [e["name"] for e in r.json()["entries"]]
+    check("S3 子目录里能看到该文件", "bob的笔记.txt" in names, str(names))
+
+    b_before = used(c, tok_b)
+    up = upload(c, tok_b, "公共资料/2026", "bob的笔记.txt", b"x" * 40, owner="alice")
+    check("S3 同名覆盖写被标记 replaced", up.get("replaced") is True, str(up))
+    check("S3 覆盖写只记增量（100→40，用量 -60）", used(c, tok_b) == b_before - 60,
+          f'{used(c, tok_b)} != {b_before - 60}')
+
+    r = c.post("/api/files/upload", params={"path": "公共资料/2026", "owner": "alice"},
+               headers=auth(tok_c), files={"file": ("bad.txt", b"nope", "text/plain")})
+    check("S3 未授权者不能往共享目录传（403）", r.status_code == 403, r.text)
+
+    print("\n— S4 只能删自己传的 —")
+    r = c.post("/api/files/delete", headers=auth(tok_b),
+               json={"path": "公共资料/2026/议程.txt"}, params={"owner": "alice"})
+    check("S4 不能删别人传的文件（403）", r.status_code == 403, r.text)
+    r = c.post("/api/files/delete", headers=auth(tok_b),
+               json={"path": "公共资料/2026/bob"}, params={"owner": "alice"})
+    check("S4 能删自己上传的文件", r.status_code == 200, r.text)
+    check("S4 删完配额回冲", used(c, tok_b) == 0, str(used(c, tok_b)))
+
+    print("\n— S5 共享目录本身的保护 —")
+    r = c.post("/api/files/rename", headers=auth(tok_a),
+               json={"path": "公共资料/2026", "new_name": "改名了"})
+    check("S5 共享目录不许直接改名（400）", r.status_code == 400, r.text)
+    r = c.post("/api/files/delete", headers=auth(tok_a), json={"path": "公共资料/2026"})
+    check("S5 共享目录不许直接删除（400）", r.status_code == 400, r.text)
+    r = c.post("/api/files/delete", headers=auth(tok_a), json={"path": "公共资料"})
+    check("S5 共享目录的上级也不许删（400）", r.status_code == 400, r.text)
+
+    print("\n— S6 名单可改、取消共享退回私有 —")
+    r = c.post(f"/api/shared/{folder_id}/members", headers=auth(tok_b),
+               json={"members": ["bob"]})
+    check("S6 非创建者不能改名单（403）", r.status_code == 403, r.text)
+    r = c.post(f"/api/shared/{folder_id}/members", headers=auth(tok_a), json={"members": []})
+    check("S6 创建者能把名单清空", r.status_code == 200 and r.json()["members"] == [], r.text)
+    r = c.get("/api/files/list", params={"path": "", "owner": "alice"}, headers=auth(tok_b))
+    check("S6 被踢出后立即失去访问（403）", r.status_code == 403, r.text)
+
+    r = c.post(f"/api/shared/{folder_id}/members", headers=auth(tok_a),
+               json={"members": ["bob"]})
+    check("S6 名单能再加回来", r.status_code == 200 and r.json()["members"] == ["bob"], r.text)
+
+    r = c.delete(f"/api/shared/{folder_id}", headers=auth(tok_a))
+    check("S6 取消共享成功", r.status_code == 200, r.text)
+    r = c.get("/api/shared/list", headers=auth(tok_b)).json()["folders"]
+    check("S6 取消后共享列表里没有了", all(f["id"] != folder_id for f in r), str(r))
+    r = c.get("/api/files/list", params={"path": "", "owner": "alice"}, headers=auth(tok_b))
+    check("S6 取消后被授权者失去访问（403）", r.status_code == 403, r.text)
+    r = c.get("/api/files/list", params={"path": "公共资料/2026"}, headers=auth(tok_a))
+    check("S6 文件夹与内容仍归创建者", r.status_code == 200
+          and "议程.txt" in [e["name"] for e in r.json()["entries"]], r.text)
+
+    print("\n— S7 审计 —")
+    with _db_lock, get_db() as db:
+        rows = db.execute("SELECT action, result FROM audit_log WHERE action IN"
+                          " ('share','share_members','unshare') ORDER BY id").fetchall()
+    actions = [r["action"] for r in rows]
+    check("S7 share/share_members/unshare 都进了审计",
+          "share" in actions and "share_members" in actions and "unshare" in actions,
+          str(actions))
+    check("S7 审计里没有 denied 的共享操作", all(r["result"] == "ok" for r in rows), str(rows))
+
+    print(f"\n全部 {len(PASSED)} 项共享文件夹测试通过 ✅")
+
+
+if __name__ == "__main__":
+    main()

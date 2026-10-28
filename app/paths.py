@@ -32,6 +32,28 @@ def current_is_admin() -> bool:
     ctx = _current_user.get()
     return bool(ctx and ctx[1])
 
+
+# 被授权的他人共享目录前缀（完整 Seafile 路径）。由 main.require_user 按数据库里的
+# 授权表写入，存储层据此放行「按授权访问他人目录」。默认为空 —— 除自己前缀外一律拒绝，
+# 所以忘记设置只会收紧、不会放宽。
+_granted_prefixes: ContextVar[tuple[str, ...]] = ContextVar("sd_granted_prefixes", default=())
+
+
+def set_granted_prefixes(prefixes) -> None:
+    _granted_prefixes.set(tuple(prefixes))
+
+
+def granted_prefixes() -> tuple[str, ...]:
+    return _granted_prefixes.get()
+
+
+def is_within_grant(full: str) -> bool:
+    """full 是否落在某个被授权的他人共享目录内（含该目录本身）。"""
+    for p in _granted_prefixes.get():
+        if full == p or full.startswith(p + "/"):
+            return True
+    return False
+
 # 与规格 §3 一致：用户名即文件夹名
 USERNAME_RE = re.compile(r"^[a-z][a-z0-9_-]{2,23}$")
 RESERVED_USERNAMES = {

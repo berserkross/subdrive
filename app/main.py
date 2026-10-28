@@ -26,8 +26,9 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.paths import (USERNAME_RE, PathRejected, full_path, normalize_rel_path,
-                       set_current_user, validate_name, validate_username)
-from app.storage import StorageError, make_storage
+                       set_current_user, set_granted_prefixes, validate_name,
+                       validate_username)
+from app.storage import StorageConflict, StorageError, StorageNotFound, make_storage
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", BASE_DIR / "data"))
@@ -135,6 +136,21 @@ def init_db() -> None:
                 ts TEXT NOT NULL
             );
             CREATE INDEX IF NOT EXISTS idx_fail_scope ON login_failures(scope, ts);
+            CREATE TABLE IF NOT EXISTS shared_folders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                owner_username TEXT NOT NULL,
+                rel_path TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE(owner_id, rel_path)
+            );
+            CREATE TABLE IF NOT EXISTS shared_grants (
+                folder_id INTEGER NOT NULL REFERENCES shared_folders(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                granted_at TEXT NOT NULL,
+                PRIMARY KEY (folder_id, user_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_grants_user ON shared_grants(user_id);
             """
         )
 
@@ -236,6 +252,9 @@ def require_user(request: Request):
     # 供存储层做归属校验：此后所有 full 路径都必须落在 /<该用户名> 下（管理员除外，
     # 校准、代管等操作本来就要跨用户）。
     set_current_user(user["username"], bool(user["is_admin"]))
+    # 被授权的他人共享目录：存储层据此放行整棵子树；写权限在路由层再收窄到
+    # 「自己的同名子目录」，见 _foreign_target。
+    set_granted_prefixes(_granted_prefixes_of(user["id"]))
     return user
 
 
@@ -437,6 +456,15 @@ class AdminFlagIn(BaseModel):
     is_admin: bool
 
 
+class SharedCreateIn(BaseModel):
+    path: str
+    members: list[str] = []
+
+
+class SharedMembersIn(BaseModel):
+    members: list[str] = []
+
+
 # ------------------------------------------------------------------ auth 组
 
 @app.post("/api/auth/register")
@@ -586,52 +614,189 @@ def change_password(data: ChangePasswordIn, request: Request):
     return {"ok": True}
 
 
+# ------------------------------------------------------------------ 共享文件夹
+
+MAX_SHARED_MEMBERS = 200
+
+
+def _share_roots_of(user_id: int) -> list:
+    """当前用户被授权的共享目录（不含自己创建的）。"""
+    with _db_lock, get_db() as db:
+        rows = db.execute(
+            "SELECT f.owner_username, f.rel_path FROM shared_folders f"
+            " JOIN shared_grants g ON g.folder_id = f.id WHERE g.user_id = ?",
+            (user_id,),
+        ).fetchall()
+    return [{"owner": r["owner_username"], "rel": r["rel_path"]} for r in rows]
+
+
+def _granted_prefixes_of(user_id: int) -> list:
+    return [f"/{s['owner']}/{s['rel']}" for s in _share_roots_of(user_id)]
+
+
+def _foreign_target(user, owner: str, rel_raw, write: bool) -> str:
+    """以 owner 身份解析 rel；越权在此拦下，返回规范化后的 rel。
+
+    自己的目录直接放行。他人的目录：rel 必须落在某个已授权共享目录内；
+    write=True 时还要求 rel 里出现一段等于本人用户名 —— 也就是每个人在共享目录里
+    只能写自己名下那一格（`<共享目录>/…/<自己的用户名>/`），删除权自然等价于上传权。
+    """
+    rel = normalize_rel_path(rel_raw)
+    if owner == user["username"]:
+        return rel
+    for share in _share_roots_of(user["id"]):
+        if share["owner"] != owner:
+            continue
+        base = share["rel"]
+        if rel != base and not rel.startswith(base + "/"):
+            continue
+        if write and user["username"] not in rel.split("/"):
+            continue
+        return rel
+    raise err(403, "forbidden", "无权访问该共享目录")
+
+
+def _target(user, rel_raw, owner_raw=None, write: bool = False):
+    """→ (owner, rel, full)。owner 缺省为本人；他人的目录必须带授权。"""
+    owner = (owner_raw or "").strip() or user["username"]
+    rel = _foreign_target(user, owner, rel_raw, write)
+    return owner, rel, full_path(owner, rel)
+
+
+def _owned_shared_paths(db, user) -> set:
+    return {r["rel_path"] for r in db.execute(
+        "SELECT rel_path FROM shared_folders WHERE owner_id = ?", (user["id"],)).fetchall()}
+
+
+def _shadows_shared(db, user, rel: str) -> bool:
+    """rel 是某个共享目录本身、或是它的上级 —— 改名/移动会让授权记录静默失配。"""
+    return any(p == rel or p.startswith(rel + "/") for p in _owned_shared_paths(db, user))
+
+
+def _members_of(db, folder_id: int) -> list:
+    return [r["username"] for r in db.execute(
+        "SELECT u.username FROM shared_grants g JOIN users u ON u.id = g.user_id"
+        " WHERE g.folder_id = ? ORDER BY u.username", (folder_id,)).fetchall()]
+
+
+def _folder_or_403(db, folder_id: int, user):
+    row = db.execute("SELECT * FROM shared_folders WHERE id = ?", (folder_id,)).fetchone()
+    if not row:
+        raise err(404, "not_found", "共享文件夹不存在")
+    if row["owner_username"] != user["username"]:
+        raise err(403, "forbidden", "只有创建者能修改共享设置")
+    return row
+
+
+def _resolve_members(db, usernames, owner_username: str) -> list:
+    ids, seen = [], set()
+    for name in usernames or []:
+        name = (name or "").strip()
+        if not name or name == owner_username or name in seen:
+            continue
+        seen.add(name)
+        row = db.execute("SELECT id, status FROM users WHERE username = ?", (name,)).fetchone()
+        if not row:
+            raise err(400, "bad_member", f"成员不存在：{name}")
+        if row["status"] != "active":
+            raise err(400, "bad_member", f"成员已被禁用：{name}")
+        ids.append(row["id"])
+    if len(ids) > MAX_SHARED_MEMBERS:
+        raise err(400, "too_many_members", f"成员上限 {MAX_SHARED_MEMBERS}")
+    return ids
+
+
+def _set_members(db, folder_id: int, user_ids) -> None:
+    db.execute("DELETE FROM shared_grants WHERE folder_id = ?", (folder_id,))
+    for uid in user_ids:
+        db.execute("INSERT INTO shared_grants (folder_id, user_id, granted_at) VALUES (?,?,?)",
+                   (folder_id, uid, now_iso()))
+
+
+def _usage_by_member(full_root: str, names: set) -> dict:
+    """把共享目录的用量按「目录里出现与成员同名的段」切开，返回 {用户名: (字节, 文件数)}。
+
+    落点规则保证成员的文件必在自己的同名子目录下，所以这条切分是准确的；
+    创建者自己的文件落在切不到的其余部分（由调用方用总量相减）。
+    """
+    out = {n: (0, 0) for n in names}
+    stack = [(full_root, None)]
+    while stack:
+        cur, who = stack.pop()
+        try:
+            entries = storage.list_dir(cur)
+        except StorageError:
+            continue
+        for e in entries:
+            sub = f"{cur}/{e['name']}"
+            if e["type"] == "dir":
+                stack.append((sub, who or (e["name"] if e["name"] in names else None)))
+            elif who:
+                b, c = out[who]
+                out[who] = (b + e["size"], c + 1)
+    return out
+
+
 # ------------------------------------------------------------------ files 组
 
-def _user_full(user, rel_raw) -> tuple[str, str]:
-    """用户路径 → (规范化相对路径, Seafile 完整路径)；越界在此被 paths 层拦下。"""
-    rel = normalize_rel_path(rel_raw)
-    return rel, full_path(user["username"], rel)
+def _user_full(user, rel_raw, owner_raw=None, write: bool = False) -> tuple[str, str]:
+    """路径 → (规范化相对路径, Seafile 完整路径)；越界在此被 paths 层拦下。
+
+    owner 缺省为本人；指定他人时必须是已授权的共享目录，write=True 时还只能落到
+    自己名下那一格（见 _foreign_target）。
+    """
+    _, rel, full = _target(user, rel_raw, owner_raw, write)
+    return rel, full
 
 
 @app.get("/api/files/list")
-def files_list(request: Request, path: str = Query("")):
+def files_list(request: Request, path: str = Query(""), owner: str = Query("")):
     user = require_user(request)
-    rel, full = _user_full(user, path)
-    if rel == "":
-        pass  # 根目录即用户自己的文件夹
+    rel, full = _user_full(user, path, owner)
     entries = storage.list_dir(full)
-    return {"path": "/" + rel if rel else "/", "entries": entries}
+    return {"path": "/" + rel if rel else "/", "owner": owner or user["username"],
+            "entries": entries}
 
 
 @app.get("/api/files/detail")
-def files_detail(request: Request, path: str = Query("")):
+def files_detail(request: Request, path: str = Query(""), owner: str = Query("")):
     user = require_user(request)
-    rel, full = _user_full(user, path)
+    rel, full = _user_full(user, path, owner)
     st = storage.stat(full)
-    return {"path": "/" + rel if rel else "/", **st}
+    return {"path": "/" + rel if rel else "/", "owner": owner or user["username"], **st}
 
 
 @app.post("/api/files/mkdir")
-def files_mkdir(data: MkdirIn, request: Request):
+def files_mkdir(data: MkdirIn, request: Request, owner: str = Query("")):
     user = require_user(request)
     name = validate_name(data.name)
-    rel, full = _user_full(user, data.path)
-    target = full_path(user["username"], f"{rel}/{name}" if rel else name)
-    storage.mkdir(target)
+    owner_name, rel, _ = _target(user, data.path, owner, write=True)
+    rel_new = f"{rel}/{name}" if rel else name
+    storage.mkdir(full_path(owner_name, rel_new))
     with _db_lock, get_db() as db:
-        audit(db, user["id"], "mkdir", "/" + (f"{rel}/{name}" if rel else name),
-              None, client_ip(request), "ok")
+        audit(db, user["id"], "mkdir", "/" + rel_new, None, client_ip(request), "ok",
+              "" if owner_name == user["username"] else f"in {owner_name}")
     return {"ok": True, "name": name}
 
 
 @app.post("/api/files/upload")
-async def files_upload(request: Request, path: str = Query(""),
+async def files_upload(request: Request, path: str = Query(""), owner: str = Query(""),
                        file: UploadFile = File(...)):
     user = require_user(request)
-    rel, full = _user_full(user, path)
+    dest_owner = (owner or "").strip() or user["username"]
+    if dest_owner != user["username"]:
+        # 写别人的共享目录：强制落到自己名下那一格。同名冲突与「只能删自己的」两条
+        # 都由这个落点规则保证，不另记文件归属。
+        base = _foreign_target(user, dest_owner, path, write=False)
+        rel = _foreign_target(
+            user, dest_owner, f"{base}/{user['username']}" if base else user["username"],
+            write=True)
+    else:
+        rel = normalize_rel_path(path)
+    full = full_path(dest_owner, rel)
     filename = validate_name(file.filename or "")
     ip = client_ip(request)
+    target_display = "/" + (f"{rel}/{filename}" if rel else filename)
 
     # 先落临时文件（分块流式，内存恒定），同时计大小、查上限
     tmp = tempfile.NamedTemporaryFile(delete=False, prefix="subdrive-up-")
@@ -652,22 +817,37 @@ async def files_upload(request: Request, path: str = Query(""),
         with _db_lock, get_db() as db:
             used = usage_of(db, user["id"])["used_bytes"]
             quota = quota_of(db, user)
-        if used + size > quota:
+        # 同名文件是覆盖写（storage.upload 直接 wb），旧大小要先从用量里退掉，
+        # 否则每覆盖一次配额就多算一份
+        prior = 0
+        try:
+            old = storage.stat(f"{full}/{filename}")
+            if old["type"] == "file":
+                prior = old["size"]
+        except StorageNotFound:
+            prior = 0
+        if used - prior + size > quota:
+            # 往共享目录里传也算自己的用量：配额始终跟着上传者走（D27）
             Path(tmp.name).unlink(missing_ok=True)
             with _db_lock, get_db() as db:
-                audit(db, user["id"], "upload", "/" + (f"{rel}/{filename}" if rel else filename),
-                      size, ip, "denied", "超出配额")
+                audit(db, user["id"], "upload", target_display, size, ip, "denied", "超出配额")
             raise err(413, "quota_exceeded", "超出个人配额")
 
+        if dest_owner != user["username"]:
+            try:
+                storage.mkdir(full)
+            except StorageConflict:
+                pass
         stored = storage.upload(full, filename, Path(tmp.name))
     finally:
         Path(tmp.name).unlink(missing_ok=True)
 
     with _db_lock, get_db() as db:
-        usage_add(db, user["id"], stored, 1)
-        audit(db, user["id"], "upload", "/" + (f"{rel}/{filename}" if rel else filename),
-              stored, ip, "ok")
-    return {"ok": True, "name": filename, "size": stored}
+        usage_add(db, user["id"], stored - prior, 0 if prior else 1)
+        audit(db, user["id"], "upload", target_display, stored, ip, "ok",
+              "" if dest_owner == user["username"] else f"in {dest_owner}")
+    return {"ok": True, "name": filename, "size": stored, "owner": dest_owner,
+            "replaced": bool(prior)}
 
 
 # 预览用的 MIME 映射（按扩展名）；未列出的回退 mimetypes，再回退 octet-stream
@@ -722,7 +902,8 @@ def _serve_file(request: Request, inline: bool, action: str):
     """下载/预览共用：同一条路径安全与验权链，支持 HTTP Range（音视频拖动、断点续传）。"""
     user = require_user(request)
     path = request.query_params.get("path", "")
-    rel, full = _user_full(user, path)
+    owner = request.query_params.get("owner", "")
+    rel, full = _user_full(user, path, owner)
     if rel == "":
         raise err(400, "bad_path", "不能下载根目录")
     st = storage.stat(full)
@@ -763,12 +944,16 @@ def files_preview(request: Request, path: str = Query(...)):
 
 
 @app.post("/api/files/rename")
-def files_rename(data: RenameIn, request: Request):
+def files_rename(data: RenameIn, request: Request, owner: str = Query("")):
     user = require_user(request)
-    rel, full = _user_full(user, data.path)
+    rel, full = _user_full(user, data.path, owner)
     if rel == "":
         raise err(400, "bad_path", "根文件夹（用户名）禁止改名")
     new_name = validate_name(data.new_name)
+    with _db_lock, get_db() as db:
+        if _shadows_shared(db, user, rel):
+            raise err(400, "shared_rename",
+                      "这是共享文件夹（或其上级）：请先取消共享再改名，避免授权失配")
     storage.rename(full, new_name)
     with _db_lock, get_db() as db:
         audit(db, user["id"], "rename", "/" + rel, None, client_ip(request), "ok",
@@ -777,12 +962,16 @@ def files_rename(data: RenameIn, request: Request):
 
 
 @app.post("/api/files/move")
-def files_move(data: MoveIn, request: Request):
+def files_move(data: MoveIn, request: Request, owner: str = Query("")):
     user = require_user(request)
-    rel, full = _user_full(user, data.path)
+    rel, full = _user_full(user, data.path, owner, write=True)
     if rel == "":
         raise err(400, "bad_path", "根文件夹禁止移动")
-    drel, dfull = _user_full(user, data.dest_dir)
+    drel, dfull = _user_full(user, data.dest_dir, owner, write=True)
+    with _db_lock, get_db() as db:
+        if _shadows_shared(db, user, rel):
+            raise err(400, "shared_move",
+                      "这是共享文件夹（或其上级）：请先取消共享再移动，避免授权失配")
     storage.move(full, dfull)
     with _db_lock, get_db() as db:
         audit(db, user["id"], "move", "/" + rel, None, client_ip(request), "ok",
@@ -791,17 +980,111 @@ def files_move(data: MoveIn, request: Request):
 
 
 @app.post("/api/files/delete")
-def files_delete(data: DeleteIn, request: Request):
+def files_delete(data: DeleteIn, request: Request, owner: str = Query("")):
     user = require_user(request)
-    rel, full = _user_full(user, data.path)
+    rel, full = _user_full(user, data.path, owner, write=True)
     if rel == "":
         raise err(400, "bad_path", "根文件夹禁止删除")
+    with _db_lock, get_db() as db:
+        if _shadows_shared(db, user, rel):
+            raise err(400, "shared_delete",
+                      "这是共享文件夹（或其上级）：请用「取消共享」删除，否则其他成员的文件会一起消失")
     freed, count = storage.path_size(full)  # 先算记账再删
     storage.delete(full)
     with _db_lock, get_db() as db:
         usage_add(db, user["id"], -freed, -count)
         audit(db, user["id"], "delete", "/" + rel, freed, client_ip(request), "ok")
     return {"ok": True, "freed_bytes": freed}
+
+
+# ------------------------------------------------------------------ shared 组
+
+@app.post("/api/shared/create")
+def shared_create(data: SharedCreateIn, request: Request):
+    user = require_user(request)
+    rel, full = _user_full(user, data.path)
+    if rel == "":
+        raise err(400, "bad_path", "根目录不能设为共享文件夹")
+    if storage.stat(full)["type"] != "dir":
+        raise err(400, "not_a_dir", "只能共享文件夹")
+    with _db_lock, get_db() as db:
+        dup = db.execute("SELECT id FROM shared_folders WHERE owner_id = ? AND rel_path = ?",
+                         (user["id"], rel)).fetchone()
+        if dup:
+            raise err(409, "already_shared", "该文件夹已经共享过了")
+        ids = _resolve_members(db, data.members, user["username"])
+        cur = db.execute(
+            "INSERT INTO shared_folders (owner_id, owner_username, rel_path, created_at)"
+            " VALUES (?,?,?,?)", (user["id"], user["username"], rel, now_iso()))
+        fid = cur.lastrowid
+        _set_members(db, fid, ids)
+        audit(db, user["id"], "share", "/" + rel, None, client_ip(request), "ok",
+              f"members={len(ids)}")
+    return {"ok": True, "id": fid, "path": rel}
+
+
+@app.get("/api/shared/list")
+def shared_list(request: Request):
+    user = require_user(request)
+    out = []
+    with _db_lock, get_db() as db:
+        mine = db.execute("SELECT * FROM shared_folders WHERE owner_id = ? ORDER BY rel_path",
+                          (user["id"],)).fetchall()
+        granted = db.execute(
+            "SELECT f.* FROM shared_folders f JOIN shared_grants g ON g.folder_id = f.id"
+            " WHERE g.user_id = ? ORDER BY f.owner_username, f.rel_path",
+            (user["id"],)).fetchall()
+        rows = [(r, True) for r in mine] + [(r, False) for r in granted]
+        members = {r["id"]: _members_of(db, r["id"]) for r, _ in rows}
+
+    for row, is_mine in rows:
+        full = full_path(row["owner_username"], row["rel_path"])
+        try:
+            size, count = storage.path_size(full)
+        except StorageError:
+            size, count = 0, 0
+        item = {
+            "id": row["id"],
+            "owner": row["owner_username"],
+            "path": row["rel_path"],
+            "is_mine": is_mine,
+            "members": members[row["id"]],
+            "bytes": size,
+            "files": count,
+        }
+        if is_mine:
+            # 只有创建者看得到「每人占了多少」，这也是删文件夹时回冲的依据
+            item["by_member"] = {
+                name: {"bytes": b, "files": c}
+                for name, (b, c) in _usage_by_member(full, set(members[row["id"]])).items()
+            }
+        out.append(item)
+    return {"folders": out}
+
+
+@app.post("/api/shared/{folder_id}/members")
+def shared_set_members(folder_id: int, data: SharedMembersIn, request: Request):
+    user = require_user(request)
+    with _db_lock, get_db() as db:
+        row = _folder_or_403(db, folder_id, user)
+        ids = _resolve_members(db, data.members, row["owner_username"])
+        _set_members(db, folder_id, ids)
+        names = _members_of(db, folder_id)
+        audit(db, user["id"], "share_members", "/" + row["rel_path"], None,
+              client_ip(request), "ok", f"members={len(ids)}")
+    return {"ok": True, "id": folder_id, "members": names}
+
+
+@app.delete("/api/shared/{folder_id}")
+def shared_revoke(folder_id: int, request: Request):
+    """取消共享：退回私有文件夹，内容全员保留（D27）。"""
+    user = require_user(request)
+    with _db_lock, get_db() as db:
+        row = _folder_or_403(db, folder_id, user)
+        db.execute("DELETE FROM shared_grants WHERE folder_id = ?", (folder_id,))
+        db.execute("DELETE FROM shared_folders WHERE id = ?", (folder_id,))
+        audit(db, user["id"], "unshare", "/" + row["rel_path"], None, client_ip(request), "ok")
+    return {"ok": True}
 
 
 # ------------------------------------------------------------------ quota 组

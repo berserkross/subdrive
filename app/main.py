@@ -680,7 +680,8 @@ def _shared_limits(row) -> tuple:
 
 
 def _clamp_limits(max_bytes, max_members) -> tuple:
-    """把请求里的上限夹进 [1, 全局硬顶]；超硬顶直接拒，不静默截断。"""
+    """把请求里的上限夹进 [1, 全局硬顶]；超硬顶直接拒，不静默截断。
+    None（不传）用全局默认；显式 0 视为非法，免得「0 当无穷」被误读。"""
     mb = SHARED_MAX_BYTES if max_bytes is None else int(max_bytes)
     mm = SHARED_MAX_MEMBERS if max_members is None else int(max_members)
     if mb < 1 or mm < 1:

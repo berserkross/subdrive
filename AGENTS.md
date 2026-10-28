@@ -1,4 +1,4 @@
-# AGENTS.md
+﻿# AGENTS.md
 
 给在本仓库里工作的 AI agent（含 Codex 云端沙箱）的说明。人类读者请看 `README.md`。
 本文件每轮对话都会被重复投喂：只写「不看代码就会做错」的事实，别写散文。
@@ -89,18 +89,29 @@ DATA_DIR=./data SEAFILE_MODE=stub .venv/bin/python -m uvicorn app.main:app --hos
 
 | 命令 | 项数 | 覆盖范围 |
 |---|---|---|
-| `.\.venv\Scripts\python.exe tests/test_smoke.py` | 23 | 邀请码注册（无效/过期/撤销/复用）、建夹投影、登录与会话、路径穿越电池 14 例、跨用户隔离、上传→列表→下载字节一致、配额拦截与删除释放、改密码、禁用/启用、登录限速、用量校准、文件详情 |
+| `.\.venv\Scripts\python.exe tests/test_smoke.py` | 27 | 邀请码注册（无效/过期/撤销/复用）、建夹投影、登录与会话、路径穿越电池 17 例、跨用户隔离、上传→列表→下载字节一致、配额拦截与删除释放、改密码、禁用/启用、登录限速、用量校准、文件详情 |
 | `.\.venv\Scripts\python.exe tests/test_features.py` | 43 | F1 加密文件夹 10（后端无明文名/明文内容、往返字节一致、错密码被拒、blob 大小=明文+33、密文计配额）；F2 测速 6（需登录、字节数精确、不计配额不落盘、并发 409、锁释放）；F3 预览与 Range 12（类型与 inline、Markdown 以纯文本下发、跨用户被拦、206 闭区间/后缀段/开放段、越界 416、无 Range 回退 200）；F4 管理员 15（`owner_protected` / `owner_required`、被提升者可用会话、审计、404） |
 | `.\.venv\Scripts\python.exe tests/test_storage_live.py` | 15 | `LiveStorage` 的 HTTP 形状：删除必须是 `HTTP DELETE`、`p` 参数百分号编码、下载地址 `200+JSON 字符串` 与 `302+Location` 两种形式、Range 分片、全程无 POST、无未命中路由 |
-| `.\.venv\Scripts\python.exe tests/test_shared.py` | 54 | 共享文件夹（D27–D31）：创建/重复 409/成员不存在 400/非管理员创建 403、被授权者能列能下、未授权者与上级目录 403、往共享目录上传落到 `<目录>/<自己用户名>/`、建夹与上传同一条落点规则（含在共享根建夹）、自己那一格子目录里上传/建夹不再多套一层用户名、配额记上传者且创建者不变、覆盖写只记增量、只能删自己传的、成员可在自己那一格里改名/移动/删除且那一格本身禁止 rename/move、共享目录（及其上级）禁止 rename/move/delete、名单清空后立即 403、取消共享退回私有且内容仍在、审计含 share/share_members/unshare |
+| `.\.venv\Scripts\python.exe tests/test_shared.py` | 56 | 共享文件夹（D27–D32）：创建/重复 409/成员不存在 400/非管理员创建 403、被授权者能列能下、未授权者与上级目录 403、往共享目录上传落到 `<目录>/<自己用户名>/`、建夹与上传同一条落点规则（含在共享根建夹）、自己那一格子目录里上传/建夹不再多套一层用户名、配额记上传者且创建者不变、覆盖写只记增量、只能删自己传的、成员可在自己那一格里改名/移动/删除且那一格本身禁止 rename/move、共享目录（及其上级）禁止 rename/move/delete、名单留空＝全员（新注册的人也能进）、名单收窄后未点名者立刻 403、取消共享退回私有且内容仍在、审计含 share/share_members/unshare |
 | `node tests/test_crypto.mjs` | 10 | SDV1 向量与自洽：派生密钥一致、文件/清单/校验块可解、错密码必失败、信封 33 字节开销与魔数版本、roundtrip、GCM 拒绝篡改 |
 | `node tests/test_uploadplan.mjs` | 13 | `planFolderUpload`：散文件、目录去重、父目录先于子目录、空目录进 `extraDirs`、路径清洗、垃圾输入跳过、`..` 段不被吞 |
+| `.\.venv\Scripts\python.exe tests/e2e/test_e2e_browser.py` | 26 | **浏览器端到端**（Playwright + 本机 Chrome/Edge，自起 stub 服务 + 临时 `DATA_DIR`）：注册首用户→建夹→上传→重命名→建共享→邀请码注册第二用户→看到并进入他人共享目录→在自己那一格上传（落点、配额归属、创建者配额不变）→删除→退出 |
 
 改动 SDV1 格式时才需要跑生成器：`.\.venv\Scripts\python.exe tools\gen_vector.py`（会重写
 `testdata/crypto_vector.json`，跑完必须让三端测试重新全绿）。
 
-六项全绿才算完成（`tests/test_storage_live.py` 用 `httpx.MockTransport` 打桩，不联网、不需要真 Seafile）；
+前六项全绿才算完成（`tests/test_storage_live.py` 用 `httpx.MockTransport` 打桩，不联网、不需要真 Seafile）；
 任一失败就是真失败，不要跳过、不要改断言来凑。没有 CI，这几条就是唯一门禁。
+
+第七项是**浏览器端到端**，额外需要一个包（不在 `requirements.txt` 里，它只是测试工具）：
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install playwright
+```
+
+它**不下载浏览器**——用本机已装的 Chrome（`channel="chrome"`，失败自动退 Edge）。没装 Chrome/Edge
+或没装 playwright 时它会打印 `[SKIP]` 并以 0 退出，所以改前端的人不该被它卡住；**发版前必须真跑
+一遍并看到 26 项 PASS**，它是「页面能不能用」的唯一证据（后端测试全绿也不代表页面能点通）。
 
 ## 代码风格与错误契约（从现有代码归纳，新增代码照做）
 

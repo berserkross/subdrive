@@ -620,12 +620,20 @@ MAX_SHARED_MEMBERS = 200
 
 
 def _share_roots_of(user_id: int) -> list:
-    """当前用户被授权的共享目录（不含自己创建的）。"""
+    """当前用户可进入的共享目录（不含自己创建的）：被显式授权的，或名单留空（＝全员）的。
+
+    名单留空必须解释成「全员」而不是「没人」：创建者创建时还没有第二个用户，
+    之后再注册的人也得能进；否则 UI 上写着「留空＝全员」，实际谁也进不去。
+    """
     with _db_lock, get_db() as db:
         rows = db.execute(
             "SELECT f.owner_username, f.rel_path FROM shared_folders f"
-            " JOIN shared_grants g ON g.folder_id = f.id WHERE g.user_id = ?",
-            (user_id,),
+            " WHERE f.owner_id != ? AND ("
+            "   NOT EXISTS (SELECT 1 FROM shared_grants g WHERE g.folder_id = f.id)"
+            "   OR EXISTS (SELECT 1 FROM shared_grants g2"
+            "              WHERE g2.folder_id = f.id AND g2.user_id = ?))"
+            " ORDER BY f.owner_username, f.rel_path",
+            (user_id, user_id),
         ).fetchall()
     return [{"owner": r["owner_username"], "rel": r["rel_path"]} for r in rows]
 
@@ -1075,9 +1083,12 @@ def shared_list(request: Request):
         mine = db.execute("SELECT * FROM shared_folders WHERE owner_id = ? ORDER BY rel_path",
                           (user["id"],)).fetchall()
         granted = db.execute(
-            "SELECT f.* FROM shared_folders f JOIN shared_grants g ON g.folder_id = f.id"
-            " WHERE g.user_id = ? ORDER BY f.owner_username, f.rel_path",
-            (user["id"],)).fetchall()
+            "SELECT f.* FROM shared_folders f WHERE f.owner_id != ? AND ("
+            "   NOT EXISTS (SELECT 1 FROM shared_grants g WHERE g.folder_id = f.id)"
+            "   OR EXISTS (SELECT 1 FROM shared_grants g2"
+            "              WHERE g2.folder_id = f.id AND g2.user_id = ?))"
+            " ORDER BY f.owner_username, f.rel_path",
+            (user["id"], user["id"])).fetchall()
         rows = [(r, True) for r in mine] + [(r, False) for r in granted]
         members = {r["id"]: _members_of(db, r["id"]) for r, _ in rows}
 

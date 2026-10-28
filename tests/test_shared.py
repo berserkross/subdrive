@@ -262,12 +262,19 @@ def main():
     check("S6 非创建者不能改名单（403）", r.status_code == 403, r.text)
     r = c.post(f"/api/shared/{folder_id}/members", headers=auth(tok_a), json={"members": []})
     check("S6 创建者能把名单清空", r.status_code == 200 and r.json()["members"] == [], r.text)
-    r = c.get("/api/files/list", params={"path": "", "owner": "alice"}, headers=auth(tok_b))
-    check("S6 被踢出后立即失去访问（403）", r.status_code == 403, r.text)
+    r = c.get("/api/files/list", params={"path": "公共资料/2026", "owner": "alice"},
+              headers=auth(tok_b))
+    check("S6 名单清空＝全员可见，被点过名的成员照样能进", r.status_code == 200, r.text)
+    r = c.get("/api/files/list", params={"path": "公共资料/2026", "owner": "alice"},
+              headers=auth(tok_c))
+    check("S6 名单清空后没被点名的人也能进", r.status_code == 200, r.text)
 
     r = c.post(f"/api/shared/{folder_id}/members", headers=auth(tok_a),
                json={"members": ["bob"]})
     check("S6 名单能再加回来", r.status_code == 200 and r.json()["members"] == ["bob"], r.text)
+    r = c.get("/api/files/list", params={"path": "公共资料/2026", "owner": "alice"},
+              headers=auth(tok_c))
+    check("S6 名单收窄后未点名者立刻失去访问（403）", r.status_code == 403, r.text)
 
     r = c.delete(f"/api/shared/{folder_id}", headers=auth(tok_a))
     check("S6 取消共享成功", r.status_code == 200, r.text)

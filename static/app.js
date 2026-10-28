@@ -258,8 +258,9 @@ async function refreshShared() {
 }
 
 function enterShared(f) {
-  if (f.is_mine) { curOwner = ""; curPath = f.path; }
-  else { curOwner = f.owner; curPath = ""; }
+  // 进的是那个共享目录本身：owner 是目录主人，path 是共享目录的相对路径。
+  curOwner = f.is_mine ? "" : f.owner;
+  curPath = f.path;
   vault = null;
   vaultRootPath = null;
   refreshList();

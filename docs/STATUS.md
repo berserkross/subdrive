@@ -6,12 +6,15 @@
 
 ## 已完成
 
-- 本地检查 162 项通过（`tests/test_smoke.py` 27 + `tests/test_features.py` 43 + `tests/test_shared.py` 54 +
+- 本地检查 162 项通过（`tests/test_smoke.py` 27 + `tests/test_features.py` 43 + `tests/test_shared.py` 56 +
   `tests/test_storage_live.py` 15 + `tests/test_crypto.mjs` 10 + `tests/test_uploadplan.mjs` 13，全部 exit 0）。
   后端功能用本地 stub，Seafile 适配用 `httpx.MockTransport` 打桩（不需要真令牌）。
   Windows 控制台跑 Python 测试要先 `PYTHONIOENCODING=utf-8`，否则结尾那个 ✅ 会 `UnicodeEncodeError` 把退出码弄成 1。
-- 共享文件夹已全链路落地（后端 + 前端入口，D27–D31）：创建即共享、名单可改、配额算上传者、
-  只有上传者能删、成员可在自己那一格里改名/移动/删除、落点不再多套一层用户名、
+- 浏览器端到端 26 项通过（`tests/e2e/test_e2e_browser.py`，Playwright 驱动本机 Chrome，自起 stub 服务 +
+  临时 `DATA_DIR`）：注册→建夹→上传→重命名→建共享→被授权者进入并上传→落点与配额归属→删除→退出。
+  它当场抓到两个后端测试看不见的 bug（见 D32）。
+- 共享文件夹已全链路落地（后端 + 前端入口，D27–D32）：创建即共享、名单可改、名单留空＝全员、
+  配额算上传者、只有上传者能删、成员可在自己那一格里改名/移动/删除、落点不再多套一层用户名、
   **只有管理员能创建共享文件夹**（B1，前端同步隐藏入口）。
 - 六个测试文件已收进 `tests/`（Python 的 `sys.path`、Node 的 `static`/`testdata` 相对路径都已改），
   `AGENTS.md` / `README.md` 里的命令同步更新。

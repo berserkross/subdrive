@@ -1,4 +1,4 @@
-# SubDrive · 子用户网盘（一期网页端 MVP）
+﻿# SubDrive · 子用户网盘（一期网页端 MVP）
 
 在现有 Seafile（drive.ourmetaverse.cn）之上加一层自研多用户网盘：子用户凭**邀请码**在本系统注册，
 登录本客户端后只看到自己那一份空间；文件本体存放于主账号名下的**一个专用资料库**中，
@@ -166,7 +166,7 @@ app/main.py      后端全部路由（auth/files/quota/admin）+ 配额/校准/�
 app/paths.py     路径规范化与前缀锁死（全系统唯一实现，规格 §7-1）
 app/storage.py   Seafile 适配层（stub / live 双实现）
 static/          原生 JS 前端（index.html / style.css / app.js / logo / favicon）
-tests/test_smoke.py    冒烟测试 23 项
+tests/test_smoke.py    冒烟测试 27 项
 screenshots/     界面截图（明/暗 × 登录/文件/后台 + 移动端）
 Dockerfile / docker-compose.yml / .env.example
 ```

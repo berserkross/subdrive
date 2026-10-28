@@ -83,10 +83,18 @@ def boot_server(base: str, data_dir: Path, port: int) -> subprocess.Popen:
 
 
 def launch_browser(pw):
+    """用本机已装的 Chrome 驱动（channel 定位，不跑 playwright install、不下载浏览器）。
+
+    想看它自己点：$env:SUBDRIVE_E2E_HEADED='1'
+    想指定别的 Chromium 内核：$env:SUBDRIVE_E2E_CHANNEL='msedge'
+    """
+    headless = os.environ.get("SUBDRIVE_E2E_HEADED", "") == ""
+    want = os.environ.get("SUBDRIVE_E2E_CHANNEL", "").strip()
+    channels = (want,) if want else ("chrome", "msedge")
     last = None
-    for channel in ("chrome", "msedge"):
+    for channel in channels:
         try:
-            return pw.chromium.launch(channel=channel, headless=True)
+            return pw.chromium.launch(channel=channel, headless=headless)
         except Exception as exc:  # 本机可能只装了其中一个
             last = exc
     raise RuntimeError(f"Chrome/Edge 都起不来：{last}")

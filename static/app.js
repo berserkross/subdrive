@@ -429,7 +429,6 @@ function updateVaultChrome() {
   const unlocked = atVault && !!vault;
   $("#vault-bar").classList.toggle("hidden", !unlocked);
   $("#btn-mkdir").classList.toggle("hidden", atVault || !!curOwner);
-  $("#btn-vault-new").classList.toggle("hidden", atVault || !!curOwner);
   $("#btn-upload").classList.toggle("hidden", atVault && !unlocked);
   $("#btn-upload-folder").classList.toggle("hidden", atVault && !unlocked);
   if (!atVault) $("#vault-lock").classList.add("hidden");
@@ -755,17 +754,97 @@ async function moveItem(rel, name) {
   });
 }
 
+/* 「＋ 新建」是唯一的建夹入口：普通文件夹（可当场设为公开共享）+ 加密文件夹
+ * 合并进同一个弹窗，工具栏不再并排放「新建文件夹 / 加密文件夹 / 共享文件夹」。 */
 $("#btn-mkdir").addEventListener("click", () => {
+  const canShare = !!(me && me.is_admin); // B1：只有管理员能开共享目录
+  let kind = "plain";
+  let vis = "private";
   openModal("新建文件夹", `
     <label class="field"><span>文件夹名称</span>
-    <input id="m-name" type="text" placeholder="例如：照片"></label>`,
+    <input id="m-name" type="text" placeholder="例如：照片"></label>
+    <div class="field"><span>类型</span>
+      <div class="seg" id="m-kind">
+        <button type="button" class="seg-btn selected" data-kind="plain">普通文件夹</button>
+        <button type="button" class="seg-btn" data-kind="vault">🔒 加密文件夹</button>
+      </div>
+    </div>
+    <div id="m-vault-box" class="hidden">
+      <label class="field"><span>文件夹密码（至少 8 位，与登录密码相互独立）</span>
+      <input id="m-vpass" type="password" autocomplete="new-password"></label>
+      <label class="field"><span>再次输入密码</span>
+      <input id="m-vpass2" type="password" autocomplete="new-password"></label>
+      <p class="modal-text warn-text">⚠️ 文件名与内容在你的浏览器里加密后才上传，服务器只看得到密文的大小与数量。
+      <strong>文件夹密码一旦丢失将无法恢复</strong>，任何人都帮不了你，请存进密码管理器。</p>
+    </div>
+    <div id="m-plain-box">
+      <div class="field"><span>可见性</span>
+        <div class="seg" id="m-vis">
+          <button type="button" class="seg-btn selected" data-vis="private">私密（仅自己）</button>
+          ${canShare ? '<button type="button" class="seg-btn" data-vis="shared">公开共享</button>' : ""}
+        </div>
+      </div>
+      ${canShare ? `<div id="m-share-box" class="hidden">
+        <label class="field-label">授权成员用户名（每行一个，留空＝所有注册成员）</label>
+        <textarea id="m-members" class="field-input" rows="4" placeholder="alice&#10;bob"></textarea>
+        <label class="field-label">容量上限（MB，留空＝默认）</label>
+        <input id="m-maxbytes" class="field-input" type="number" min="1">
+        <label class="field-label">成员上限（留空＝默认）</label>
+        <input id="m-maxmembers" class="field-input" type="number" min="1">
+      </div>` : ""}
+    </div>`,
     "创建", async () => {
       const name = $("#m-name").value.trim();
       if (!name) throw new Error("请输入名称");
-      await api("/api/files/mkdir", { method: "POST", body: { path: curPath ? "/" + curPath : "", name } });
-      toast("文件夹已创建");
+      const base = curPath ? "/" + curPath : "";
+      if (kind === "vault") {
+        const p1 = $("#m-vpass").value, p2 = $("#m-vpass2").value;
+        if (p1.length < 8) throw new Error("文件夹密码至少 8 位");
+        if (p1 !== p2) throw new Error("两次输入的密码不一致");
+        await createVault(name, p1);
+        toast("加密文件夹已创建并解锁");
+        return;
+      }
+      await api("/api/files/mkdir", { method: "POST", body: { path: base, name } });
+      if (vis !== "shared") {
+        toast("文件夹已创建");
+        refreshList();
+        return;
+      }
+      const body = {
+        path: "/" + ((curPath ? curPath + "/" : "") + name),
+        members: ($("#m-members").value || "").split(/[\s,，、]+/).filter(Boolean),
+      };
+      const mbRaw = ($("#m-maxbytes").value || "").trim();
+      const mmRaw = ($("#m-maxmembers").value || "").trim();
+      if (mbRaw) body.max_bytes = Math.max(1, Math.round(Number(mbRaw) * 1048576));
+      if (mmRaw) body.max_members = Math.max(1, Math.floor(Number(mmRaw)));
+      try {
+        await api("/api/shared/create", { method: "POST", body });
+        toast("已创建公开共享文件夹");
+        await refreshShared();
+      } catch (e) {
+        toast("文件夹已建，但设为共享失败：" + e.message, true);
+      }
       refreshList();
     });
+  const pick = (sel, attr, onPick) => {
+    $$(sel).forEach((b) => b.addEventListener("click", () => {
+      onPick(b.dataset[attr]);
+      $$(sel).forEach((x) => x.classList.toggle("selected", x === b));
+    }));
+  };
+  pick("#m-kind .seg-btn", "kind", (v) => {
+    kind = v;
+    $("#m-vault-box").classList.toggle("hidden", v !== "vault");
+    $("#m-plain-box").classList.toggle("hidden", v === "vault");
+  });
+  if (canShare) {
+    pick("#m-vis .seg-btn", "vis", (v) => {
+      vis = v;
+      $("#m-share-box").classList.toggle("hidden", v !== "shared");
+    });
+  }
 });
 
 $("#btn-chpw").addEventListener("click", () => {
@@ -791,12 +870,27 @@ let uploading = false;
 let uploadsPendingRefresh = false; // 一批上传收尾后统一刷新列表 + 配额
 const joinRel = (a, b) => (a && b ? a + "/" + b : a || b || "");
 
-$("#btn-upload").addEventListener("click", () => $("#file-input").click());
+/* 上传入口合成一个按钮 + 小菜单（上传文件 / 上传文件夹） */
+$("#btn-upload").addEventListener("click", (e) => {
+  e.stopPropagation();
+  $("#upload-menu").classList.toggle("hidden");
+});
+$("#btn-upload-files").addEventListener("click", () => {
+  $("#upload-menu").classList.add("hidden");
+  $("#file-input").click();
+});
+document.addEventListener("click", (e) => {
+  const t = e.target;
+  if (!(t instanceof Element) || !t.closest(".menu-wrap")) $("#upload-menu").classList.add("hidden");
+});
 $("#file-input").addEventListener("change", (e) => {
   enqueueFiles([...e.target.files]);
   e.target.value = "";
 });
-$("#btn-upload-folder").addEventListener("click", () => $("#folder-input").click());
+$("#btn-upload-folder").addEventListener("click", () => {
+  $("#upload-menu").classList.add("hidden");
+  $("#folder-input").click();
+});
 $("#folder-input").addEventListener("change", (e) => {
   const picked = [...e.target.files].map((f) => ({ file: f, relPath: f.webkitRelativePath || f.name }));
   e.target.value = "";
@@ -1150,26 +1244,7 @@ $("#btn-vault-lock").addEventListener("click", () => {
   toast("已锁定，密钥已从内存清除");
 });
 
-$("#btn-vault-new").addEventListener("click", () => {
-  openModal("新建加密文件夹", `
-    <label class="field"><span>文件夹名称</span>
-    <input id="m-vname" type="text" placeholder="例如：证件与合同"></label>
-    <label class="field"><span>文件夹密码（至少 8 位，与登录密码相互独立）</span>
-    <input id="m-vpass" type="password" autocomplete="new-password"></label>
-    <label class="field"><span>再次输入密码</span>
-    <input id="m-vpass2" type="password" autocomplete="new-password"></label>
-    <p class="modal-text warn-text">⚠️ 文件名和内容会在你的浏览器里加密后才上传，服务器只看得到密文的大小与数量。
-    <strong>文件夹密码一旦丢失将无法恢复，里面的数据会永久无法打开</strong>——任何人（包括我们）都无法帮你找回，请务必牢记或存入密码管理器。</p>`,
-    "创建加密文件夹", async () => {
-      const name = $("#m-vname").value.trim();
-      const p1 = $("#m-vpass").value, p2 = $("#m-vpass2").value;
-      if (!name) throw new Error("请输入文件夹名称");
-      if (p1.length < 8) throw new Error("文件夹密码至少 8 位");
-      if (p1 !== p2) throw new Error("两次输入的密码不一致");
-      await createVault(name, p1);
-      toast("加密文件夹已创建并解锁");
-    });
-});
+/* 加密文件夹的创建入口已并入「＋ 新建」，这里只保留底层构建函数。 */
 async function createVault(name, password) {
   await api("/api/files/mkdir", { method: "POST", body: { path: curPath ? "/" + curPath : "", name } });
   const rel = (curPath ? curPath + "/" : "") + name;

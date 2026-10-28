@@ -169,6 +169,24 @@ def run() -> int:
             wait_row(boss, "docs")
             check("新建文件夹出现在列表", True)
 
+            # ---- 2.1 「＋ 新建」是唯一建夹入口：类型与可见性都在弹窗里 ----
+            boss.click("#btn-mkdir")
+            need("新建弹窗里有私密/公开可见性选择", boss.is_visible("#m-vis"))
+            need("管理员能看到「公开共享」选项",
+                 boss.locator('#m-vis .seg-btn[data-vis="shared"]').count() == 1)
+            boss.click('#m-kind .seg-btn[data-kind="vault"]')
+            need("选加密文件夹时出现密码输入", boss.is_visible("#m-vpass"))
+            boss.click('#m-kind .seg-btn[data-kind="plain"]')
+            check("切回普通文件夹后密码框收起", not boss.is_visible("#m-vpass"))
+            boss.fill("#m-name", "team")
+            boss.click('#m-vis .seg-btn[data-vis="shared"]')
+            need("选公开共享后出现成员与上限字段", boss.is_visible("#m-members"))
+            boss.click("#modal-ok")
+            wait_row(boss, "team")
+            boss.wait_for_selector("#shared-card:not(.hidden)", timeout=15000)
+            check("弹窗里勾选公开共享即建成共享文件夹",
+                  "team" in boss.inner_text("#shared-list"), boss.inner_text("#shared-list"))
+
             # ---- 3. 上传文件 ----
             sample = work_dir / "hello.txt"
             sample.write_text("hello subdrive\n", encoding="utf-8")
@@ -293,6 +311,12 @@ def run() -> int:
             register(bob, base, "bob", "小明", "bobpass123", invite=invite["code"])
             check("第二个用户注册成功", bob.is_visible("#view-drive"))
             check("普通用户没有管理员入口", not bob.is_visible("#btn-admin"))
+            bob.click("#btn-mkdir")
+            need("普通用户的新建弹窗仍可建私密文件夹", bob.is_visible("#m-name"))
+            need("普通用户看不到「公开共享」选项（B1 只有管理员能开共享）",
+                 bob.locator('#m-vis .seg-btn[data-vis="shared"]').count() == 0)
+            bob.click("#modal-cancel")
+            bob.wait_for_selector("#modal-overlay", state="hidden", timeout=10000)
 
             bob_token = bob.evaluate("() => localStorage.getItem('subdrive_token')")
             bob_auth = {"Authorization": f"Bearer {bob_token}"}

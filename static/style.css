@@ -214,7 +214,26 @@ input { font-family: inherit; font-size: 15px; color: var(--text); }
 .crumb:hover { background: var(--surface-2); color: var(--accent); }
 .crumb.current { color: var(--text); }
 .crumb-sep { color: var(--text-3); font-size: 13px; user-select: none; }
-.toolbar-actions { display: flex; gap: 9px; }
+.toolbar-actions { display: flex; gap: 9px; align-items: center; }
+.menu-wrap { position: relative; }
+.menu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 40; min-width: 148px;
+  display: flex; flex-direction: column; gap: 2px; padding: 6px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 10px; box-shadow: 0 12px 30px rgba(0, 0, 0, .35);
+}
+.menu button {
+  text-align: left; padding: 8px 10px; border: 0; border-radius: 7px;
+  background: transparent; color: var(--text); font-size: 13.5px; cursor: pointer;
+}
+.menu button:hover { background: var(--surface-3); }
+.seg { display: flex; gap: 8px; flex-wrap: wrap; }
+.seg-btn {
+  padding: 8px 14px; border-radius: 9px; cursor: pointer; font-size: 13.5px;
+  background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border);
+}
+.seg-btn:hover { background: var(--surface-3); }
+.seg-btn.selected { background: var(--accent-soft, rgba(91, 91, 214, .18)); color: var(--text); border-color: var(--accent); }
 
 .list-card {
   position: relative; background: var(--surface); border: 1px solid var(--border);

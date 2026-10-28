@@ -116,14 +116,17 @@ DATA_DIR=./data SEAFILE_MODE=stub .venv/bin/uvicorn app.main:app --host 127.0.0.
 - 冒烟测试（27 项，全过）：`.venv/bin/python tests/test_smoke.py`
   覆盖邀请码无效/过期/撤销/复用、建夹投影、会话、路径穿越 13 例、跨用户隔离、
   上传下载字节一致、配额拦截与删除释放、校准、禁用即时生效、登录限速、改密码等。
-- 功能测试（43 项，全过）：`.venv/bin/python tests/test_features.py`
+- 功能测试（51 项，全过）：`.venv/bin/python tests/test_features.py`
   覆盖加密文件夹（后端存量无明文文件名/内容、往返字节一致、错密码被拒、密文计配额）、
   测速（需登录、字节数精确、并发 409、不占配额）、预览与 Range（跨用户预览被拦、416、多段回退 200）、管理员提升。
-- 共享文件夹测试（54 项，全过）：`.venv/bin/python tests/test_shared.py`
+- 共享文件夹测试（69 项，全过）：`.venv/bin/python tests/test_shared.py`
 - LiveStorage 协议测试（15 项，全过）：`.venv/bin/python tests/test_storage_live.py`（MockTransport 打桩，不联网）
 - JS 密码学测试（10 项，全过）：`node tests/test_crypto.mjs` —— 与 Python/Dart 共验 SDV1 测试向量；
   Flutter 端同向量 5 项见 `~/workspace/subdrive-app/test/crypto_vector_test.dart`。
 - 上传计划测试（13 项，全过）：`node tests/test_uploadplan.mjs`
+- 浏览器端到端（51 项，全过）：`.venv/bin/python tests/e2e/test_e2e_browser.py` ——Playwright 驱动本机已装 Chrome
+  （`channel="chrome"`，不下载浏览器），自起 stub 服务 + 临时 `DATA_DIR`，从注册一路点到退出；
+  装不上 playwright 时打 `[SKIP]` 并 exit 0，发版前必须看到全绿。
 
 ## 环境变量
 

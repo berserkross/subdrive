@@ -6,12 +6,17 @@
 
 ## 已完成
 
-- 本地检查 161 项通过（`test_smoke.py` 27 + `test_features.py` 43 + `test_shared.py` 53 +
-  `test_storage_live.py` 15 + `test_crypto.mjs` 10 + `test_uploadplan.mjs` 13，全部 exit 0）。
+- 本地检查 162 项通过（`tests/test_smoke.py` 27 + `tests/test_features.py` 43 + `tests/test_shared.py` 54 +
+  `tests/test_storage_live.py` 15 + `tests/test_crypto.mjs` 10 + `tests/test_uploadplan.mjs` 13，全部 exit 0）。
   后端功能用本地 stub，Seafile 适配用 `httpx.MockTransport` 打桩（不需要真令牌）。
   Windows 控制台跑 Python 测试要先 `PYTHONIOENCODING=utf-8`，否则结尾那个 ✅ 会 `UnicodeEncodeError` 把退出码弄成 1。
-- 共享文件夹已全链路落地（后端 + 前端入口，D27–D30）：创建即共享、名单可改、配额算上传者、
-  只有上传者能删、成员可在自己那一格里改名/移动/删除、落点不再多套一层用户名。
+- 共享文件夹已全链路落地（后端 + 前端入口，D27–D31）：创建即共享、名单可改、配额算上传者、
+  只有上传者能删、成员可在自己那一格里改名/移动/删除、落点不再多套一层用户名、
+  **只有管理员能创建共享文件夹**（B1，前端同步隐藏入口）。
+- 六个测试文件已收进 `tests/`（Python 的 `sys.path`、Node 的 `static`/`testdata` 相对路径都已改），
+  `AGENTS.md` / `README.md` 里的命令同步更新。
+- README 上线清单已打码（供应商套餐名、服务器 IP、免费名额数量改为「内部记录」）。
+- 新增 `LICENSE`（保留所有权利，中英双语）。
 - GitHub 原仓库 `berserkross/subdrive` 已同步 `main`（此前本地领先 13 个提交、长期未推）。
 - 已修：邀请码并发重复使用、管理员可被误禁用、负配额输入、预览内容类型、空文件 Range 下载边界。
 - 存储层下载地址解析兼容 `302 + Location` 与 `200 + JSON`，含回归测试。
@@ -19,7 +24,7 @@
 
 ## 进行中
 
-- 草稿 PR 待合并；合并前线上运行的仍是旧版本。
+- 线上运行的仍是旧版本（部署包已备好，等 A 组问题与 e2e 完成后交付前辈）。
 - 易拉宝（poster）文案：按模板栏目与字数要求成稿，模板文件尚未拿到，正式稿未完成。
 
 ## 未决问题
@@ -51,11 +56,11 @@
    `<共享目录>/<自己的用户名>/`（`main.py` 上传路由），同名冲突因此变成「只可能覆盖自己」；
    `storage.upload()` 的 `wb` 截断保留，但路由先 `stat` 出旧大小、按 `stored - prior`
    记增量（`replaced: true` 回给前端），覆盖不再让配额虚高。个人空间内覆盖自己的同名文件
-   仍是静默覆盖——这是 D27 认可的语义。回归见 `test_shared.py` S3。
+   仍是静默覆盖——这是 D27 认可的语义。回归见 `tests/test_shared.py` S3。
 3. ~~**`.. `（尾随空格）绕过路径层**~~ **已修**：`paths.py:70-73` 拒绝一切尾随空格/点的路径段，
    `.. `／`...`／`a. ` 现在走 403，不再能绕过 `main.py:793` 的根目录删除保护。
-4. **穿越电池已补齐**：HTTP 层 13 → 17 例（`test_smoke.py:143-146`），另加 12b 段直调存储层
-   形状门 6 拒 3 放（`test_smoke.py:158-170`），不依赖路由即可回归。
+4. **穿越电池已补齐**：HTTP 层 13 → 17 例（`tests/test_smoke.py:143-146`），另加 12b 段直调存储层
+   形状门 6 拒 3 放（`tests/test_smoke.py:158-170`），不依赖路由即可回归。
 5. ~~**共享文件夹后端已落地（D27），前端入口未做**~~ **前端入口已完成**：`shared_folders` /
    `shared_grants` 两张表、`/api/shared/create|list|{id}/members|DELETE {id}` 四条路由、归属门按
    「被授权前缀」放行（`paths.py` 的 ContextVar 携带前缀）、文件路由全部接受 `owner=` 参数。
@@ -64,7 +69,7 @@
    「共享此文件夹 / 管理共享 / 取消共享」、浏览他人共享目录时的顶部提示条与「只看我的」跳转；
    `?owner=` 由 `static/app.js` 的 `ownerQS()` 统一拼接（列表/下载/预览/上传/新建都走它）。
    成员在共享目录里只保留上传与下载（改名/移动/删除按钮不渲染，后端同样拒绝）。
-   回归见 `test_shared.py`（40 项，含 S3b 建夹落点与越权 403）。
+   回归见 `tests/test_shared.py`（40 项，含 S3b 建夹落点与越权 403）。
 
 ## 下一步
 

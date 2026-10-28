@@ -1,4 +1,4 @@
-# SubDrive 加密文件夹 · 密码学格式（SDV1）
+﻿# SubDrive 加密文件夹 · 密码学格式（SDV1）
 
 > 本文件是 SubDrive「加密文件夹」的**跨平台格式规范**：网页端（Web Crypto）与
 > Flutter 端（`package:cryptography`）必须逐字节实现同一格式，才能互解对方写入的数据。
@@ -106,7 +106,7 @@
 4. 解开向量 `check.blob_b64` == ASCII `SUBDRIVE-VAULT-CHECK-v1`；
 5. 错误密码派生出的密钥解任一 blob 必须失败。
 
-JS 验证：`node test_crypto.mjs`；Dart 验证：subdrive-app 的 `test/crypto_vector_test.dart`。
+JS 验证：`node tests/test_crypto.mjs`；Dart 验证：subdrive-app 的 `test/crypto_vector_test.dart`。
 
 ## 8. 平台实现要点
 

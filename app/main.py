@@ -1044,7 +1044,8 @@ def files_delete(data: DeleteIn, request: Request, owner: str = Query("")):
 
 @app.post("/api/shared/create")
 def shared_create(data: SharedCreateIn, request: Request):
-    user = require_user(request)
+    # B1：只有管理员能创建共享文件夹（收口「人人可开公开目录」）；管理名单仍见 shared_members
+    user = require_admin(request)
     rel, full = _user_full(user, data.path)
     if rel == "":
         raise err(400, "bad_path", "根目录不能设为共享文件夹")

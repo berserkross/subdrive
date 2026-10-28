@@ -1,4 +1,4 @@
-"""子用户网盘一期冒烟测试（stub 模式，不接触真实 Seafile）。
+﻿"""子用户网盘一期冒烟测试（stub 模式，不接触真实 Seafile）。
 
 覆盖：邀请码注册（无效/过期/撤销/复用）、建夹投影、登录/会话、路径穿越电池、
 跨用户隔离、上传→列表→下载字节一致、配额拦截与删除释放、改名/移动、
@@ -19,7 +19,7 @@ tmp = tempfile.mkdtemp(prefix="subdrive-test-")
 os.environ["DATA_DIR"] = tmp
 os.environ["SEAFILE_MODE"] = "stub"
 os.environ["CALIBRATE_INTERVAL_SECONDS"] = "0"
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi.testclient import TestClient
 from app.main import app

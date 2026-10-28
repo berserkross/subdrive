@@ -16,7 +16,7 @@ os.environ["DATA_DIR"] = tmp
 os.environ["SEAFILE_MODE"] = "stub"
 os.environ["CALIBRATE_INTERVAL_SECONDS"] = "0"
 os.environ["SUBDRIVE_ADMIN_USERNAME"] = "boss"
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi.testclient import TestClient
 
@@ -41,7 +41,7 @@ def register(c, admin_token, username, password="sharedpass1"):
     r = c.post("/api/auth/register",
                json={"username": username, "password": password, "invite_code": code})
     assert r.status_code == 200, r.text
-    return r.json()["token"]
+    return r.json()["token"], r.json()["user"]["id"]
 
 
 def upload(c, token, path, filename, data, owner=""):
@@ -66,9 +66,13 @@ def main():
     assert r.status_code == 200, r.text
     boss = r.json()["token"]
 
-    tok_a = register(c, boss, "alice")     # 共享文件夹创建者
-    tok_b = register(c, boss, "bob")       # 被授权成员
-    tok_c = register(c, boss, "carol")     # 未授权者
+    tok_a, a_id = register(c, boss, "alice")   # 共享文件夹创建者（B1：先提升为管理员）
+    tok_b, _ = register(c, boss, "bob")        # 被授权成员
+    tok_c, _ = register(c, boss, "carol")      # 未授权者
+
+    # B1：只有管理员能创建共享文件夹，S1 全程由 alice 以管理员身份执行
+    r = c.post(f"/api/admin/users/{a_id}/admin", headers=auth(boss), json={"is_admin": True})
+    assert r.status_code == 200, r.text
 
     print("\n— S1 创建共享文件夹 —")
     r = c.post("/api/files/mkdir", headers=auth(tok_a), json={"path": "", "name": "公共资料"})
@@ -82,6 +86,11 @@ def main():
                json={"path": "公共资料/2026", "members": ["bob"]})
     check("S1 创建者能共享自己的文件夹", r.status_code == 200, r.text)
     folder_id = r.json()["id"]
+
+    r = c.post("/api/shared/create", headers=auth(tok_c),
+               json={"path": "公共资料/2026", "members": []})
+    check("S1 非管理员创建共享被拒（403 admin_required）",
+          r.status_code == 403 and r.json()["detail"]["error"] == "admin_required", r.text)
 
     r = c.post("/api/shared/create", headers=auth(tok_a),
                json={"path": "公共资料/2026", "members": []})

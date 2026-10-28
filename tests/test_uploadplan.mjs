@@ -1,4 +1,4 @@
-/* 整文件夹上传 · 目录计划纯逻辑验证（Node ≥19，无外部依赖）。
+﻿/* 整文件夹上传 · 目录计划纯逻辑验证（Node ≥19，无外部依赖）。
  * 运行：node test_uploadplan.mjs
  * 覆盖 planFolderUpload：散文件、单层/嵌套目录、跨文件目录去重与父先于子、
  * 空目录（extraDirs）、路径清洗、垃圾输入跳过、ref 透传。 */
@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 // uploadplan.js 是经典脚本（浏览器以 <script> 加载），读入并在当前全局求值（同 test_crypto.mjs）
-eval(readFileSync(join(here, "static", "uploadplan.js"), "utf8"));
+eval(readFileSync(join(here, "..", "static", "uploadplan.js"), "utf8"));
 const plan = globalThis.SubDriveUpload.planFolderUpload;
 
 let passed = 0;

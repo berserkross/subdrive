@@ -473,7 +473,7 @@ function renderEntries(entries) {
       }
       act.appendChild(actionBtn(ICONS.download, "下载", () => downloadFile(rel, entry.name)));
     }
-    if (entry.type === "dir" && !curOwner && !vaultDirMarks.has(rel)) {
+    if (entry.type === "dir" && !curOwner && !vaultDirMarks.has(rel) && me.is_admin) {
       act.appendChild(actionBtn(ICONS.share, shared ? "管理共享" : "共享此文件夹",
         () => openShareDialog(rel, shared)));
       if (shared) {
@@ -645,7 +645,7 @@ $("#btn-chpw").addEventListener("click", () => {
  * 入队条目统一为 { file, relPath }：散文件 relPath 就是文件名；整文件夹上传时
  * relPath 是相对当前目录的完整相对路径（如 "照片/2026/a.jpg"）。目录计划
  * （相对路径 → 先建哪些目录、每个文件落到哪个目录）是纯逻辑，见
- * static/uploadplan.js（Node 测试：test_uploadplan.mjs）。 */
+ * static/uploadplan.js（Node 测试：tests/test_uploadplan.mjs）。 */
 const uploadQueue = [];
 let uploading = false;
 let uploadsPendingRefresh = false; // 一批上传收尾后统一刷新列表 + 配额

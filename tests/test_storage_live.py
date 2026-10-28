@@ -1,4 +1,4 @@
-"""LiveStorage 线上存储适配 · 请求级回归测试（httpx MockTransport，不接触真实 Seafile）。
+﻿"""LiveStorage 线上存储适配 · 请求级回归测试（httpx MockTransport，不接触真实 Seafile）。
 
 覆盖重点：delete() 必须对 file/dir URL 发 HTTP DELETE —— Seafile api2 没有
 POST operation=delete 这种形式（POST 只支持 mkdir/rename/move/copy），
@@ -13,7 +13,7 @@ p 参数的百分号编码，防该回归复发。
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import httpx
 

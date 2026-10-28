@@ -1,4 +1,4 @@
-# 提案：共享目录（活动资料库）的权限模型
+﻿# 提案：共享目录（活动资料库）的权限模型
 
 状态：**待拍板**。写下的是选项与后果，不是已定方案。拍板后本文件的结论并入 `DECISIONS.md`。
 
@@ -74,6 +74,6 @@ shared_members(dir_id, user_id, role)                        -- role: viewer|upl
 - `app/main.py`：建表迁移、`/api/shared/*` 路由（列表我加入的活动、上传、我的上传列表）
 - `app/paths.py`：`full_path()` 增加 `/shared/<slug>` 形态；归属门改为「本人前缀 or 有权限的共享前缀」
 - `app/storage.py`：`ensure_shared_folder()`
-- 测试：`test_features.py` 新增 F5 组（非成员 403、成员只能写自己子目录、admin 能读全部）
+- 测试：`tests/test_features.py` 新增 F5 组（非成员 403、成员只能写自己子目录、admin 能读全部）
 - 前端：`web/` 增加活动列表入口 + 上传页
 - 文档：`DECISIONS.md` D27、`STATUS.md` 缺陷 2（D26）结案

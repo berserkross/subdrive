@@ -1,4 +1,4 @@
-"""子用户网盘 · 新功能测试（F1 加密文件夹 / F2 测速 / F3 预览与 Range / F4 管理员提升与取消）。
+﻿"""子用户网盘 · 新功能测试（F1 加密文件夹 / F2 测速 / F3 预览与 Range / F4 管理员提升与取消）。
 
 在 stub 模式下运行，不接触真实 Seafile。原 23 项冒烟在 test_smoke.py，保持独立。
 F1 部分把测试自身当作第二个 SDV1 客户端实现（Python cryptography），
@@ -23,7 +23,7 @@ os.environ["SEAFILE_MODE"] = "stub"
 os.environ["CALIBRATE_INTERVAL_SECONDS"] = "0"
 # 测试环境的所有者（只设用户名、不设密码 → bootstrap 不预建号，boss 仍走首用户注册）
 os.environ["SUBDRIVE_ADMIN_USERNAME"] = "boss"
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives import hashes

@@ -15,11 +15,11 @@ SubDrive —— FastAPI 后端 + 原生 JS 单页前端的多用户网盘。文�
 | `app/paths.py` | 路径规范化与前缀锁死（**全系统唯一实现**）：`normalize_rel_path` / `full_path` / `validate_name` / `validate_username` / `PathRejected` |
 | `app/storage.py` | Seafile 适配层，`stub` / `live` 双实现；`StorageError` 家族自带 `code` / `status` |
 | `static/` | 前端（`index.html` / `style.css` / `app.js` / `vault.js` / `uploadplan.js`）+ 品牌二进制 `logo.png` / `favicon.png` |
-| `test_smoke.py` | 冒烟测试 23 项 |
-| `test_features.py` | 功能测试 43 项（F1 加密文件夹 / F2 测速 / F3 预览与 Range / F4 管理员提升） |
-| `test_storage_live.py` | `LiveStorage` 请求级回归 15 项（`httpx.MockTransport`，不联网） |
-| `test_crypto.mjs` | JS 侧 SDV1 加解密 10 项，与 Python/Dart 共用 `testdata/crypto_vector.json` |
-| `test_uploadplan.mjs` | 整文件夹上传的目录计划（`planFolderUpload`）13 项，纯逻辑 |
+| `tests/test_smoke.py` | 冒烟测试 27 项 |
+| `tests/test_features.py` | 功能测试 43 项（F1 加密文件夹 / F2 测速 / F3 预览与 Range / F4 管理员提升） |
+| `tests/test_storage_live.py` | `LiveStorage` 请求级回归 15 项（`httpx.MockTransport`，不联网） |
+| `tests/test_crypto.mjs` | JS 侧 SDV1 加解密 10 项，与 Python/Dart 共用 `testdata/crypto_vector.json` |
+| `tests/test_uploadplan.mjs` | 整文件夹上传的目录计划（`planFolderUpload`）13 项，纯逻辑 |
 | `testdata/crypto_vector.json` | SDV1 跨端固定向量，只由 `tools/gen_vector.py` 生成 |
 | `tools/gen_vector.py` | 重新生成上面那份向量（`tools/` 下唯一的脚本，不是测试） |
 | `CRYPTO.md` | SDV1 加密格式规范（Web / Flutter / Python 三端共用） |
@@ -46,16 +46,16 @@ bash scripts/codex-setup.sh
 POSIX / 云端等价写法：`python3 -m venv .venv` → `.venv/bin/pip install -r requirements.txt pytest cryptography`。
 
 运行时依赖只有 4 个（`fastapi` / `uvicorn[standard]` / `python-multipart` / `httpx`）。
-`cryptography` 与 `pytest` 只用于测试与向量生成（`test_features.py`、`tools/gen_vector.py`），
-没写进 `requirements.txt`。**按「依赖装在哪个解释器」选写法**：云端全局装好是 `python3 test_smoke.py`，
-本机是 `.\.venv\Scripts\python.exe test_smoke.py`。不要写死 `.venv/bin/python` 去跑一个不存在的 venv。
+`cryptography` 与 `pytest` 只用于测试与向量生成（`tests/test_features.py`、`tools/gen_vector.py`），
+没写进 `requirements.txt`。**按「依赖装在哪个解释器」选写法**：云端全局装好是 `python3 tests/test_smoke.py`，
+本机是 `.\.venv\Scripts\python.exe tests/test_smoke.py`。不要写死 `.venv/bin/python` 去跑一个不存在的 venv。
 
 两条本机专有坑：
 
-- **测试不是 pytest 用例**：五个测试都是 `main()` 脚本，`pytest test_smoke.py` 会收集 0 个（exit 5）。
-  必须直接 `python test_smoke.py`；装了 pytest 只当顺手工具，别指望 `pytest -q` 跑全套。
-- **控制台是 GBK**：先 `$env:PYTHONIOENCODING="utf-8"`。`test_smoke.py` / `test_features.py` 已自带
-  `sys.stdout.reconfigure(encoding="utf-8")`，但 `test_storage_live.py` 没有——GBK 下结尾打印
+- **测试不是 pytest 用例**：五个测试都是 `main()` 脚本，`pytest tests/test_smoke.py` 会收集 0 个（exit 5）。
+  必须直接 `python tests/test_smoke.py`；装了 pytest 只当顺手工具，别指望 `pytest -q` 跑全套。
+- **控制台是 GBK**：先 `$env:PYTHONIOENCODING="utf-8"`。`tests/test_smoke.py` / `tests/test_features.py` 已自带
+  `sys.stdout.reconfigure(encoding="utf-8")`，但 `tests/test_storage_live.py` 没有——GBK 下结尾打印
   `✅` 会抛 `UnicodeEncodeError` 并 exit 1（测试其实全过了，骗你失败）。
 - Node ≥19（本机 v24，自带 Web Crypto）。两个 `.mjs` 零依赖、无 `package.json`、无构建步骤。
 
@@ -84,22 +84,22 @@ DATA_DIR=./data SEAFILE_MODE=stub .venv/bin/python -m uvicorn app.main:app --hos
 
 ## 测试（逐文件：命令 + 覆盖范围）
 
-全部在仓库根目录执行。`test_smoke.py` / `test_features.py` 启动即把 `DATA_DIR` 指向
+全部在仓库根目录执行。`tests/test_smoke.py` / `tests/test_features.py` 启动即把 `DATA_DIR` 指向
 `tempfile.mkdtemp()` 并设 `CALIBRATE_INTERVAL_SECONDS=0`，不污染工作区。
 
 | 命令 | 项数 | 覆盖范围 |
 |---|---|---|
-| `.\.venv\Scripts\python.exe test_smoke.py` | 23 | 邀请码注册（无效/过期/撤销/复用）、建夹投影、登录与会话、路径穿越电池 14 例、跨用户隔离、上传→列表→下载字节一致、配额拦截与删除释放、改密码、禁用/启用、登录限速、用量校准、文件详情 |
-| `.\.venv\Scripts\python.exe test_features.py` | 43 | F1 加密文件夹 10（后端无明文名/明文内容、往返字节一致、错密码被拒、blob 大小=明文+33、密文计配额）；F2 测速 6（需登录、字节数精确、不计配额不落盘、并发 409、锁释放）；F3 预览与 Range 12（类型与 inline、Markdown 以纯文本下发、跨用户被拦、206 闭区间/后缀段/开放段、越界 416、无 Range 回退 200）；F4 管理员 15（`owner_protected` / `owner_required`、被提升者可用会话、审计、404） |
-| `.\.venv\Scripts\python.exe test_storage_live.py` | 15 | `LiveStorage` 的 HTTP 形状：删除必须是 `HTTP DELETE`、`p` 参数百分号编码、下载地址 `200+JSON 字符串` 与 `302+Location` 两种形式、Range 分片、全程无 POST、无未命中路由 |
-| `.\.venv\Scripts\python.exe test_shared.py` | 40 | 共享文件夹（D27）：创建/重复 409/成员不存在 400、被授权者能列能下、未授权者与上级目录 403、往共享目录上传落到 `<目录>/<自己用户名>/`、建夹与上传同一条落点规则（含在共享根建夹）、配额记上传者且创建者不变、覆盖写只记增量、只能删自己传的、共享目录（及其上级）禁止 rename/move/delete、名单清空后立即 403、取消共享退回私有且内容仍在、审计含 share/share_members/unshare |
-| `node test_crypto.mjs` | 10 | SDV1 向量与自洽：派生密钥一致、文件/清单/校验块可解、错密码必失败、信封 33 字节开销与魔数版本、roundtrip、GCM 拒绝篡改 |
-| `node test_uploadplan.mjs` | 13 | `planFolderUpload`：散文件、目录去重、父目录先于子目录、空目录进 `extraDirs`、路径清洗、垃圾输入跳过、`..` 段不被吞 |
+| `.\.venv\Scripts\python.exe tests/test_smoke.py` | 23 | 邀请码注册（无效/过期/撤销/复用）、建夹投影、登录与会话、路径穿越电池 14 例、跨用户隔离、上传→列表→下载字节一致、配额拦截与删除释放、改密码、禁用/启用、登录限速、用量校准、文件详情 |
+| `.\.venv\Scripts\python.exe tests/test_features.py` | 43 | F1 加密文件夹 10（后端无明文名/明文内容、往返字节一致、错密码被拒、blob 大小=明文+33、密文计配额）；F2 测速 6（需登录、字节数精确、不计配额不落盘、并发 409、锁释放）；F3 预览与 Range 12（类型与 inline、Markdown 以纯文本下发、跨用户被拦、206 闭区间/后缀段/开放段、越界 416、无 Range 回退 200）；F4 管理员 15（`owner_protected` / `owner_required`、被提升者可用会话、审计、404） |
+| `.\.venv\Scripts\python.exe tests/test_storage_live.py` | 15 | `LiveStorage` 的 HTTP 形状：删除必须是 `HTTP DELETE`、`p` 参数百分号编码、下载地址 `200+JSON 字符串` 与 `302+Location` 两种形式、Range 分片、全程无 POST、无未命中路由 |
+| `.\.venv\Scripts\python.exe tests/test_shared.py` | 54 | 共享文件夹（D27–D31）：创建/重复 409/成员不存在 400/非管理员创建 403、被授权者能列能下、未授权者与上级目录 403、往共享目录上传落到 `<目录>/<自己用户名>/`、建夹与上传同一条落点规则（含在共享根建夹）、自己那一格子目录里上传/建夹不再多套一层用户名、配额记上传者且创建者不变、覆盖写只记增量、只能删自己传的、成员可在自己那一格里改名/移动/删除且那一格本身禁止 rename/move、共享目录（及其上级）禁止 rename/move/delete、名单清空后立即 403、取消共享退回私有且内容仍在、审计含 share/share_members/unshare |
+| `node tests/test_crypto.mjs` | 10 | SDV1 向量与自洽：派生密钥一致、文件/清单/校验块可解、错密码必失败、信封 33 字节开销与魔数版本、roundtrip、GCM 拒绝篡改 |
+| `node tests/test_uploadplan.mjs` | 13 | `planFolderUpload`：散文件、目录去重、父目录先于子目录、空目录进 `extraDirs`、路径清洗、垃圾输入跳过、`..` 段不被吞 |
 
 改动 SDV1 格式时才需要跑生成器：`.\.venv\Scripts\python.exe tools\gen_vector.py`（会重写
 `testdata/crypto_vector.json`，跑完必须让三端测试重新全绿）。
 
-五项全绿才算完成（`test_storage_live.py` 需要真实 Seafile，本地改为其余五项全绿）；
+六项全绿才算完成（`tests/test_storage_live.py` 用 `httpx.MockTransport` 打桩，不联网、不需要真 Seafile）；
 任一失败就是真失败，不要跳过、不要改断言来凑。没有 CI，这几条就是唯一门禁。
 
 ## 代码风格与错误契约（从现有代码归纳，新增代码照做）
@@ -118,7 +118,7 @@ DATA_DIR=./data SEAFILE_MODE=stub .venv/bin/python -m uvicorn app.main:app --hos
 - **同名覆盖**：`storage.upload()` 仍是 `wb` 截断（不报错、不留版本）。策略见 `DECISIONS.md`
   D27：写别人的共享目录时落点被强制成 `<共享目录>/<自己用户名>/`，所以跨人不可能撞名；
   覆盖自己的同名文件允许，上传路由按 `stored - prior` 记增量，不让配额漂。改这块必须同步
-  `test_shared.py` S3 的两条覆盖写断言。
+  `tests/test_shared.py` S3 的两条覆盖写断言。
 - **错误形状**：业务错误用 `err(status, code, message)` 抛 `HTTPException`，响应是
   `{"detail": {"error": <snake_case 英文 code>, "message": <中文，给用户看>}}`；存储层与路径异常
   由 app 级 `exception_handler` 返回**扁平** `{"error": ..., "message": ...}`。前端两种都读
@@ -147,13 +147,13 @@ DATA_DIR=./data SEAFILE_MODE=stub .venv/bin/python -m uvicorn app.main:app --hos
 1. **秘密只从环境变量读**，永不写进代码、仓库、日志、测试固件。`.env` 已在 `.gitignore` 里，
    变量清单见 `.env.example`。细节见下节「密钥纪律」。
 2. **路径安全只允许改 `app/paths.py`**。其它模块不得自行拼接或规范化用户输入路径
-   （规格 §7-1：这条防线不许有第二实现）。改动后必须让 `test_smoke.py` 的穿越电池保持全绿
+   （规格 §7-1：这条防线不许有第二实现）。改动后必须让 `tests/test_smoke.py` 的穿越电池保持全绿
    ——**现状是 17 例**（`evil_strict` 13 例必须 403 + `evil_loose` 4 例 404 亦可；含尾随空格/
    点的 `..`、NUL、超长段等形态，项数会打印在结果里，改动后对一遍）。**加规则必须同时加用例**，
    否则下一个人重构时会把这条防线悄悄改回去。
 3. **默认 `SEAFILE_MODE=stub`**：本地与 CI 一律不联网，任何改动不得让 stub 路径依赖真实 Seafile。
 4. 文本一律 UTF-8，界面文案中文。文件内容与文件名保持 ASCII 路径（云端跨平台安全）。
-5. 加密文件夹的格式受 `CRYPTO.md`（SDV1）约束，改格式必须同步 `test_crypto.mjs`、
+5. 加密文件夹的格式受 `CRYPTO.md`（SDV1）约束，改格式必须同步 `tests/test_crypto.mjs`、
    `testdata/crypto_vector.json`、`static/vault.js`、`tools/gen_vector.py` 与 Flutter 端，
    否则跨端不互通。
 6. 运行时数据只写 `DATA_DIR`（默认 `./data`，已忽略），不要往仓库目录写别的。
@@ -181,7 +181,7 @@ DATA_DIR=./data SEAFILE_MODE=stub .venv/bin/python -m uvicorn app.main:app --hos
 | `screenshots/**`（13 张 PNG，合计 2.1 MB） | README 引用的发布截图，重生成会整批改二进制 |
 | `static/logo.png`、`static/favicon.png` | 品牌资产（697 KB / 154 KB 二进制） |
 | `testdata/crypto_vector.json` | SDV1 固定向量，只能由 `tools/gen_vector.py` 重生成 |
-| `CRYPTO.md` + `static/vault.js` + `test_crypto.mjs` + `tools/gen_vector.py` | SDV1 四件套，改一处即改四处（外加 Flutter 端） |
+| `CRYPTO.md` + `static/vault.js` + `tests/test_crypto.mjs` + `tools/gen_vector.py` | SDV1 四件套，改一处即改四处（外加 Flutter 端） |
 | `Dockerfile`、`docker-compose.yml`、`scripts/codex-setup.sh` | 部署与云端环境配置 |
 | `.gitattributes`、`.gitignore` | 行尾归一化与忽略规则，动了会污染全仓 diff |
 
@@ -203,13 +203,14 @@ DATA_DIR=./data SEAFILE_MODE=stub .venv/bin/python -m uvicorn app.main:app --hos
 
 ```powershell
 $env:PYTHONIOENCODING="utf-8"
-.\.venv\Scripts\python.exe test_smoke.py         # 23 项，exit 0
-.\.venv\Scripts\python.exe test_features.py      # 43 项，exit 0
-.\.venv\Scripts\python.exe test_storage_live.py  # 15 项，exit 0
-node test_crypto.mjs                             # 10 项，exit 0
-node test_uploadplan.mjs                         # 13 项，exit 0
+.\.venv\Scripts\python.exe tests/test_smoke.py         # 27 项，exit 0
+.\.venv\Scripts\python.exe tests/test_features.py      # 43 项，exit 0
+.\.venv\Scripts\python.exe tests/test_shared.py        # 54 项，exit 0
+.\.venv\Scripts\python.exe tests/test_storage_live.py  # 15 项，exit 0
+node tests/test_crypto.mjs                             # 10 项，exit 0
+node tests/test_uploadplan.mjs                         # 13 项，exit 0
 ```
 
-- 五条全 exit 0 且项数对得上才算通过；没有 CI，这就是唯一门禁。
+- 六条全 exit 0 且项数对得上才算通过；没有 CI，这就是唯一门禁。
 - 动过 `app/main.py` 或 `static/` 再加一条：起服务后 `GET /` 得 200、`GET /api/auth/me` 未登录得 401。
 - 收尾 `git status --short` 只应看到你打算改的文件（`data/`、`__pycache__/` 等不应出现）。

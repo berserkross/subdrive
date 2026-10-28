@@ -91,14 +91,17 @@ DATA_DIR=./data SEAFILE_MODE=stub .venv/bin/uvicorn app.main:app --host 127.0.0.
 
 - 第一个注册的用户（免邀请码）自动成为管理员（沿用 private-chat 约定），之后注册必须凭邀请码；
   也可用环境变量 `SUBDRIVE_ADMIN_USERNAME` / `SUBDRIVE_ADMIN_PASSWORD` 在首次启动时初始化管理员（部署推荐）。
-- 冒烟测试（23 项，全过）：`.venv/bin/python test_smoke.py`
+- 冒烟测试（27 项，全过）：`.venv/bin/python tests/test_smoke.py`
   覆盖邀请码无效/过期/撤销/复用、建夹投影、会话、路径穿越 13 例、跨用户隔离、
   上传下载字节一致、配额拦截与删除释放、校准、禁用即时生效、登录限速、改密码等。
-- 功能测试（28 项，全过）：`.venv/bin/python test_features.py`
+- 功能测试（43 项，全过）：`.venv/bin/python tests/test_features.py`
   覆盖加密文件夹（后端存量无明文文件名/内容、往返字节一致、错密码被拒、密文计配额）、
-  测速（需登录、字节数精确、并发 409、不占配额）、预览与 Range（跨用户预览被拦、416、多段回退 200）。
-- JS 密码学测试（10 项，全过）：`node test_crypto.mjs` —— 与 Python/Dart 共验 SDV1 测试向量；
+  测速（需登录、字节数精确、并发 409、不占配额）、预览与 Range（跨用户预览被拦、416、多段回退 200）、管理员提升。
+- 共享文件夹测试（54 项，全过）：`.venv/bin/python tests/test_shared.py`
+- LiveStorage 协议测试（15 项，全过）：`.venv/bin/python tests/test_storage_live.py`（MockTransport 打桩，不联网）
+- JS 密码学测试（10 项，全过）：`node tests/test_crypto.mjs` —— 与 Python/Dart 共验 SDV1 测试向量；
   Flutter 端同向量 5 项见 `~/workspace/subdrive-app/test/crypto_vector_test.dart`。
+- 上传计划测试（13 项，全过）：`node tests/test_uploadplan.mjs`
 
 ## 环境变量
 
@@ -123,9 +126,9 @@ live 模式启动即 `auth/ping` 校验令牌与专用库配置，失败直接�
 
 ## 上线清单（未执行 —— 部署时按此走，助手给命令、用户在 VPS 执行）
 
-- [ ] **硬前置：IDrive e2 由 Free 10GB 转 PAYG**（规格 §10；不转，存量满格即全体停摆）
-- [ ] 定子域名（规格候选 `files.ourmetaverse.cn` / `pan.ourmetaverse.cn`）并在 Cloudflare 加 A 记录（仅 DNS）→ 66.42.51.160
-- [ ] 主账号已定为**新建专用服务账号**（2026-10-22 拍板：爆炸半径只限专用库，占满第 3 个 Pro 免费名额）；
+- [ ] **硬前置：对象存储套餐升级**（规格 §10；不转，存量满格即全体停摆。供应商与套餐细节内部记录，不公开）
+- [ ] 定子域名（规格候选 `files.ourmetaverse.cn` / `pan.ourmetaverse.cn`）并在 Cloudflare 加 A 记录（仅 DNS；服务器 IP 内部记录）
+- [ ] 主账号已定为**新建专用服务账号**（拍板记录：爆炸半径只限专用库，占满最后一个免费名额）；
       用它登录后新建**非加密**专用库 `subdrive`，记下 repo_id
 - [ ] 为服务账号签发 API Token 并存入密码管理器；**若该账号要开 TOTP，先签发令牌、再开 TOTP**
       （签发 auth-token 时若已开 TOTP 需带 `X-SEAFILE-OTP` 头）
@@ -163,7 +166,7 @@ app/main.py      后端全部路由（auth/files/quota/admin）+ 配额/校准/�
 app/paths.py     路径规范化与前缀锁死（全系统唯一实现，规格 §7-1）
 app/storage.py   Seafile 适配层（stub / live 双实现）
 static/          原生 JS 前端（index.html / style.css / app.js / logo / favicon）
-test_smoke.py    冒烟测试 23 项
+tests/test_smoke.py    冒烟测试 23 项
 screenshots/     界面截图（明/暗 × 登录/文件/后台 + 移动端）
 Dockerfile / docker-compose.yml / .env.example
 ```

@@ -1,4 +1,4 @@
-/* SDV1 加密格式 · JS 端向量验证（Node ≥19，自带 Web Crypto）。
+﻿/* SDV1 加密格式 · JS 端向量验证（Node ≥19，自带 Web Crypto）。
  * 运行：node test_crypto.mjs
  * 断言 CRYPTO.md §7 的五条：派生密钥一致、文件/清单/校验块可解、错误密码必失败，
  * 外加一轮随机 IV 的加解密 roundtrip。 */
@@ -8,9 +8,9 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 // vault.js 是经典脚本（浏览器以 <script> 加载），这里读入并在当前全局求值
-eval(readFileSync(join(here, "static", "vault.js"), "utf8"));
+eval(readFileSync(join(here, "..", "static", "vault.js"), "utf8"));
 const V = globalThis.SDVault;
-const vector = JSON.parse(readFileSync(join(here, "testdata", "crypto_vector.json"), "utf8"));
+const vector = JSON.parse(readFileSync(join(here, "..", "testdata", "crypto_vector.json"), "utf8"));
 
 let passed = 0;
 function check(name, cond, extra = "") {

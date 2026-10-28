@@ -1,7 +1,7 @@
-"use strict";
+﻿"use strict";
 /* ================= SubDrive 加密文件夹 · 客户端密码学（SDV1） =================
  * 格式规范见 CRYPTO.md。本文件只依赖 globalThis.crypto（Web Crypto）：
- * 浏览器与 Node ≥19 均可直接加载（Node 测试见 test_crypto.mjs）。
+ * 浏览器与 Node ≥19 均可直接加载（Node 测试见 tests/test_crypto.mjs）。
  * 原则：密钥只进内存（CryptoKey / Uint8Array），永不发送、永不持久化。 */
 const SDVault = (() => {
   const MAGIC = new Uint8Array([0x53, 0x44, 0x56, 0x31]); // "SDV1"

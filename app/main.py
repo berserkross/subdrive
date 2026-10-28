@@ -759,6 +759,27 @@ def _is_own_cell(user, owner_raw, rel: str) -> bool:
     return bool(rel) and owner != user["username"] and rel.rsplit("/", 1)[-1] == user["username"]
 
 
+def _cell_rel(user, owner_name: str, path_raw) -> str:
+    """他人共享目录里「我那一格」的落点：已经在自己那一格（含其子目录）就原样返回，
+    否则补一层 /<用户名>。上传与建夹共用这条规则。
+
+    判定用「共享根 + 我的用户名」当锚点，而不是「路径里出现过我的用户名」：
+    创建者恰好有个与我同名的目录时，后者会把我那一格算错、把文件放到共享根上去。
+    write=True 的越权校验照旧由 _foreign_target 复核，不在这里绕过。
+    """
+    base = _foreign_target(user, owner_name, path_raw, write=False)
+    for share in _share_roots_of(user["id"]):
+        root = share["rel"]
+        if share["owner"] != owner_name or not root:
+            continue
+        cell = f"{root}/{user['username']}"
+        if base == cell or base.startswith(cell + "/"):
+            return _foreign_target(user, owner_name, base, write=True)
+    return _foreign_target(
+        user, owner_name, f"{base}/{user['username']}" if base else user["username"],
+        write=True)
+
+
 @app.get("/api/files/list")
 def files_list(request: Request, path: str = Query(""), owner: str = Query("")):
     user = require_user(request)
@@ -783,10 +804,7 @@ def files_mkdir(data: MkdirIn, request: Request, owner: str = Query("")):
     owner_name = (owner or "").strip() or user["username"]
     if owner_name != user["username"]:
         # 与上传同一条落点规则：建夹也强制落进自己那一格
-        base = _foreign_target(user, owner_name, data.path, write=False)
-        rel = _foreign_target(
-            user, owner_name, f"{base}/{user['username']}" if base else user["username"],
-            write=True)
+        rel = _cell_rel(user, owner_name, data.path)
     else:
         rel = _user_full(user, data.path)[0]
     rel_new = f"{rel}/{name}" if rel else name
@@ -810,10 +828,7 @@ async def files_upload(request: Request, path: str = Query(""), owner: str = Que
     if dest_owner != user["username"]:
         # 写别人的共享目录：强制落到自己名下那一格。同名冲突与「只能删自己的」两条
         # 都由这个落点规则保证，不另记文件归属。
-        base = _foreign_target(user, dest_owner, path, write=False)
-        rel = _foreign_target(
-            user, dest_owner, f"{base}/{user['username']}" if base else user["username"],
-            write=True)
+        rel = _cell_rel(user, dest_owner, path)
     else:
         rel = normalize_rel_path(path)
     full = full_path(dest_owner, rel)

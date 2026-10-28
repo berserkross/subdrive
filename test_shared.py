@@ -199,6 +199,24 @@ def main():
     names = [e["name"] for e in r.json()["entries"]]
     check("S4b 移动生效", "改名后.txt" in names, str(names))
 
+    r = c.post("/api/files/upload", params={"path": "公共资料/2026/bob/子目录",
+                                            "owner": "alice"}, headers=auth(tok_b),
+               files={"file": ("深处.txt", b"deep", "text/plain")})
+    check("S4b 在自己那格的子目录里上传", r.status_code == 200, r.text)
+    r = c.get("/api/files/list", params={"path": "公共资料/2026/bob/子目录",
+                                         "owner": "alice"}, headers=auth(tok_b))
+    entries = r.json()["entries"]
+    check("S4b 上传不再多套一层自己的用户名", r.status_code == 200
+          and "深处.txt" in [e["name"] for e in entries]
+          and not any(e["type"] == "dir" and e["name"] == "bob" for e in entries),
+          str(entries))
+
+    r = c.post("/api/files/mkdir", headers=auth(tok_b), params={"owner": "alice"},
+               json={"path": "公共资料/2026/bob/子目录", "name": "更深的"})
+    check("S4b 在自己那格的子目录里建夹也不套用户名",
+          r.status_code == 200 and r.json()["path"] == "公共资料/2026/bob/子目录/更深的",
+          r.text)
+
     r = c.post("/api/files/rename", headers=auth(tok_b), params={"owner": "alice"},
                json={"path": "公共资料/2026/bob", "new_name": "bob2"})
     check("S4b 不能给自己那一格改名（400 cell_rename）", r.status_code == 400

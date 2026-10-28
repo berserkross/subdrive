@@ -367,6 +367,23 @@ def err(status: int, code: str, message: str) -> HTTPException:
     return HTTPException(status, detail={"error": code, "message": message})
 
 
+def _dedup_name(full: str, filename: str) -> str:
+    """「两者都保留」：在同一目录里挑一个带 (n) 后缀、当前不存在的名字。
+
+    只改文件名，不碰目录——归属仍由落点规则决定，所以名字变了也不会变成别人的文件。
+    """
+    stem, dot, ext = filename.rpartition(".")
+    if not dot or not stem:  # 没有扩展名，或形如 .env
+        stem, ext = filename, ""
+    for n in range(2, 1000):
+        cand = f"{stem} ({n})" + (f".{ext}" if ext else "")
+        try:
+            storage.stat(f"{full}/{cand}")
+        except StorageNotFound:
+            return cand
+    raise err(409, "conflict", "同名文件太多，改个名再传")
+
+
 def bootstrap_admin() -> None:
     """部署初始化管理员（规格 §9-5）：环境变量 SUBDRIVE_ADMIN_USERNAME/PASSWORD。"""
     username = os.environ.get("SUBDRIVE_ADMIN_USERNAME", "").strip()
@@ -830,6 +847,8 @@ def files_mkdir(data: MkdirIn, request: Request, owner: str = Query("")):
 
 @app.post("/api/files/upload")
 async def files_upload(request: Request, path: str = Query(""), owner: str = Query(""),
+                       on_conflict: str = Query("overwrite"),
+                       expected_old_size: int = Query(-1),
                        file: UploadFile = File(...)):
     user = require_user(request)
     dest_owner = (owner or "").strip() or user["username"]
@@ -871,6 +890,21 @@ async def files_upload(request: Request, path: str = Query(""), owner: str = Que
             if old["type"] == "file":
                 prior = old["size"]
         except StorageNotFound:
+            prior = 0
+        if on_conflict not in ("overwrite", "rename"):
+            Path(tmp.name).unlink(missing_ok=True)
+            raise err(400, "bad_on_conflict", "on_conflict 只能是 overwrite 或 rename")
+        # 前端弹窗给用户看的是「旧文件多大」，那就必须按这个前提写：期间被改过就 409，
+        # 不静默覆盖别人的新版本（D34）
+        if prior and expected_old_size >= 0 and prior != expected_old_size:
+            Path(tmp.name).unlink(missing_ok=True)
+            with _db_lock, get_db() as db:
+                audit(db, user["id"], "upload", target_display, size, ip, "denied", "覆盖前文件已变化")
+            raise err(409, "conflict",
+                      f"同名文件已被改动（原 {expected_old_size} 字节，现在 {prior} 字节），请重试")
+        if on_conflict == "rename" and prior:
+            # 「两者都保留」：同目录里换个不冲突的名字，归属仍由目录决定
+            filename = _dedup_name(full, filename)
             prior = 0
         if used - prior + size > quota:
             # 往共享目录里传也算自己的用量：配额始终跟着上传者走（D27）

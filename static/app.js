@@ -940,15 +940,55 @@ function pumpUploads() {
   uploading = true;
   uploadOne(next).finally(() => { uploading = false; pumpUploads(); });
 }
-function uploadOne({ file, item, targetDir, owner }) {
+/* 同名文件先问一声（Win11 式三选一）：替换 / 两者都保留 / 跳过 */
+function askConflict(name, old) {
   return new Promise((resolve) => {
-    const fill = $(".u-fill", item);
-    const state = $(".u-state", item);
-    state.textContent = "上传中…";
+    const pick = (v) => { $("#modal-overlay").classList.add("hidden"); resolve(v); };
+    openModal("已经有同名文件", `
+      <p class="modal-text">「${esc(name)}」在这个目录里已存在（${fmtBytes(old.size)}，${fmtDate(old.mtime)}）。</p>
+      <div class="conflict-actions">
+        <button type="button" class="btn-primary" data-v="overwrite">替换</button>
+        <button type="button" data-v="rename">两者都保留</button>
+        <button type="button" data-v="skip">跳过</button>
+      </div>`, "替换", async () => pick("overwrite"));
+    $$("#modal-body .conflict-actions button").forEach((b) =>
+      b.addEventListener("click", () => pick(b.dataset.v)));
+    // 点取消 / 点遮罩 也当「跳过」，否则上传队列会卡在这个 Promise 上
+    $("#modal-cancel").addEventListener("click", () => resolve("skip"), { once: true });
+    $("#modal-overlay").addEventListener("click",
+      (e) => { if (e.target === e.currentTarget) resolve("skip"); }, { once: true });
+  });
+}
+async function uploadOne({ file, item, targetDir, owner }) {
+  const fill = $(".u-fill", item);
+  const state = $(".u-state", item);
+  state.textContent = "上传中…";
+  /* 同名先问。只在个人空间探：共享目录的服务端落点是 <目录>/<我>/，前端不复制那套规则（D34） */
+  let onConflict = "overwrite";
+  let expected = -1;
+  if (!owner) {
+    try {
+      const old = await api("/api/files/detail?path="
+        + encodeURIComponent("/" + ((targetDir ? targetDir + "/" : "") + file.name)));
+      if (old && old.type === "file") {
+        const choice = await askConflict(file.name, old);
+        if (choice === "skip") {
+          state.textContent = "已跳过";
+          uploadsPendingRefresh = true;
+          return;
+        }
+        onConflict = choice;
+        if (choice === "overwrite") expected = old.size;
+      }
+    } catch (e) { /* 404 = 没有同名文件，照常上传 */ }
+  }
+  await new Promise((resolve) => {
     const xhr = new XMLHttpRequest();
     // 目标目录用入队时定死的 targetDir/owner，不读实时 curPath，避免上传途中导航传错地方
     xhr.open("POST", "/api/files/upload?path=" + encodeURIComponent(targetDir ? "/" + targetDir : "")
-      + (owner ? "&owner=" + encodeURIComponent(owner) : ""));
+      + (owner ? "&owner=" + encodeURIComponent(owner) : "")
+      + "&on_conflict=" + onConflict
+      + (expected >= 0 ? "&expected_old_size=" + expected : ""));
     xhr.setRequestHeader("Authorization", "Bearer " + token);
     xhr.upload.addEventListener("progress", (e) => {
       if (e.lengthComputable) {

@@ -185,6 +185,31 @@ def run() -> int:
             wait_row(boss, "hi.txt")
             check("重命名后旧名消失新名出现", row(boss, "hello.txt").count() == 0)
 
+            # ---- 4.2 同名上传先问一声（替换 / 两者都保留 / 跳过）----
+            dup = work_dir / "hi.txt"
+            dup.write_text("second version, longer\n", encoding="utf-8")
+            boss.set_input_files("#file-input", str(dup))
+            boss.wait_for_selector(".conflict-actions", timeout=20000)
+            check("同名上传弹出三选一", "两者都保留" in boss.inner_text(".conflict-actions"),
+                  boss.inner_text(".conflict-actions"))
+            boss.click('.conflict-actions button[data-v="rename"]')
+            wait_row(boss, "hi (2).txt")
+            check("两者都保留生成 hi (2).txt，原名仍在",
+                  row(boss, "hi.txt").count() == 1 and row(boss, "hi (2).txt").count() == 1)
+            boss.set_input_files("#file-input", str(dup))
+            boss.wait_for_selector(".conflict-actions", timeout=20000)
+            boss.click('.conflict-actions button[data-v="overwrite"]')
+            boss.wait_for_selector("#modal-overlay", state="hidden", timeout=20000)
+            boss.wait_for_timeout(1200)
+            check("选替换后没有多出新行",
+                  row(boss, "hi.txt").count() == 1 and row(boss, "hi (3).txt").count() == 0)
+            boss.set_input_files("#file-input", str(dup))
+            boss.wait_for_selector(".conflict-actions", timeout=20000)
+            boss.click('.conflict-actions button[data-v="skip"]')
+            wait_row(boss, "hi.txt")
+            check("选跳过不产生新文件",
+                  boss.locator('#file-list .row-name:text-is("hi (3).txt")').count() == 0)
+
             # ---- 4.5 批量操作（行首勾选 → 底部操作条）----
             fa = work_dir / "a.txt"
             fb = work_dir / "b.txt"

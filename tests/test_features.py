@@ -1,4 +1,4 @@
-﻿"""子用户网盘 · 新功能测试（F1 加密文件夹 / F2 测速 / F3 预览与 Range / F4 管理员提升与取消）。
+"""子用户网盘 · 新功能测试（F1 加密文件夹 / F2 测速 / F3 预览与 Range / F4 管理员提升与取消）。
 
 在 stub 模式下运行，不接触真实 Seafile。原 23 项冒烟在 test_smoke.py，保持独立。
 F1 部分把测试自身当作第二个 SDV1 客户端实现（Python cryptography），
@@ -431,6 +431,37 @@ def f4_admin_promote(c, admin_token, stub_lib):
           and users_by_name(admin_token)["dave"]["is_admin"] is True, r.text)
 
 
+def f5_overwrite_dialog(c, admin_token, stub_lib):
+    """F5 覆盖写的三选一（D34）：旧大小校验、两者都保留换名、非法参数 400。"""
+    r = c.post("/api/files/mkdir", headers=auth(admin_token), json={"path": "", "name": "覆盖"})
+    assert r.status_code == 200, r.text
+    old = b"v1-aaaa"
+    upload_bytes(c, admin_token, "/覆盖", "note.txt", old)
+    r = c.post("/api/files/upload", params={"path": "/覆盖", "expected_old_size": len(old)},
+               headers=auth(admin_token),
+               files={"file": ("note.txt", b"v2-bb", "application/octet-stream")})
+    check("F5 旧大小相符时按覆盖写", r.status_code == 200 and r.json()["replaced"] is True, r.text)
+    check("F5 覆盖后内容是新版本", download_bytes(c, admin_token, "/覆盖/note.txt") == b"v2-bb")
+    r = c.post("/api/files/upload", params={"path": "/覆盖", "expected_old_size": 999},
+               headers=auth(admin_token),
+               files={"file": ("note.txt", b"stale", "application/octet-stream")})
+    check("F5 覆盖前文件已变化时 409", r.status_code == 409, r.text)
+    check("F5 409 时没有落盘", download_bytes(c, admin_token, "/覆盖/note.txt") == b"v2-bb")
+    r = c.post("/api/files/upload", params={"path": "/覆盖", "on_conflict": "rename"},
+               headers=auth(admin_token),
+               files={"file": ("note.txt", b"v3-cc", "application/octet-stream")})
+    names = [e["name"] for e in
+             c.get("/api/files/list", params={"path": "/覆盖"}, headers=auth(admin_token)).json()["entries"]]
+    check("F5 两者都保留生成 note (2).txt",
+          r.status_code == 200 and r.json()["name"] == "note (2).txt", f"{r.text} / {names}")
+    check("F5 原名内容未被改动", download_bytes(c, admin_token, "/覆盖/note.txt") == b"v2-bb")
+    check("F5 新名字内容正确", download_bytes(c, admin_token, "/覆盖/note (2).txt") == b"v3-cc")
+    r = c.post("/api/files/upload", params={"path": "/覆盖", "on_conflict": "whatever"},
+               headers=auth(admin_token),
+               files={"file": ("x.bin", b"x", "application/octet-stream")})
+    check("F5 非法 on_conflict 被 400", r.status_code == 400, r.text)
+
+
 def main():
     c = TestClient(app, raise_server_exceptions=False)
     stub_lib = Path(tmp) / "stub_storage" / "subdrive"
@@ -443,6 +474,7 @@ def main():
     f2_speedtest(c, admin_token, stub_lib)
     f3_previews(c, admin_token, stub_lib)
     f4_admin_promote(c, admin_token, stub_lib)
+    f5_overwrite_dialog(c, admin_token, stub_lib)
 
     print(f"\n全部 {len(PASSED)} 项功能测试通过 ✅")
 

@@ -613,7 +613,7 @@ def files_mkdir(data: MkdirIn, request: Request):
     user = require_user(request)
     name = validate_name(data.name)
     rel, full = _user_full(user, data.path)
-    target = f"{full}/{name}"
+    target = full_path(user["username"], f"{rel}/{name}" if rel else name)
     storage.mkdir(target)
     with _db_lock, get_db() as db:
         audit(db, user["id"], "mkdir", "/" + (f"{rel}/{name}" if rel else name),

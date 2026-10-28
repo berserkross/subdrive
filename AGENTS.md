@@ -104,11 +104,15 @@ DATA_DIR=./data SEAFILE_MODE=stub .venv/bin/python -m uvicorn app.main:app --hos
 
 - **路径**：用户输入路径一律先过 `app/paths.py`——`_user_full(user, raw)` 里 `normalize_rel_path`
   + `full_path`，名字走 `validate_name`，用户名走 `validate_username`。**不许在别处自己
-  `split` / `join` / `os.path` 拼路径**（那是第二实现，必然漏边界）。已知现存例外一处：
-  `app/main.py:616` 的 `f"{full}/{name}"`（`name` 先过 `validate_name`，当前不可利用，但别再学）。
-  `app/storage.py` 现在有形状体检 `_assert_full_path()`（绝对路径 + 无 `..`/反斜杠/控制字符/
-  尾随空格点），stub 与 live 都过；但它**不知道当前用户是谁，挡不住跨用户冒名**。用户隔离
-  真正的门只有 `_user_full`（`main.py:587-590`），新增路由必须自己走它。
+  `split` / `join` / `os.path` 拼路径**（那是第二实现，必然漏边界）。原来唯一的例外
+  `app/main.py:616` 的 `f"{full}/{name}"` **已改走 `full_path()`**，现在没有例外。
+  `app/storage.py` 有形状体检 `_assert_full_path()`（绝对路径 + 首段须是合法用户名形态 +
+  无 `..`/反斜杠/控制字符/尾随空格点），stub 与 live 都过；但它**不知道当前用户是谁，挡不住
+  跨用户冒名**。路径前缀断言用**真 `raise`**，不许退回 `assert`——`assert` 在 `python -O`
+  下会被整条剥离，那道检查会静默消失。用户隔离真正的门仍是 `_user_full`（`main.py:587-590`），
+  新增路由必须自己走它。
+- **同名覆盖**：`storage.upload()` 目前仍静默截断同名文件。已定策略见 `DECISIONS.md` D26
+  （按上传者分目录），**尚未实施**——别以为它已经修好了。
 - **错误形状**：业务错误用 `err(status, code, message)` 抛 `HTTPException`，响应是
   `{"detail": {"error": <snake_case 英文 code>, "message": <中文，给用户看>}}`；存储层与路径异常
   由 app 级 `exception_handler` 返回**扁平** `{"error": ..., "message": ...}`。前端两种都读

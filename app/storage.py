@@ -15,6 +15,8 @@ import shutil
 import time
 from pathlib import Path, PurePosixPath
 
+from .paths import USERNAME_RE
+
 CHUNK = 1024 * 1024
 
 
@@ -49,15 +51,17 @@ def _mtime_iso(ts: float) -> str:
 def _assert_full_path(full: str) -> None:
     """完整 Seafile 路径的形状体检，stub 与 live 共用。
 
-    存储层不知道「当前用户是谁」，所以这里只挡形状非法；用户隔离仍由调用方
-    `app.paths.full_path()` 负责。但这层必须存在：live 侧原来零校验，
-    `../bob/a.jpg` 会被原样拼进请求 URL 发给真实 Seafile。
+    存储层不知道「当前用户是谁」，所以这里只挡「形状非法」与「首段不是合法用户名
+    形态」；真正的用户隔离仍由 `app.paths.full_path()` 负责。但这层必须存在：live
+    侧原来零校验，`../bob/a.jpg` 会被原样拼进请求 URL 发给真实 Seafile。
     """
     if not isinstance(full, str) or not full.startswith("/"):
         raise StorageError("路径必须以 / 开头", code="path_rejected", status=403)
     segs = full.split("/")[1:]
     if not segs or not segs[0]:
         raise StorageError("路径缺少用户前缀", code="path_rejected", status=403)
+    if not USERNAME_RE.match(segs[0]):
+        raise StorageError("首段不是合法用户名", code="path_rejected", status=403)
     for seg in segs:
         if seg in ("", ".", "..") or seg != seg.rstrip(" ."):
             raise StorageError("非法路径", code="path_rejected", status=403)

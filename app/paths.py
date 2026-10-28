@@ -84,7 +84,8 @@ def full_path(username: str, rel: str) -> str:
         raise PathRejected("用户名非法")
     rel = normalize_rel_path(rel)
     full = f"/{username}" + (f"/{rel}" if rel else "")
-    assert full == f"/{username}" or full.startswith(f"/{username}/"), "prefix escape"
+    if full != f"/{username}" and not full.startswith(f"/{username}/"):
+        raise PathRejected("路径逃逸出用户前缀")
     return full
 
 

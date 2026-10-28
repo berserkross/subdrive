@@ -155,6 +155,20 @@ def main():
         assert r.status_code in (400, 403, 404), (p, r.status_code, r.text)
     check(f"路径穿越电池 {len(evil_strict) + len(evil_loose)} 例无一逃逸", True)
 
+    # 12b. 存储层形状门直调（不经 HTTP）：首段必须是合法用户名形态，且不许有空段
+    from app.storage import StorageError, _assert_full_path
+    bad_full = ["bob/a.jpg", "/Bob/a.jpg", "/b/a.jpg", "/alice/", "/alice/../b.jpg",
+                "/alice/a\\b.jpg"]
+    for p in bad_full:
+        try:
+            _assert_full_path(p)
+        except StorageError:
+            continue
+        raise AssertionError(f"存储层放过了非法完整路径: {p!r}")
+    for p in ["/alice", "/alice/a.jpg", "/alice/照片/2026"]:
+        _assert_full_path(p)
+    check(f"存储层形状门：{len(bad_full)} 例全拒、3 例合法路径放行", True)
+
     # 13. 建夹 → 子目录上传/下载 → 改名 → 移动
     r = c.post("/api/files/mkdir", headers=auth(alice_token), json={"path": "", "name": "照片"})
     assert r.status_code == 200, r.text

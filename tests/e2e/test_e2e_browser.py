@@ -272,6 +272,18 @@ def run() -> int:
                  any(f["path"] == "docs" and f["is_mine"] for f in shared["folders"]),
                  str(shared))
 
+            # ---- 5b. 每目录上限（D35）：在「管理共享」里设成员上限 ----
+            row(boss, "docs").locator('button[title="管理共享"]').click()
+            boss.wait_for_selector("#share-max-members", timeout=10000)
+            boss.fill("#share-max-members", "1")
+            boss.click("#modal-ok")
+            boss.wait_for_selector('#shared-list .si-meta:has-text("/1")', timeout=15000)
+            check("共享卡显示成员上限与用量", "/1" in boss.inner_text("#shared-list"),
+                  boss.inner_text("#shared-list"))
+            shared = httpx.get(base + "/api/shared/list", headers=auth, timeout=10).json()
+            docs = [f for f in shared["folders"] if f["path"] == "docs"][0]
+            need("后端记下了成员上限", docs["max_members"] == 1, str(docs))
+
             # ---- 6. 第二个用户凭邀请码注册 ----
             invite = httpx.post(base + "/api/admin/invite-codes", headers=auth,
                                 json={"note": "e2e", "max_uses": 1}, timeout=10).json()

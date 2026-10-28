@@ -153,6 +153,12 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_grants_user ON shared_grants(user_id);
             """
         )
+        # 轻量迁移：共享文件夹的「每目录上限」两列（SQLite 没有 ADD COLUMN IF NOT EXISTS）
+        for col in ("max_bytes", "max_members"):
+            try:
+                db.execute(f"ALTER TABLE shared_folders ADD COLUMN {col} INTEGER NOT NULL DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass  # 已经有了
 
 
 # ------------------------------------------------------------------ 密码/令牌
@@ -476,10 +482,18 @@ class AdminFlagIn(BaseModel):
 class SharedCreateIn(BaseModel):
     path: str
     members: list[str] = []
+    max_bytes: int | None = None    # None/0 = 用全局默认
+    max_members: int | None = None
 
 
 class SharedMembersIn(BaseModel):
     members: list[str] = []
+
+
+class SharedLimitsIn(BaseModel):
+    """改每目录上限（D35）：留 None 的字段不动。"""
+    max_bytes: int | None = None
+    max_members: int | None = None
 
 
 # ------------------------------------------------------------------ auth 组
@@ -633,7 +647,50 @@ def change_password(data: ChangePasswordIn, request: Request):
 
 # ------------------------------------------------------------------ 共享文件夹
 
+# 共享文件夹的每目录上限（D35）：库里的 0 表示「用全局默认」；创建者可以往下调，
+# 但两者都不能超过这里的全局硬顶——上限是防事故的，不是可以无限抬的旋钮。
 MAX_SHARED_MEMBERS = 200
+SHARED_MAX_BYTES = int(os.environ.get("SUBDRIVE_SHARED_MAX_BYTES", 2 * 1024 ** 3))
+SHARED_MAX_MEMBERS = min(int(os.environ.get("SUBDRIVE_SHARED_MAX_MEMBERS", 20)), MAX_SHARED_MEMBERS)
+
+
+def _shared_limits(row) -> tuple:
+    """→ (容量上限, 成员上限)；库里 0 = 用全局默认。"""
+    return (row["max_bytes"] or SHARED_MAX_BYTES, row["max_members"] or SHARED_MAX_MEMBERS)
+
+
+def _clamp_limits(max_bytes, max_members) -> tuple:
+    """把请求里的上限夹进 [1, 全局硬顶]；超硬顶直接拒，不静默截断。"""
+    mb = SHARED_MAX_BYTES if max_bytes is None else int(max_bytes)
+    mm = SHARED_MAX_MEMBERS if max_members is None else int(max_members)
+    if mb < 1 or mm < 1:
+        raise err(400, "bad_limit", "上限必须 ≥ 1")
+    if mb > SHARED_MAX_BYTES:
+        raise err(400, "bad_limit", f"容量上限最大 {SHARED_MAX_BYTES} 字节")
+    if mm > SHARED_MAX_MEMBERS:
+        raise err(400, "bad_limit", f"成员上限最大 {SHARED_MAX_MEMBERS}")
+    return mb, mm
+
+
+def _shared_of(owner_username: str, rel: str):
+    """rel 落在哪个共享目录里（含它自己）；一层套一层时取最深的那层。"""
+    with _db_lock, get_db() as db:
+        rows = db.execute("SELECT * FROM shared_folders WHERE owner_username = ?",
+                          (owner_username,)).fetchall()
+    best = None
+    for r in rows:
+        base = r["rel_path"]
+        if rel == base or rel.startswith(base + "/"):
+            if best is None or len(base) > len(best["rel_path"]):
+                best = r
+    return best
+
+
+def _shared_usage(row) -> tuple:
+    try:
+        return storage.path_size(full_path(row["owner_username"], row["rel_path"]))
+    except StorageError:
+        return 0, 0
 
 
 def _share_roots_of(user_id: int) -> list:
@@ -708,12 +765,12 @@ def _folder_or_403(db, folder_id: int, user):
     row = db.execute("SELECT * FROM shared_folders WHERE id = ?", (folder_id,)).fetchone()
     if not row:
         raise err(404, "not_found", "共享文件夹不存在")
-    if row["owner_username"] != user["username"]:
-        raise err(403, "forbidden", "只有创建者能修改共享设置")
+    if row["owner_username"] != user["username"] and not user["is_admin"]:
+        raise err(403, "forbidden", "只有创建者或管理员能修改共享设置")
     return row
 
 
-def _resolve_members(db, usernames, owner_username: str) -> list:
+def _resolve_members(db, usernames, owner_username: str, limit=None) -> list:
     ids, seen = [], set()
     for name in usernames or []:
         name = (name or "").strip()
@@ -726,8 +783,9 @@ def _resolve_members(db, usernames, owner_username: str) -> list:
         if row["status"] != "active":
             raise err(400, "bad_member", f"成员已被禁用：{name}")
         ids.append(row["id"])
-    if len(ids) > MAX_SHARED_MEMBERS:
-        raise err(400, "too_many_members", f"成员上限 {MAX_SHARED_MEMBERS}")
+    cap = MAX_SHARED_MEMBERS if limit is None else min(int(limit), MAX_SHARED_MEMBERS)
+    if len(ids) > cap:
+        raise err(400, "too_many_members", f"成员上限 {cap}")
     return ids
 
 
@@ -912,6 +970,19 @@ async def files_upload(request: Request, path: str = Query(""), owner: str = Que
             with _db_lock, get_db() as db:
                 audit(db, user["id"], "upload", target_display, size, ip, "denied", "超出配额")
             raise err(413, "quota_exceeded", "超出个人配额")
+
+        # 共享目录的每目录容量上限（D35）：算的是整个目录（所有成员的格子）的占用
+        share = _shared_of(dest_owner, rel)
+        if share is not None:
+            cap_bytes, _ = _shared_limits(share)
+            cur_bytes, _ = _shared_usage(share)
+            if cur_bytes - prior + size > cap_bytes:
+                Path(tmp.name).unlink(missing_ok=True)
+                with _db_lock, get_db() as db:
+                    audit(db, user["id"], "upload", target_display, size, ip, "denied",
+                          "共享目录已满")
+                raise err(413, "shared_full",
+                          f"共享目录容量上限 {cap_bytes} 字节，已用 {cur_bytes - prior}")
 
         if dest_owner != user["username"]:
             try:
@@ -1098,10 +1169,14 @@ def shared_create(data: SharedCreateIn, request: Request):
                          (user["id"], rel)).fetchone()
         if dup:
             raise err(409, "already_shared", "该文件夹已经共享过了")
-        ids = _resolve_members(db, data.members, user["username"])
+        mb, mm = _clamp_limits(data.max_bytes, data.max_members)
+        ids = _resolve_members(db, data.members, user["username"], mm)
+        if len(ids) > mm:
+            raise err(400, "too_many_members", f"成员上限 {mm}")
         cur = db.execute(
-            "INSERT INTO shared_folders (owner_id, owner_username, rel_path, created_at)"
-            " VALUES (?,?,?,?)", (user["id"], user["username"], rel, now_iso()))
+            "INSERT INTO shared_folders (owner_id, owner_username, rel_path, created_at,"
+            " max_bytes, max_members) VALUES (?,?,?,?,?,?)",
+            (user["id"], user["username"], rel, now_iso(), mb, mm))
         fid = cur.lastrowid
         _set_members(db, fid, ids)
         audit(db, user["id"], "share", "/" + rel, None, client_ip(request), "ok",
@@ -1140,6 +1215,8 @@ def shared_list(request: Request):
             "members": members[row["id"]],
             "bytes": size,
             "files": count,
+            "max_bytes": _shared_limits(row)[0],
+            "max_members": _shared_limits(row)[1],
         }
         if is_mine:
             # 只有创建者看得到「每人占了多少」，这也是删文件夹时回冲的依据
@@ -1156,12 +1233,34 @@ def shared_set_members(folder_id: int, data: SharedMembersIn, request: Request):
     user = require_user(request)
     with _db_lock, get_db() as db:
         row = _folder_or_403(db, folder_id, user)
-        ids = _resolve_members(db, data.members, row["owner_username"])
+        _, mm = _shared_limits(row)
+        ids = _resolve_members(db, data.members, row["owner_username"], mm)
         _set_members(db, folder_id, ids)
         names = _members_of(db, folder_id)
         audit(db, user["id"], "share_members", "/" + row["rel_path"], None,
               client_ip(request), "ok", f"members={len(ids)}")
     return {"ok": True, "id": folder_id, "members": names}
+
+
+@app.patch("/api/shared/{folder_id}")
+def shared_limits(folder_id: int, data: SharedLimitsIn, request: Request):
+    """改每目录上限（D35）：创建者或管理员，且不能把已有成员挤出上限。"""
+    user = require_user(request)
+    with _db_lock, get_db() as db:
+        row = _folder_or_403(db, folder_id, user)
+        cur_mb, cur_mm = _shared_limits(row)
+        mb, mm = _clamp_limits(
+            cur_mb if data.max_bytes is None else data.max_bytes,
+            cur_mm if data.max_members is None else data.max_members)
+        have = db.execute("SELECT COUNT(*) AS c FROM shared_grants WHERE folder_id = ?",
+                          (folder_id,)).fetchone()["c"]
+        if have > mm:
+            raise err(400, "too_many_members", f"现有成员 {have} 人，超过要设的上限 {mm}")
+        db.execute("UPDATE shared_folders SET max_bytes = ?, max_members = ? WHERE id = ?",
+                   (mb, mm, folder_id))
+        audit(db, user["id"], "share_limits", "/" + row["rel_path"], None,
+              client_ip(request), "ok", f"bytes={mb} members={mm}")
+    return {"ok": True, "id": folder_id, "max_bytes": mb, "max_members": mm}
 
 
 @app.delete("/api/shared/{folder_id}")

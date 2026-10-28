@@ -250,9 +250,12 @@ async function refreshShared() {
   for (const f of folders) {
     const el = document.createElement("div");
     el.className = "shared-item" + (f.is_mine ? " mine" : "");
+    const capBytes = f.max_bytes ? fmtBytes(f.max_bytes) : "不限";
+    const capMem = f.max_members ? f.max_members : "不限";
     el.innerHTML = `<span>🔗 ${esc(f.path)}</span>`
       + `<span class="si-owner">${f.is_mine ? "我创建" : esc(f.owner)}</span>`
-      + `<span class="si-meta">${f.members.length ? f.members.length + " 人" : "全员"}</span>`;
+      + `<span class="si-meta">${f.members.length ? f.members.length + " 人" : "全员"}`
+      + `/${capMem} · ${fmtBytes(f.bytes || 0)}/${capBytes}</span>`;
     el.title = f.is_mine ? "点进入；在目录里点「管理共享」改名单" : `${f.owner} 分享给你`;
     el.addEventListener("click", () => enterShared(f));
     list.appendChild(el);
@@ -291,7 +294,13 @@ async function openShareDialog(path, grant) {
   const body = isMine
     ? `<p class="modal-hint">「${esc(path)}」已共享。不填成员＝所有注册成员可见；成员可查看、下载、上传（各自配额）。</p>
        <label class="field-label">授权成员用户名（每行一个，留空＝全员）</label>
-       <textarea id="share-members" class="field-input" rows="5">${esc(members.join("\n"))}</textarea>`
+       <textarea id="share-members" class="field-input" rows="5">${esc(members.join("\n"))}</textarea>
+       <label class="field-label">容量上限（MB，留空＝默认）</label>
+       <input id="share-max-bytes" class="field-input" type="number" min="1"
+              value="${mineOne && mineOne.max_bytes ? Math.round(mineOne.max_bytes / 1048576) : ""}">
+       <label class="field-label">成员上限（留空＝默认）</label>
+       <input id="share-max-members" class="field-input" type="number" min="1"
+              value="${mineOne && mineOne.max_members ? mineOne.max_members : ""}">`
     : `<p class="modal-hint">把「${esc(path)}」变成共享文件夹：名单内成员可查看、下载、上传，上传内容存进各自用户名子文件夹；配额算上传者自己。创建后即公开，可随时改名单或取消共享。</p>
        <label class="field-label">授权成员用户名（每行一个，留空＝全员）</label>
        <textarea id="share-members" class="field-input" rows="5" placeholder="alice
@@ -303,6 +312,15 @@ bob"></textarea>`;
         await api("/api/shared/" + mineOne.id + "/members", {
           method: "POST", body: { members: raw },
         });
+        // 上限只在填了数的时候才改，留空＝保持库里现状（不动默认值）
+        const mbRaw = ($("#share-max-bytes").value || "").trim();
+        const mmRaw = ($("#share-max-members").value || "").trim();
+        const limits = {};
+        if (mbRaw) limits.max_bytes = Math.max(1, Math.round(Number(mbRaw) * 1048576));
+        if (mmRaw) limits.max_members = Math.max(1, Math.floor(Number(mmRaw)));
+        if (Object.keys(limits).length) {
+          await api("/api/shared/" + mineOne.id, { method: "PATCH", body: limits });
+        }
         toast("成员名单已更新");
       } else {
         await api("/api/shared/create", {

@@ -296,6 +296,47 @@ def main():
           str(actions))
     check("S7 审计里没有 denied 的共享操作", all(r["result"] == "ok" for r in rows), str(rows))
 
+    print("\n— S8 每目录上限：容量 / 成员数（D35）—")
+    r = c.post("/api/shared/create", headers=auth(tok_a),
+               json={"path": "公共资料/2026", "members": [], "max_bytes": 4096,
+                     "max_members": 1})
+    check("S8 创建时可以带自定义上限", r.status_code == 200, r.text)
+    sid = r.json()["id"]
+    mine = [f for f in c.get("/api/shared/list", headers=auth(tok_a)).json()["folders"]
+            if f["id"] == sid][0]
+    check("S8 列表回显两个上限", mine["max_bytes"] == 4096 and mine["max_members"] == 1,
+          str(mine))
+    r = c.post("/api/files/upload", params={"path": "公共资料/2026", "owner": "alice"},
+               headers=auth(tok_b),
+               files={"file": ("big.bin", b"x" * 8192, "application/octet-stream")})
+    check("S8 超出共享目录容量被拒（413 shared_full）",
+          r.status_code == 413 and r.json()["detail"]["error"] == "shared_full", r.text)
+    upload(c, tok_b, "公共资料/2026", "small.bin", b"y" * 100, owner="alice")
+    check("S8 容量之内的上传照常成功", True)
+    r = c.post(f"/api/shared/{sid}/members", headers=auth(tok_a),
+               json={"members": ["bob", "carol"]})
+    check("S8 点名超过成员上限被拒（400 too_many_members）", r.status_code == 400, r.text)
+    r = c.post(f"/api/shared/{sid}/members", headers=auth(tok_a), json={"members": ["bob"]})
+    check("S8 不超过上限的名单照常生效",
+          r.status_code == 200 and r.json()["members"] == ["bob"], r.text)
+    r = c.patch(f"/api/shared/{sid}", headers=auth(tok_a), json={"max_members": 9999})
+    check("S8 抬不过全局硬顶（400 bad_limit）", r.status_code == 400, r.text)
+    r = c.patch(f"/api/shared/{sid}", headers=auth(tok_a), json={"max_bytes": 0})
+    check("S8 上限不许设成 0（400 bad_limit）", r.status_code == 400, r.text)
+    r = c.patch(f"/api/shared/{sid}", headers=auth(tok_b), json={"max_bytes": 1024})
+    check("S8 非创建者不能改上限（403）", r.status_code == 403, r.text)
+    r = c.patch(f"/api/shared/{sid}", headers=auth(tok_a), json={"max_bytes": 1 << 20})
+    check("S8 创建者能把容量上限调大",
+          r.status_code == 200 and r.json()["max_bytes"] == 1 << 20, r.text)
+    upload(c, tok_b, "公共资料/2026", "ok.bin", b"z" * 8192, owner="alice")
+    check("S8 调大之后大一点的文件能进", True)
+    r = c.patch(f"/api/shared/{sid}", headers=auth(boss), json={"max_members": 2})
+    check("S8 管理员能改别人的共享上限",
+          r.status_code == 200 and r.json()["max_members"] == 2, r.text)
+    r = c.get("/api/shared/list", headers=auth(tok_b)).json()["folders"]
+    check("S8 被授权者也能看到上限", any(f["id"] == sid and f["max_members"] == 2 for f in r),
+          str(r))
+
     print(f"\n全部 {len(PASSED)} 项共享文件夹测试通过 ✅")
 
 

@@ -1,4 +1,4 @@
-﻿# AGENTS.md
+# AGENTS.md
 
 给在本仓库里工作的 AI agent（含 Codex 云端沙箱）的说明。人类读者请看 `README.md`。
 本文件每轮对话都会被重复投喂：只写「不看代码就会做错」的事实，别写散文。
@@ -16,7 +16,7 @@ SubDrive —— FastAPI 后端 + 原生 JS 单页前端的多用户网盘。文�
 | `app/storage.py` | Seafile 适配层，`stub` / `live` 双实现；`StorageError` 家族自带 `code` / `status` |
 | `static/` | 前端（`index.html` / `style.css` / `app.js` / `vault.js` / `uploadplan.js`）+ 品牌二进制 `logo.png` / `favicon.png` |
 | `tests/test_smoke.py` | 冒烟测试 27 项 |
-| `tests/test_features.py` | 功能测试 43 项（F1 加密文件夹 / F2 测速 / F3 预览与 Range / F4 管理员提升） |
+| `tests/test_features.py` | 功能测试 51 项（F1 加密文件夹 / F2 测速 / F3 预览与 Range / F4 管理员提升） |
 | `tests/test_storage_live.py` | `LiveStorage` 请求级回归 15 项（`httpx.MockTransport`，不联网） |
 | `tests/test_crypto.mjs` | JS 侧 SDV1 加解密 10 项，与 Python/Dart 共用 `testdata/crypto_vector.json` |
 | `tests/test_uploadplan.mjs` | 整文件夹上传的目录计划（`planFolderUpload`）13 项，纯逻辑 |
@@ -90,12 +90,12 @@ DATA_DIR=./data SEAFILE_MODE=stub .venv/bin/python -m uvicorn app.main:app --hos
 | 命令 | 项数 | 覆盖范围 |
 |---|---|---|
 | `.\.venv\Scripts\python.exe tests/test_smoke.py` | 27 | 邀请码注册（无效/过期/撤销/复用）、建夹投影、登录与会话、路径穿越电池 17 例、跨用户隔离、上传→列表→下载字节一致、配额拦截与删除释放、改密码、禁用/启用、登录限速、用量校准、文件详情 |
-| `.\.venv\Scripts\python.exe tests/test_features.py` | 43 | F1 加密文件夹 10（后端无明文名/明文内容、往返字节一致、错密码被拒、blob 大小=明文+33、密文计配额）；F2 测速 6（需登录、字节数精确、不计配额不落盘、并发 409、锁释放）；F3 预览与 Range 12（类型与 inline、Markdown 以纯文本下发、跨用户被拦、206 闭区间/后缀段/开放段、越界 416、无 Range 回退 200）；F4 管理员 15（`owner_protected` / `owner_required`、被提升者可用会话、审计、404） |
+| `.\.venv\Scripts\python.exe tests/test_features.py` | 51 | F1 加密文件夹 10（后端无明文名/明文内容、往返字节一致、错密码被拒、blob 大小=明文+33、密文计配额）；F2 测速 6（需登录、字节数精确、不计配额不落盘、并发 409、锁释放）；F3 预览与 Range 12（类型与 inline、Markdown 以纯文本下发、跨用户被拦、206 闭区间/后缀段/开放段、越界 416、无 Range 回退 200）；F4 管理员 15（`owner_protected` / `owner_required`、被提升者可用会话、审计、404） |
 | `.\.venv\Scripts\python.exe tests/test_storage_live.py` | 15 | `LiveStorage` 的 HTTP 形状：删除必须是 `HTTP DELETE`、`p` 参数百分号编码、下载地址 `200+JSON 字符串` 与 `302+Location` 两种形式、Range 分片、全程无 POST、无未命中路由 |
-| `.\.venv\Scripts\python.exe tests/test_shared.py` | 56 | 共享文件夹（D27–D32）：创建/重复 409/成员不存在 400/非管理员创建 403、被授权者能列能下、未授权者与上级目录 403、往共享目录上传落到 `<目录>/<自己用户名>/`、建夹与上传同一条落点规则（含在共享根建夹）、自己那一格子目录里上传/建夹不再多套一层用户名、配额记上传者且创建者不变、覆盖写只记增量、只能删自己传的、成员可在自己那一格里改名/移动/删除且那一格本身禁止 rename/move、共享目录（及其上级）禁止 rename/move/delete、名单留空＝全员（新注册的人也能进）、名单收窄后未点名者立刻 403、取消共享退回私有且内容仍在、审计含 share/share_members/unshare |
+| `.\.venv\Scripts\python.exe tests/test_shared.py` | 77 | 共享文件夹（D27–D32）：创建/重复 409/成员不存在 400/非管理员创建 403、被授权者能列能下、未授权者与上级目录 403、往共享目录上传落到 `<目录>/<自己用户名>/`、建夹与上传同一条落点规则（含在共享根建夹）、自己那一格子目录里上传/建夹不再多套一层用户名、配额记上传者且创建者不变、覆盖写只记增量、只能删自己传的、成员可在自己那一格里改名/移动/删除且那一格本身禁止 rename/move、共享目录（及其上级）禁止 rename/move/delete、名单留空＝全员（新注册的人也能进）、名单收窄后未点名者立刻 403、取消共享退回私有且内容仍在、审计含 share/share_members/unshare |
 | `node tests/test_crypto.mjs` | 10 | SDV1 向量与自洽：派生密钥一致、文件/清单/校验块可解、错密码必失败、信封 33 字节开销与魔数版本、roundtrip、GCM 拒绝篡改 |
 | `node tests/test_uploadplan.mjs` | 13 | `planFolderUpload`：散文件、目录去重、父目录先于子目录、空目录进 `extraDirs`、路径清洗、垃圾输入跳过、`..` 段不被吞 |
-| `.\.venv\Scripts\python.exe tests/e2e/test_e2e_browser.py` | 26 | **浏览器端到端**（Playwright + 本机 Chrome/Edge，自起 stub 服务 + 临时 `DATA_DIR`）：注册首用户→建夹→上传→重命名→建共享→邀请码注册第二用户→看到并进入他人共享目录→在自己那一格上传（落点、配额归属、创建者配额不变）→删除→退出 |
+| `.\.venv\Scripts\python.exe tests/e2e/test_e2e_browser.py` | 59 | **浏览器端到端**（Playwright + 本机 Chrome/Edge，自起 stub 服务 + 临时 `DATA_DIR`）：注册首用户→建夹→上传→重命名→建共享→邀请码注册第二用户→看到并进入他人共享目录→在自己那一格上传（落点、配额归属、创建者配额不变）→删除→退出 |
 
 改动 SDV1 格式时才需要跑生成器：`.\.venv\Scripts\python.exe tools\gen_vector.py`（会重写
 `testdata/crypto_vector.json`，跑完必须让三端测试重新全绿）。
@@ -215,11 +215,12 @@ DATA_DIR=./data SEAFILE_MODE=stub .venv/bin/python -m uvicorn app.main:app --hos
 ```powershell
 $env:PYTHONIOENCODING="utf-8"
 .\.venv\Scripts\python.exe tests/test_smoke.py         # 27 项，exit 0
-.\.venv\Scripts\python.exe tests/test_features.py      # 43 项，exit 0
-.\.venv\Scripts\python.exe tests/test_shared.py        # 54 项，exit 0
+.\.venv\Scripts\python.exe tests/test_features.py      # 51 项，exit 0
+.\.venv\Scripts\python.exe tests/test_shared.py        # 77 项，exit 0
 .\.venv\Scripts\python.exe tests/test_storage_live.py  # 15 项，exit 0
 node tests/test_crypto.mjs                             # 10 项，exit 0
 node tests/test_uploadplan.mjs                         # 13 项，exit 0
+.\.venv\Scripts\python.exe tests/e2e/test_e2e_browser.py # 59 项，exit 0（要本机 Chrome）
 ```
 
 - 六条全 exit 0 且项数对得上才算通过；没有 CI，这就是唯一门禁。

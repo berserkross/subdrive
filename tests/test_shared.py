@@ -337,6 +337,34 @@ def main():
     check("S8 被授权者也能看到上限", any(f["id"] == sid and f["max_members"] == 2 for f in r),
           str(r))
 
+    print("\n— S9 昵称：改一次全局生效，清空回落用户名 —")
+    r = c.post("/api/me/nickname", headers=auth(tok_b), json={"nickname": "小明同学"})
+    check("S9 改昵称成功且立刻回显", r.status_code == 200
+          and r.json()["nickname"] == "小明同学", r.text)
+    check("S9 登录名不跟着变（username 仍是 bob）", r.json()["username"] == "bob", r.text)
+    r = c.get("/api/users/directory", headers=auth(boss))
+    check("S9 成员目录里也是新昵称",
+          r.status_code == 200
+          and any(u["username"] == "bob" and u["nickname"] == "小明同学" for u in r.json()),
+          r.text)
+    check("S9 目录里带 disabled 标记（勾选列表要用）",
+          all("disabled" in u for u in r.json()), r.text)
+    r = c.get("/api/users/directory", headers=auth(tok_b))
+    check("S9 非管理员拉不到成员目录（403 admin_required）",
+          r.status_code == 403 and r.json()["detail"]["error"] == "admin_required", r.text)
+    r = c.get("/api/shared/list", headers=auth(tok_a)).json()["folders"]
+    sid_members = [x for x in r if x["id"] == sid][0]["member_details"]
+    check("S9 共享清单的成员明细带新昵称",
+          any(m["username"] == "bob" and m["nickname"] == "小明同学" for m in sid_members),
+          str(sid_members))
+    r = c.post("/api/me/nickname", headers=auth(tok_b), json={"nickname": ""})
+    check("S9 清空昵称后回落到用户名",
+          r.status_code == 200 and r.json()["nickname"] == "bob", r.text)
+    r = c.post("/api/me/nickname", headers=auth(tok_b),
+               json={"nickname": "  " + "长" * 60 + "  "})
+    check("S9 超长昵称被截到 40 字且去掉首尾空格",
+          r.status_code == 200 and len(r.json()["nickname"]) == 40
+          and not r.json()["nickname"].startswith(" "), str(len(r.json()["nickname"])))
     print(f"\n全部 {len(PASSED)} 项共享文件夹测试通过 ✅")
 
 

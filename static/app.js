@@ -238,7 +238,11 @@ async function enterDrive() {
 /* ---------------- 共享文件夹 ---------------- */
 async function refreshShared() {
   let folders = [];
-  try { folders = (await api("/api/shared/list")).folders || []; } catch { folders = []; }
+  try {
+    const res = await api("/api/shared/list");
+    folders = res.folders || [];
+    if (res.defaults) sharedDefaults = res.defaults;
+  } catch { folders = []; }
   sharedMine = folders.filter((f) => f.is_mine);
   const card = $("#shared-card");
   const list = $("#shared-list");
@@ -285,55 +289,44 @@ function revokeShare(folder) {
     }, true);
 }
 
+
 async function openShareDialog(path, grant) {
   let folders = [];
-  try { folders = (await api("/api/shared/list")).folders || []; } catch (e) { toast(e.message, true); return; }
+  try {
+    const res = await api("/api/shared/list");
+    folders = res.folders || [];
+    if (res.defaults) sharedDefaults = res.defaults;
+  } catch (e) { toast(e.message, true); return; }
   const mineOne = folders.find((f) => f.is_mine && f.path === path) || null;
   const isMine = !!(grant && grant.is_mine) || !!mineOne;
-  const members = (mineOne || grant || {}).members || [];
+  const memberNames = (mineOne || grant || {}).members || [];
+  await prepareShareUI();
   const body = isMine
-    ? `<p class="modal-hint">「${esc(path)}」已共享。不填成员＝所有注册成员可见；成员可查看、下载、上传（各自配额）。</p>
-       <label class="field-label">授权成员用户名（每行一个，留空＝全员）</label>
-       <textarea id="share-members" class="field-input" rows="5">${esc(members.join("\n"))}</textarea>
-       <label class="field-label">容量上限（MB，留空＝默认）</label>
-       <input id="share-max-bytes" class="field-input" type="number" min="1"
-              value="${mineOne && mineOne.max_bytes ? Math.round(mineOne.max_bytes / 1048576) : ""}">
-       <label class="field-label">成员上限（留空＝默认）</label>
-       <input id="share-max-members" class="field-input" type="number" min="1"
-              value="${mineOne && mineOne.max_members ? mineOne.max_members : ""}">`
-    : `<p class="modal-hint">把「${esc(path)}」变成共享文件夹：名单内成员可查看、下载、上传，上传内容存进各自用户名子文件夹；配额算上传者自己。创建后即公开，可随时改名单或取消共享。</p>
-       <label class="field-label">授权成员用户名（每行一个，留空＝全员）</label>
-       <textarea id="share-members" class="field-input" rows="5" placeholder="alice
-bob"></textarea>`;
-  openModal("共享文件夹", body, isMine ? "保存名单" : "创建共享", async () => {
-    const raw = ($("#share-members").value || "").split(/[\s,，、]+/).filter(Boolean);
-    try {
-      if (isMine) {
-        await api("/api/shared/" + mineOne.id + "/members", {
-          method: "POST", body: { members: raw },
-        });
-        // 上限只在填了数的时候才改，留空＝保持库里现状（不动默认值）
-        const mbRaw = ($("#share-max-bytes").value || "").trim();
-        const mmRaw = ($("#share-max-members").value || "").trim();
-        const limits = {};
-        if (mbRaw) limits.max_bytes = Math.max(1, Math.round(Number(mbRaw) * 1048576));
-        if (mmRaw) limits.max_members = Math.max(1, Math.floor(Number(mmRaw)));
-        if (Object.keys(limits).length) {
-          await api("/api/shared/" + mineOne.id, { method: "PATCH", body: limits });
-        }
-        toast("成员名单已更新");
-      } else {
-        await api("/api/shared/create", {
-          method: "POST", body: { path: "/" + path, members: raw },
-        });
-        toast("已创建共享文件夹");
+    ? '<p class="modal-hint">「' + esc(path) + '」已共享。成员可查看、下载、上传（各自配额）；改名单立即生效。</p>'
+      + '<label class="field-label">谁能看到</label>' + memberPickerHTML("s")
+      + '<label class="field-label">上限</label>' + limitsHTML("s", mineOne, "edit")
+    : '<p class="modal-hint">把「' + esc(path) + '」变成共享文件夹：名单内成员可查看、下载、上传，上传内容存进各自用户名子文件夹；配额算上传者自己。创建后即公开，可随时改名单或取消共享。</p>'
+      + '<label class="field-label">谁能看到</label>' + memberPickerHTML("s");
+  openModal("共享文件夹", body, isMine ? "保存" : "创建共享", async () => {
+    const members = readMemberPicker("s");
+    if (isMine) {
+      await api("/api/shared/" + mineOne.id + "/members", { method: "POST", body: { members } });
+      // 上限只在填了数的时候才改，留空＝保持库里现状（不动默认值）
+      const limits = readShareLimits("s");
+      if (Object.keys(limits).length) {
+        await api("/api/shared/" + mineOne.id, { method: "PATCH", body: limits });
       }
-      await refreshShared();
-      refreshList();
-    } catch (e) { toast(e.message, true); }
+      toast("成员名单已更新");
+    } else {
+      await api("/api/shared/create", { method: "POST", body: { path: "/" + path, members } });
+      toast("已创建共享文件夹");
+    }
+    await refreshShared();
+    refreshList();
   });
+  const ownerName = (mineOne || grant || {}).owner || "";
+  bindMemberPicker("s", dirCache || [], memberNames, ownerName);
 }
-
 async function refreshQuota() {
   try {
     quota = await api("/api/quota");
@@ -756,10 +749,164 @@ async function moveItem(rel, name) {
 
 /* 「＋ 新建」是唯一的建夹入口：普通文件夹（可当场设为公开共享）+ 加密文件夹
  * 合并进同一个弹窗，工具栏不再并排放「新建文件夹 / 加密文件夹 / 共享文件夹」。 */
-$("#btn-mkdir").addEventListener("click", () => {
+/* ---------------- 授权成员与共享上限（新建弹窗 / 管理共享共用） ----------------
+ * 为什么不给一个纯勾选列表：D32 定的是「授权表零行＝所有注册成员可见」。用户把勾
+ * 全取消，在数据上等于「对全员公开」，与直觉正好相反。所以先用 radio 把两种意图分开，
+ * 只有「仅指定成员」才出现勾选列表，且一个都没勾时直接拦住，不允许静默变成全员。
+ * 上限：容量跨度四个数量级，spinner 按不动，用「数字 + GB/MB」；成员数是 1–200，
+ * 数字框自带的上下箭头就够。默认值与硬顶从 /api/shared/list 的 defaults 来，不在前端
+ * 写死——写死的话改环境变量之后界面就在骗人。 */
+let dirCache = null;
+let sharedDefaults = { max_bytes: 0, max_members: 20, hard_members: 200 };
+
+async function loadDirectory(force) {
+  if (dirCache && !force) return dirCache;
+  dirCache = await api("/api/users/directory");
+  return dirCache;
+}
+
+async function prepareShareUI() {
+  try {
+    if (!sharedDefaults.max_bytes) {
+      const d = (await api("/api/shared/list")).defaults;
+      if (d) sharedDefaults = d;
+    }
+    await loadDirectory();
+  } catch (e) {
+    toast("成员名单加载失败：" + e.message, true);
+  }
+}
+
+function memberPickerHTML(p) {
+  return '<div class="member-picker">'
+    + '<div class="seg" id="' + p + '-mode">'
+    + '<button type="button" class="seg-btn selected" data-mode="all">全部成员</button>'
+    + '<button type="button" class="seg-btn" data-mode="some">仅指定成员</button>'
+    + '</div>'
+    + '<p class="field-note" id="' + p + '-note">所有注册成员都能看到、下载、上传（各自配额）。</p>'
+    + '<div id="' + p + '-some" class="hidden">'
+    + '<input id="' + p + '-search" class="field-input" type="text" placeholder="搜索昵称或用户名…">'
+    + '<div id="' + p + '-list" class="member-list"></div>'
+    + '<div class="member-foot"><span id="' + p + '-count">已选 0 人</span>'
+    + '<button type="button" class="btn-ghost" id="' + p + '-clear">清空勾选</button></div>'
+    + '</div></div>';
+}
+
+function bindMemberPicker(p, users, selected, ownerName) {
+  const sel = new Set(selected || []);
+  const known = new Set(users.map((u) => u.username));
+  const all = users.concat([...sel].filter((s) => !known.has(s))
+    .map((s) => ({ username: s, nickname: s, disabled: true })));
+  const box = $('#' + p + '-some');
+  const list = $('#' + p + '-list');
+  const note = $('#' + p + '-note');
+  const modeBtns = $$('#' + p + '-mode .seg-btn');
+  const count = () => { $('#' + p + '-count').textContent = '已选 ' + sel.size + ' 人'; };
+  const render = (kw) => {
+    const q = (kw || '').trim().toLowerCase();
+    const rows = all.filter((u) => !q
+      || u.nickname.toLowerCase().includes(q) || u.username.toLowerCase().includes(q));
+    list.innerHTML = '';
+    if (!rows.length) { list.innerHTML = '<p class="field-note">没有匹配的成员</p>'; return; }
+    for (const u of rows) {
+      const el = document.createElement('label');
+      el.className = 'member-item';
+      const isOwner = !!ownerName && u.username === ownerName;
+      el.innerHTML = '<input type="checkbox" value="' + esc(u.username) + '"'
+        + (isOwner ? ' disabled' : '') + '>'
+        + '<span class="mi-nick">' + esc(u.nickname) + '</span>'
+        + '<code class="mi-user">' + esc(u.username) + '</code>'
+        + (isOwner ? '<span class="mi-off">创建者本人，不用勾</span>'
+          : (u.disabled ? '<span class="mi-off">已禁用</span>' : ''));
+      const cb = el.querySelector('input');
+      cb.checked = !isOwner && sel.has(u.username);
+      if (!isOwner) {
+        cb.addEventListener('change', () => {
+          if (cb.checked) sel.add(u.username); else sel.delete(u.username);
+          count();
+        });
+      }
+      list.appendChild(el);
+    }
+  };
+  modeBtns.forEach((b) => b.addEventListener('click', () => {
+    modeBtns.forEach((x) => x.classList.toggle('selected', x === b));
+    const some = b.dataset.mode === 'some';
+    box.classList.toggle('hidden', !some);
+    note.textContent = some
+      ? '只有勾选的成员看得到；一个都不勾不会被当成「全员」。'
+      : '所有注册成员都能看到、下载、上传（各自配额）。';
+  }));
+  $('#' + p + '-search').addEventListener('input', (e) => render(e.target.value));
+  $('#' + p + '-clear').addEventListener('click', () => {
+    sel.clear();
+    $$('#' + p + '-list input').forEach((c) => { c.checked = false; });
+    count();
+  });
+  render('');
+  count();
+  if (sel.size) $('#' + p + '-mode .seg-btn[data-mode="some"]').click();
+}
+
+function readMemberPicker(p) {
+  const some = !$('#' + p + '-some').classList.contains('hidden');
+  if (!some) return [];
+  const picked = $$('#' + p + '-list input:checked').map((c) => c.value);
+  if (!picked.length) {
+    throw new Error('选了「仅指定成员」却一个都没勾：请勾选成员，或改选「全部成员」');
+  }
+  return picked;
+}
+
+function limitsHTML(p, cur, variant) {
+  const def = sharedDefaults;
+  const b = (cur && cur.max_bytes) || 0;
+  const useGb = !b || b % 1073741824 === 0;
+  const capVal = b ? (useGb ? b / 1073741824 : b / 1048576) : '';
+  const emptyNote = variant === 'edit' ? '留空＝保持当前值' : ('留空＝默认 ' + fmtBytes(def.max_bytes));
+  return '<div class="limit-row">'
+    + '<label class="field"><span>容量上限</span><div class="limit-inline">'
+    + '<input id="' + p + '-cap" class="field-input" type="number" min="0" step="0.1" value="' + capVal + '">'
+    + '<select id="' + p + '-unit" class="field-input">'
+    + '<option value="gb"' + (useGb ? ' selected' : '') + '>GB</option>'
+    + '<option value="mb"' + (useGb ? '' : ' selected') + '>MB</option>'
+    + '</select></div>'
+    + '<small class="field-note">' + emptyNote + '；这是整个共享目录的总量（所有人的文件加起来）</small></label>'
+    + '<label class="field"><span>成员上限</span>'
+    + '<input id="' + p + '-maxmem" class="field-input" type="number" min="0" step="1" max="' + def.hard_members + '" value="'
+    + (cur && cur.max_members ? cur.max_members : '') + '">'
+    + '<small class="field-note">' + emptyNote + '；默认 ' + def.max_members + ' 人，最多 ' + def.hard_members + ' 人</small></label>'
+    + '</div>';
+}
+
+function readShareLimits(p) {
+  const out = {};
+  const capEl = $('#' + p + '-cap');
+  if (capEl) {
+    const raw = (capEl.value || '').trim();
+    if (raw) {
+      const unit = $('#' + p + '-unit').value === 'gb' ? 1073741824 : 1048576;
+      const v = Math.round(Number(raw) * unit);
+      if (!Number.isFinite(v) || v < 1) throw new Error('容量上限必须大于 0');
+      out.max_bytes = v;
+    }
+  }
+  const mmEl = $('#' + p + '-maxmem');
+  if (mmEl) {
+    const raw = (mmEl.value || '').trim();
+    if (raw) {
+      const v = Math.floor(Number(raw));
+      if (!Number.isFinite(v) || v < 1) throw new Error('成员上限必须大于 0');
+      out.max_members = v;
+    }
+  }
+  return out;
+}
+$("#btn-mkdir").addEventListener("click", async () => {
   const canShare = !!(me && me.is_admin); // B1：只有管理员能开共享目录
   let kind = "plain";
   let vis = "private";
+  if (canShare) await prepareShareUI();
   openModal("新建文件夹", `
     <label class="field"><span>文件夹名称</span>
     <input id="m-name" type="text" placeholder="例如：照片"></label>
@@ -785,12 +932,10 @@ $("#btn-mkdir").addEventListener("click", () => {
         </div>
       </div>
       ${canShare ? `<div id="m-share-box" class="hidden">
-        <label class="field-label">授权成员用户名（每行一个，留空＝所有注册成员）</label>
-        <textarea id="m-members" class="field-input" rows="4" placeholder="alice&#10;bob"></textarea>
-        <label class="field-label">容量上限（MB，留空＝默认）</label>
-        <input id="m-maxbytes" class="field-input" type="number" min="1">
-        <label class="field-label">成员上限（留空＝默认）</label>
-        <input id="m-maxmembers" class="field-input" type="number" min="1">
+        <label class="field-label">谁能看到</label>
+        ${memberPickerHTML("m")}
+        <label class="field-label">上限</label>
+        ${limitsHTML("m", null, "create")}
       </div>` : ""}
     </div>`,
     "创建", async () => {
@@ -813,12 +958,9 @@ $("#btn-mkdir").addEventListener("click", () => {
       }
       const body = {
         path: "/" + ((curPath ? curPath + "/" : "") + name),
-        members: ($("#m-members").value || "").split(/[\s,，、]+/).filter(Boolean),
+        members: readMemberPicker("m"),
       };
-      const mbRaw = ($("#m-maxbytes").value || "").trim();
-      const mmRaw = ($("#m-maxmembers").value || "").trim();
-      if (mbRaw) body.max_bytes = Math.max(1, Math.round(Number(mbRaw) * 1048576));
-      if (mmRaw) body.max_members = Math.max(1, Math.floor(Number(mmRaw)));
+      Object.assign(body, readShareLimits("m"));
       try {
         await api("/api/shared/create", { method: "POST", body });
         toast("已创建公开共享文件夹");
@@ -844,6 +986,7 @@ $("#btn-mkdir").addEventListener("click", () => {
       vis = v;
       $("#m-share-box").classList.toggle("hidden", v !== "shared");
     });
+    bindMemberPicker("m", dirCache || [], [], me ? me.username : "");
   }
 });
 

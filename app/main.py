@@ -645,6 +645,26 @@ def change_password(data: ChangePasswordIn, request: Request):
     return {"ok": True}
 
 
+class NicknameIn(BaseModel):
+    nickname: str = ""
+
+
+@app.post("/api/me/nickname")
+def update_nickname(data: NicknameIn, request: Request):
+    """改自己的显示名（昵称）：可改、可重名、可清空，清空后回落到用户名。
+    username 是登录名与所有路径/授权前缀的锚点（D3/D27），永远不动它。"""
+    user = require_user(request)
+    nick = (data.nickname or "").strip()[:40]
+    with _db_lock, get_db() as db:
+        db.execute("UPDATE users SET nickname = ? WHERE id = ?", (nick, user["id"]))
+        row = db.execute("SELECT * FROM users WHERE id = ?", (user["id"],)).fetchone()
+        out = user_public(row)
+        out["quota_bytes"] = quota_of(db, row)
+        out["used_bytes"] = usage_of(db, row["id"])["used_bytes"]
+    out["storage_mode"] = STORAGE_MODE
+    return out
+
+
 # ------------------------------------------------------------------ 共享文件夹
 
 # 共享文件夹的每目录上限（D35）：库里的 0 表示「用全局默认」；创建者可以往下调，
@@ -759,6 +779,15 @@ def _members_of(db, folder_id: int) -> list:
     return [r["username"] for r in db.execute(
         "SELECT u.username FROM shared_grants g JOIN users u ON u.id = g.user_id"
         " WHERE g.folder_id = ? ORDER BY u.username", (folder_id,)).fetchall()]
+
+
+def _member_views_of(db, folder_id: int) -> list:
+    """成员名单的展示形态。授权表里只存用户名，勾选列表看不出「alice 是谁」。"""
+    return [{"username": r["username"], "nickname": r["nickname"] or r["username"]}
+            for r in db.execute(
+                "SELECT u.username, u.nickname FROM shared_grants g JOIN users u ON u.id = g.user_id"
+                " WHERE g.folder_id = ? ORDER BY u.nickname, u.username",
+                (folder_id,)).fetchall()]
 
 
 def _folder_or_403(db, folder_id: int, user):
@@ -1200,6 +1229,7 @@ def shared_list(request: Request):
             (user["id"], user["id"])).fetchall()
         rows = [(r, True) for r in mine] + [(r, False) for r in granted]
         members = {r["id"]: _members_of(db, r["id"]) for r, _ in rows}
+        member_details = {r["id"]: _member_views_of(db, r["id"]) for r, _ in rows}
 
     for row, is_mine in rows:
         full = full_path(row["owner_username"], row["rel_path"])
@@ -1213,6 +1243,7 @@ def shared_list(request: Request):
             "path": row["rel_path"],
             "is_mine": is_mine,
             "members": members[row["id"]],
+            "member_details": member_details[row["id"]],
             "bytes": size,
             "files": count,
             "max_bytes": _shared_limits(row)[0],
@@ -1225,7 +1256,12 @@ def shared_list(request: Request):
                 for name, (b, c) in _usage_by_member(full, set(members[row["id"]])).items()
             }
         out.append(item)
-    return {"folders": out}
+    # 界面上「留空＝默认多少」要说真话，所以默认值与硬顶随列表一起下发
+    return {"folders": out, "defaults": {
+        "max_bytes": SHARED_MAX_BYTES,
+        "max_members": SHARED_MAX_MEMBERS,
+        "hard_members": MAX_SHARED_MEMBERS,
+    }}
 
 
 @app.post("/api/shared/{folder_id}/members")
@@ -1380,6 +1416,18 @@ def admin_users(request: Request):
     with _db_lock, get_db() as db:
         rows = db.execute("SELECT * FROM users ORDER BY id").fetchall()
         return [_admin_user_view(db, r) for r in rows]
+
+
+@app.get("/api/users/directory")
+def users_directory(request: Request):
+    """给授权成员勾选列表用：只回显用户名与昵称，不带配额/用量。
+    B1 之后能建共享与改名单的都是管理员，所以这道门跟着管理员走。"""
+    require_admin(request)
+    with _db_lock, get_db() as db:
+        rows = db.execute("SELECT username, nickname, status FROM users ORDER BY username").fetchall()
+    return [{"username": r["username"],
+             "nickname": r["nickname"] or r["username"],
+             "disabled": r["status"] != "active"} for r in rows]
 
 
 @app.post("/api/admin/users/{user_id}/disable")

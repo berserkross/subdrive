@@ -180,7 +180,8 @@ def run() -> int:
             check("切回普通文件夹后密码框收起", not boss.is_visible("#m-vpass"))
             boss.fill("#m-name", "team")
             boss.click('#m-vis .seg-btn[data-vis="shared"]')
-            need("选公开共享后出现成员与上限字段", boss.is_visible("#m-members"))
+            need("选公开共享后出现成员与上限字段",
+                 boss.is_visible("#m-mode") and boss.is_visible("#m-cap"))
             boss.click("#modal-ok")
             wait_row(boss, "team")
             boss.wait_for_selector("#shared-card:not(.hidden)", timeout=15000)
@@ -279,7 +280,7 @@ def run() -> int:
 
             # ---- 5. 创建共享文件夹（名单留空＝全员可见）----
             row(boss, "docs").locator('button[title="共享此文件夹"]').click()
-            boss.wait_for_selector("#share-members", timeout=10000)
+            boss.wait_for_selector("#s-mode", timeout=10000)
             boss.click("#modal-ok")
             boss.wait_for_selector("#shared-card:not(.hidden)", timeout=15000)
             check("共享卡出现", boss.is_visible("#shared-card"))
@@ -292,8 +293,8 @@ def run() -> int:
 
             # ---- 5b. 每目录上限（D35）：在「管理共享」里设成员上限 ----
             row(boss, "docs").locator('button[title="管理共享"]').click()
-            boss.wait_for_selector("#share-max-members", timeout=10000)
-            boss.fill("#share-max-members", "1")
+            boss.wait_for_selector("#s-maxmem", timeout=10000)
+            boss.fill("#s-maxmem", "1")
             boss.click("#modal-ok")
             boss.wait_for_selector('#shared-list .si-meta:has-text("/1")', timeout=15000)
             check("共享卡显示成员上限与用量", "/1" in boss.inner_text("#shared-list"),
@@ -301,6 +302,35 @@ def run() -> int:
             shared = httpx.get(base + "/api/shared/list", headers=auth, timeout=10).json()
             docs = [f for f in shared["folders"] if f["path"] == "docs"][0]
             need("后端记下了成员上限", docs["max_members"] == 1, str(docs))
+
+            # ---- 5c. 成员选择器：搜索 / 勾选 / 空名单拦截（GUI 化）----
+            row(boss, "docs").locator('button[title="管理共享"]').click()
+            boss.wait_for_selector("#s-mode", timeout=10000)
+            check("共享弹窗默认是「全部成员」",
+                  "selected" in (boss.get_attribute('#s-mode .seg-btn[data-mode="all"]', "class") or ""))
+            boss.click('#s-mode .seg-btn[data-mode="some"]')
+            check("切到仅指定成员后出现搜索框", boss.is_visible("#s-search"))
+            boss.fill("#s-search", "boss")
+            boss.wait_for_selector("#s-list .member-item", timeout=5000)
+            check("搜索框按昵称/用户名过滤",
+                  boss.locator("#s-list .member-item").count() == 1,
+                  f"剩 {boss.locator('#s-list .member-item').count()} 项")
+            boss.click("#modal-ok")
+            check("选了「仅指定成员」却一个没勾会被拦住", boss.is_visible("#modal-overlay"))
+            check("拦住时提示写明该怎么办",
+                  "一个都没勾" in boss.inner_text("#toast"), boss.inner_text("#toast"))
+            disabled_rows = boss.locator("#s-list .member-item input[disabled]").count()
+            check("创建者自己那行不可勾选（后端本来就会忽略自己）", disabled_rows == 1,
+                  f"disabled 行 {disabled_rows}")
+            check("创建者自己点不动，计数仍是 0",
+                  "已选 0 人" in boss.inner_text("#s-count"), boss.inner_text("#s-count"))
+            boss.click('#s-mode .seg-btn[data-mode="all"]')
+            boss.click("#modal-ok")
+            boss.wait_for_selector("#modal-overlay", state="hidden", timeout=10000)
+            docs = [f for f in httpx.get(base + "/api/shared/list", headers=auth, timeout=10).json()["folders"]
+                    if f["path"] == "docs"][0]
+            need("改回「全部成员」＝空名单（后端语义：空＝全员）", docs["members"] == [],
+                 str(docs) + " | toast=" + boss.inner_text("#toast"))
 
             # ---- 6. 第二个用户凭邀请码注册 ----
             invite = httpx.post(base + "/api/admin/invite-codes", headers=auth,

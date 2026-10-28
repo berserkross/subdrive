@@ -554,6 +554,8 @@ input { font-family: inherit; font-size: 15px; color: var(--text); }
   box-shadow: var(--shadow-lg); opacity: 0; pointer-events: none; transition: all .22s; max-width: 88vw; text-align: center;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.user-chip { cursor: pointer; }
+.user-chip:hover strong { color: var(--accent); }
 .toast.error { background: #b3353a; }
 
 /* 成员选择器（勾选 + 搜索）与共享上限行 */

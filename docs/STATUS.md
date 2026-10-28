@@ -10,10 +10,10 @@
   `tests/test_storage_live.py` 15 + `tests/test_crypto.mjs` 10 + `tests/test_uploadplan.mjs` 13，全部 exit 0）。
   后端功能用本地 stub，Seafile 适配用 `httpx.MockTransport` 打桩（不需要真令牌）。
   Windows 控制台跑 Python 测试要先 `PYTHONIOENCODING=utf-8`，否则结尾那个 ✅ 会 `UnicodeEncodeError` 把退出码弄成 1。
-- 浏览器端到端 **59** 项通过（`tests/e2e/test_e2e_browser.py`，Playwright 驱动本机 Chrome，自起 stub 服务 +
+- 浏览器端到端 **63** 项通过（`tests/e2e/test_e2e_browser.py`，Playwright 驱动本机 Chrome，自起 stub 服务 +
   临时 `DATA_DIR`）：注册→建夹→上传→重命名→同名三选一（替换/两者都保留/跳过）→批量勾选/全选/批量移动/批量删除
   →建共享→设上限→被授权者进入并上传→落点与配额归属→删除→退出；另有建夹弹窗的类型/可见性分支与上传菜单。
-  它当场抓到两个后端测试看不见的 bug（见 D32）。以上两类合计 **252** 项。
+  它当场抓到两个后端测试看不见的 bug（见 D32）。以上两类合计 **256** 项。
 - 批量操作已落地（D33）：行首复选框 + 表头全选 + 底部操作条（下载/移动/删除/取消），一批只作用于当前目录，
   多文件下载逐个串行、文件夹跳过。
 - 覆盖写先问一声（D34）：同名上传弹三选一，替换带 `expected_old_size` 由服务端复核（变化即 409），

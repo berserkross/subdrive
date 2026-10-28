@@ -166,4 +166,5 @@
 - **D38 昵称与用户名是两套东西，且只加 nickname 的能力，不动 username**｜用户的第 2 问。现状已有两套：`users.username`（登录名，`USERNAME_RE` 校验，是所有路径与授权前缀的锚点——D3/D27）与 `users.nickname`（显示名，可重复、可清空）。缺的是「改」的入口与「按昵称找成员」的接口。
   补齐：`POST /api/me/nickname`（只能改自己；`strip()[:40]`；清空后 `user_public()` 回落到 username）、`GET /api/users/directory`（管理员；只回 `username/nickname/disabled`，不带配额与用量）、`GET /api/shared/list` 每项多一个 `member_details`（用户名 + 昵称，给成员列表显示）。
   为什么不把 username 也做成可改：它出现在物理路径（`<共享目录>/<username>/`）与 `shared_grants` 的授权前缀里，改名等于同时搬目录、改授权、刷审计，收益（换个登录名）远小于代价。显示层要的「换名字」由 nickname 满足。
-  测试：`test_shared.py` 追加 S9 8 项（69 → 77）；`tests/e2e/test_e2e_browser.py` 追加 8 项（51 → 59）。
+  入口：顶栏 `.user-chip`（头像 + 用户名）可点，弹「改名字」；保存后顶栏、内存里的 `me` 与后端一次到位。为什么不做成头像下拉菜单：用户真正要做的事只有「改名字」一件，一个只装一个选项的下拉等于让人多点一次。
+  测试：`test_shared.py` 追加 S9 8 项（69 → 77）；`tests/e2e/test_e2e_browser.py` 追加 8 + 4 项（51 → 63）。

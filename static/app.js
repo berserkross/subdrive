@@ -209,6 +209,24 @@ function logout(callApi = true) {
   show("view-auth");
 }
 $("#btn-logout").addEventListener("click", () => logout(true));
+$("#user-chip").addEventListener("click", () => {
+  if (!me) return;
+  openModal("改名字",
+    '<label class="field"><span>显示名（昵称）</span>'
+    + '<input id="nick-input" class="field-input" type="text" maxlength="40" value="'
+    + esc(me.nickname || "") + '"></label>'
+    + '<p class="field-note">登录名 @' + esc(me.username)
+    + ' 不变（它是路径与授权的锚点）；留空就回落到登录名。</p>',
+    "保存", async () => {
+      const u = await api("/api/me/nickname", { method: "POST",
+        body: { nickname: ($("#nick-input").value || "").trim() } });
+      me = Object.assign(me || {}, u);
+      $("#user-name").textContent = u.nickname || u.username;
+      $("#user-avatar").textContent = (u.nickname || u.username).slice(0, 1);
+      $("#user-sub").textContent = "@" + u.username;
+      toast("名字已更新");
+    });
+});
 $("#btn-my-cell").addEventListener("click", () => {
   if (!curOwner || !me) return;
   // 共享根是路径第一段；我那一格固定叫我的用户名

@@ -162,6 +162,25 @@ def run() -> int:
             boss_token = boss.evaluate("() => localStorage.getItem('subdrive_token')")
             auth = {"Authorization": f"Bearer {boss_token}"}
 
+            # ---- 1b. 改名字（点头像/用户名处那个 chip）----
+            boss.click("#user-chip")
+            boss.wait_for_selector("#nick-input", timeout=10000)
+            boss.fill("#nick-input", "新老板")
+            boss.click("#modal-ok")
+            boss.wait_for_selector("#modal-overlay", state="hidden", timeout=10000)
+            check("改名字后顶栏立刻更新", "新老板" in boss.inner_text("#user-name"),
+                  boss.inner_text("#user-name"))
+            me_now = httpx.get(base + "/api/auth/me", headers=auth, timeout=10).json()
+            check("后端也记下了新昵称", me_now.get("nickname") == "新老板", str(me_now))
+            check("登录名没跟着变", me_now.get("username") == "boss", str(me_now))
+            boss.click("#user-chip")
+            boss.wait_for_selector("#nick-input", timeout=10000)
+            boss.fill("#nick-input", "老板")
+            boss.click("#modal-ok")
+            boss.wait_for_selector("#modal-overlay", state="hidden", timeout=10000)
+            check("改回原昵称（后面几步依赖「老板」）",
+                  "老板" in boss.inner_text("#user-name"), boss.inner_text("#user-name"))
+
             # ---- 2. 新建文件夹 ----
             boss.click("#btn-mkdir")
             boss.fill("#m-name", "docs")

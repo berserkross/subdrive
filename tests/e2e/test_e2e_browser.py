@@ -298,6 +298,9 @@ def run() -> int:
             check("面包屑能回到根目录", boss.locator('.row:has(.row-name:text-is("docs"))').count() == 1)
 
             # ---- 5. 创建共享文件夹（名单留空＝全员可见）----
+            boss.wait_for_selector(
+                '#file-list .row:has(.row-name:text-is("docs")) button[title="共享此文件夹"]',
+                timeout=20000)
             row(boss, "docs").locator('button[title="共享此文件夹"]').click()
             boss.wait_for_selector("#s-mode", timeout=10000)
             boss.click("#modal-ok")
@@ -316,6 +319,10 @@ def run() -> int:
             check("公共区域列出共享文件夹", "docs" in boss.inner_text("#public-list"),
                   boss.inner_text("#public-list"))
             check("公共区域里文件列表收起", not boss.is_visible("#dropzone"))
+            check("公共区域标题栏显示数量", "共享文件夹" in boss.inner_text("#public-count"),
+                  boss.inner_text("#public-count"))
+            check("公共区域卡片带用量条", boss.locator("#public-list .si-bar").count() >= 1,
+                  str(boss.locator("#public-list .si-bar").count()))
             boss.click("#public-list .shared-item")
             boss.wait_for_selector("#dropzone:not(.hidden)", timeout=10000)
             boss.wait_for_function(
@@ -336,8 +343,8 @@ def run() -> int:
             boss.wait_for_selector("#s-maxmem", timeout=10000)
             boss.fill("#s-maxmem", "1")
             boss.click("#modal-ok")
-            boss.wait_for_selector('#shared-list .si-meta:has-text("/1")', timeout=15000)
-            check("共享卡显示成员上限与用量", "/1" in boss.inner_text("#shared-list"),
+            boss.wait_for_selector('#shared-list .si-meta:has-text("上限 1")', timeout=15000)
+            check("共享卡显示成员上限与用量", "上限 1" in boss.inner_text("#shared-list"),
                   boss.inner_text("#shared-list"))
             shared = httpx.get(base + "/api/shared/list", headers=auth, timeout=10).json()
             docs = [f for f in shared["folders"] if f["path"] == "docs"][0]

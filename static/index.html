@@ -146,13 +146,20 @@
       <button id="btn-vault-lock" class="btn-ghost" type="button">锁定</button>
     </div>
 
-    <section id="public-panel" class="list-card hidden">
-      <div class="shared-head">
-        <strong>公共区域</strong>
-        <span id="public-hint" class="shared-hint"></span>
+    <section id="public-panel" class="public-panel hidden">
+      <header class="public-head">
+        <div class="public-title">
+          <h2>公共区域</h2>
+          <p id="public-hint" class="public-sub"></p>
+        </div>
+        <span id="public-count" class="public-count"></span>
+      </header>
+      <div id="public-list" class="public-grid"></div>
+      <div id="public-empty" class="public-empty hidden">
+        <div class="public-empty-icon">📁</div>
+        <p>还没有你能进的共享文件夹</p>
+        <small>管理员可以在「＋ 新建」里勾「公开共享」建一个。</small>
       </div>
-      <div id="public-list" class="shared-list"></div>
-      <div id="public-empty" class="shared-empty hidden">还没有你能进的共享文件夹。</div>
     </section>
 
     <div class="list-card" id="dropzone">

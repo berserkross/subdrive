@@ -265,16 +265,33 @@ async function enterDrive() {
 let scope = "mine";      // mine | public：顶栏那两格
 let fromPublic = false;  // 当前目录是从「公共区域」点进来的（面包屑第一格跟着变）
 
+const FOLDER_SVG = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">'
+  + '<path d="M3 7.2c0-1.2 1-2.2 2.2-2.2h3.1c.66 0 1.28.3 1.7.82l.86 1.06'
+  + 'c.42.52 1.04.82 1.7.82h5.24A2.2 2.2 0 0 1 20 9.9v6.9A2.2 2.2 0 0 1 17.8 19H5.2A2.2 2.2 0 0 1 3 16.8V7.2Z"'
+  + ' stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+
 function sharedItemEl(f) {
   const el = document.createElement("div");
   el.className = "shared-item" + (f.is_mine ? " mine" : "");
   const capBytes = f.max_bytes ? fmtBytes(f.max_bytes) : "不限";
-  const capMem = f.max_members ? f.max_members : "全员";
+  const capMem = f.max_members ? "上限 " + f.max_members + " 人" : "不限成员";
   const memText = f.members.length ? f.members.length + " 人" : "全员";
-  el.innerHTML = `<span>🔗 ${esc(f.path)}</span>`
-    + `<span class="si-owner">${f.is_mine ? "我创建" : esc(f.owner)}</span>`
-    + `<span class="si-meta">${memText}/${capMem} · ${fmtBytes(f.bytes || 0)}/${capBytes}</span>`;
-  el.title = f.is_mine ? "点进入；在目录里点「管理共享」改名单" : `${f.owner} 分享给你`;
+  const used = f.bytes || 0;
+  const pct = f.max_bytes ? Math.min(100, (used / f.max_bytes) * 100) : 0;
+  el.innerHTML = '<div class="si-icon">' + FOLDER_SVG + '</div>'
+    + '<div class="si-body">'
+    +   '<div class="si-head">'
+    +     '<strong class="si-name">' + esc(f.path) + '</strong>'
+    +     '<span class="si-owner">' + (f.is_mine ? "我创建" : esc(f.owner)) + '</span>'
+    +   '</div>'
+    +   '<div class="si-stats">'
+    +     '<span class="si-meta">👥 ' + memText + ' · ' + capMem + '</span>'
+    +     '<span class="si-size">' + fmtBytes(used) + ' / ' + capBytes + '</span>'
+    +   '</div>'
+    +   (f.max_bytes ? '<div class="si-bar"><i style="width:' + pct.toFixed(1) + '%"></i></div>' : '')
+    + '</div>'
+    + '<span class="si-go">›</span>';
+  el.title = f.is_mine ? "点进入；在目录里点「管理共享」改名单" : f.owner + " 分享给你";
   el.addEventListener("click", () => enterShared(f));
   return el;
 }
@@ -299,19 +316,21 @@ async function refreshShared() {
   pub.innerHTML = "";
   for (const f of folders) pub.appendChild(sharedItemEl(f));
   $("#public-empty").classList.toggle("hidden", folders.length > 0);
+  $("#public-count").textContent = folders.length ? folders.length + " 个共享文件夹" : "";
   $("#public-hint").textContent = folders.length
-    ? "点进去就是那个共享目录；配额算上传者自己"
+    ? "点进去就是那个共享目录，可查看、下载、上传；配额算上传者自己"
     : "";
 }
 
 function applyScope() {
   const pub = scope === "public";
+  document.body.classList.toggle("public-scope", pub);
   for (const b of document.querySelectorAll("#nav-scope .seg-btn")) {
-    b.classList.toggle("selected", b.getAttribute("data-scope") === scope);
+    const on = b.getAttribute("data-scope") === scope;
+    b.classList.toggle("selected", on);
+    b.setAttribute("aria-selected", on ? "true" : "false");
   }
   $("#public-panel").classList.toggle("hidden", !pub);
-  document.querySelector(".toolbar").classList.toggle("hidden", pub);
-  $("#dropzone").classList.toggle("hidden", pub);
   if (pub) {
     $("#shared-card").classList.add("hidden");
     $("#foreign-bar").classList.add("hidden");

@@ -25,7 +25,8 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app.paths import USERNAME_RE, PathRejected, full_path, normalize_rel_path, validate_name, validate_username
+from app.paths import (USERNAME_RE, PathRejected, full_path, normalize_rel_path,
+                       set_current_user, validate_name, validate_username)
 from app.storage import StorageError, make_storage
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -232,6 +233,9 @@ def require_user(request: Request):
         raise HTTPException(401, detail={"error": "unauthorized", "message": "未登录或登录已失效"})
     if user["status"] != "active":
         raise HTTPException(403, detail={"error": "account_disabled", "message": "账号已被禁用"})
+    # 供存储层做归属校验：此后所有 full 路径都必须落在 /<该用户名> 下（管理员除外，
+    # 校准、代管等操作本来就要跨用户）。
+    set_current_user(user["username"], bool(user["is_admin"]))
     return user
 
 

@@ -12,6 +12,25 @@
 """
 import re
 import urllib.parse
+from contextvars import ContextVar
+
+# 当前请求的用户名 + 是否管理员。由 main.require_user 写入，存储层用它做归属校验。
+# 不在请求上下文里（脚本、直调测试）时保持 None，存储层退回只校验形状。
+_current_user: ContextVar[tuple[str, bool] | None] = ContextVar("sd_current_user", default=None)
+
+
+def set_current_user(username: str | None, is_admin: bool = False) -> None:
+    _current_user.set(None if username is None else (username, is_admin))
+
+
+def current_user() -> str | None:
+    ctx = _current_user.get()
+    return None if ctx is None else ctx[0]
+
+
+def current_is_admin() -> bool:
+    ctx = _current_user.get()
+    return bool(ctx and ctx[1])
 
 # 与规格 §3 一致：用户名即文件夹名
 USERNAME_RE = re.compile(r"^[a-z][a-z0-9_-]{2,23}$")

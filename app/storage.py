@@ -15,7 +15,7 @@ import shutil
 import time
 from pathlib import Path, PurePosixPath
 
-from .paths import USERNAME_RE
+from .paths import USERNAME_RE, current_is_admin, current_user
 
 CHUNK = 1024 * 1024
 
@@ -62,6 +62,10 @@ def _assert_full_path(full: str) -> None:
         raise StorageError("路径缺少用户前缀", code="path_rejected", status=403)
     if not USERNAME_RE.match(segs[0]):
         raise StorageError("首段不是合法用户名", code="path_rejected", status=403)
+    owner = current_user()
+    if owner is not None and not current_is_admin() \
+            and full != f"/{owner}" and not full.startswith(f"/{owner}/"):
+        raise StorageError("路径不属于当前用户", code="path_rejected", status=403)
     for seg in segs:
         if seg in ("", ".", "..") or seg != seg.rstrip(" ."):
             raise StorageError("非法路径", code="path_rejected", status=403)
@@ -349,6 +353,8 @@ class LiveStorage(BaseStorage):
     def upload(self, dir_full: str, filename: str, src_path: Path) -> int:
         from urllib.parse import quote
 
+        # 其余方法都经 _dir_url/_file_url 过这道门，只有 upload 自己拼 URL，必须显式补。
+        _assert_full_path(dir_full)
         resp = self._req("GET", f"/api2/repos/{self.repo_id}/upload-link/?p={quote(dir_full)}")
         upload_url = resp.json()  # 返回 URL 字符串（可能是相对路径）
         if isinstance(upload_url, str) and upload_url.startswith("/"):

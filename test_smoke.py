@@ -169,6 +169,45 @@ def main():
         _assert_full_path(p)
     check(f"存储层形状门：{len(bad_full)} 例全拒、3 例合法路径放行", True)
 
+    # 12c. 归属门：当前用户为 alice 时，别人的路径必须在存储层被拒
+    from app.paths import set_current_user
+    set_current_user("alice")
+    try:
+        for p in ["/bob/a.jpg", "/alice2/a.jpg", "/bob"]:
+            try:
+                _assert_full_path(p)
+            except StorageError:
+                continue
+            raise AssertionError(f"存储层放过了他人路径: {p!r}")
+        _assert_full_path("/alice/a.jpg")
+    finally:
+        set_current_user(None)
+    check("归属门：他人路径 3 例全拒、本人路径放行", True)
+
+    # 12d. 管理员例外：管理员可以跨用户（校准用量、代管目录本来就要跨）
+    set_current_user("admin", is_admin=True)
+    try:
+        _assert_full_path("/alice/a.jpg")
+    finally:
+        set_current_user(None)
+    check("归属门：管理员跨用户放行、普通用户被拒", True)
+
+    # 12e. live 侧 upload 自己拼 URL，必须在发请求前就拒掉别人的目录
+    from app.storage import LiveStorage
+    from pathlib import Path as _P
+    set_current_user("alice")
+    try:
+        live = LiveStorage("http://127.0.0.1:1", "tok", "repoid")
+        try:
+            live.upload("/bob", "a.jpg", _P("x"))
+        except StorageError as exc:
+            assert getattr(exc, "status", None) == 403, exc
+        else:
+            raise AssertionError("live upload 未拦截他人目录")
+    finally:
+        set_current_user(None)
+    check("归属门：live upload 发请求前拦截他人目录", True)
+
     # 13. 建夹 → 子目录上传/下载 → 改名 → 移动
     r = c.post("/api/files/mkdir", headers=auth(alice_token), json={"path": "", "name": "照片"})
     assert r.status_code == 200, r.text

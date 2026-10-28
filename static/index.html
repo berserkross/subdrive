@@ -18,8 +18,8 @@
     <div class="brand-inner">
       <img class="brand-logo" src="/static/logo.png" alt="Ourmetaverse">
       <h1 class="brand-name">SubDrive</h1>
-      <p class="brand-sub">子用户网盘</p>
-      <p class="brand-tag">你的私人文件空间<br>简单、安全、随时取用</p>
+      <p class="brand-sub" data-i18n="auth.brand">子用户网盘</p>
+      <p class="brand-tag"><span data-i18n="auth.tag1">你的私人文件空间</span><br><span data-i18n="auth.tag2">简单、安全、随时取用</span></p>
     </div>
   </div>
   <div class="auth-main">
@@ -27,48 +27,48 @@
       <div class="auth-card-head">
         <img class="auth-mini-logo" src="/static/logo.png" alt="">
         <div class="tabs" role="tablist">
-          <button id="tab-login" class="tab active" type="button">登录</button>
-          <button id="tab-register" class="tab" type="button">注册</button>
+          <button id="tab-login" class="tab active" type="button" data-i18n="auth.tabLogin">登录</button>
+          <button id="tab-register" class="tab" type="button" data-i18n="auth.tabRegister">注册</button>
         </div>
       </div>
 
       <form id="form-login" class="auth-form">
         <label class="field">
-          <span>用户名</span>
-          <input id="login-username" type="text" autocomplete="username" placeholder="你的用户名" required>
+          <span data-i18n="auth.username">用户名</span>
+          <input id="login-username" type="text" autocomplete="username" placeholder="你的用户名" data-i18n-placeholder="auth.phUsername" required>
         </label>
         <label class="field">
-          <span>密码</span>
+          <span data-i18n="auth.password">密码</span>
           <input id="login-password" type="password" autocomplete="current-password" placeholder="••••••••" required>
         </label>
         <p class="form-error" id="login-error"></p>
-        <button class="btn-primary btn-block" type="submit">登 录</button>
-        <p class="form-hint">还没有账号？用邀请码在「注册」页开通。</p>
+        <button class="btn-primary btn-block" type="submit" data-i18n="auth.login">登 录</button>
+        <p class="form-hint" data-i18n="auth.loginHint">还没有账号？用邀请码在「注册」页开通。</p>
       </form>
 
       <form id="form-register" class="auth-form hidden">
         <label class="field">
-          <span>邀请码</span>
-          <input id="reg-invite" type="text" placeholder="SD-XXXX-XXXX-…（首个用户免填）" autocomplete="off">
+          <span data-i18n="auth.invite">邀请码</span>
+          <input id="reg-invite" type="text" placeholder="SD-XXXX-XXXX-…（首个用户免填）" data-i18n-placeholder="auth.phInvite" autocomplete="off">
         </label>
         <label class="field">
-          <span>用户名</span>
-          <input id="reg-username" type="text" autocomplete="username" placeholder="3–24 位，小写字母开头" required>
-          <small class="field-note">仅小写字母、数字、下划线、连字符；注册后不可修改</small>
+          <span data-i18n="auth.username">用户名</span>
+          <input id="reg-username" type="text" autocomplete="username" placeholder="3–24 位，小写字母开头" data-i18n-placeholder="auth.phRegUsername" required>
+          <small class="field-note" data-i18n="auth.regUsernameNote">仅小写字母、数字、下划线、连字符；注册后不可修改</small>
         </label>
         <label class="field">
-          <span>昵称（可选）</span>
-          <input id="reg-nickname" type="text" placeholder="展示用的名字">
+          <span data-i18n="auth.nickname">昵称（可选）</span>
+          <input id="reg-nickname" type="text" placeholder="展示用的名字" data-i18n-placeholder="auth.phNickname">
         </label>
         <label class="field">
-          <span>密码</span>
-          <input id="reg-password" type="password" autocomplete="new-password" placeholder="至少 8 位" required>
+          <span data-i18n="auth.password">密码</span>
+          <input id="reg-password" type="password" autocomplete="new-password" placeholder="至少 8 位" data-i18n-placeholder="auth.phPassword" required>
         </label>
         <p class="form-error" id="reg-error"></p>
-        <button class="btn-primary btn-block" type="submit">注册并开通网盘</button>
+        <button class="btn-primary btn-block" type="submit" data-i18n="auth.register">注册并开通网盘</button>
       </form>
     </div>
-    <p class="auth-foot">Ourmetaverse · 自托管服务</p>
+    <p class="auth-foot" data-i18n="auth.foot">Ourmetaverse · 自托管服务</p>
   </div>
 </section>
 
@@ -79,27 +79,28 @@
       <img class="top-logo" src="/static/logo.png" alt="">
       <div class="top-title">
         <strong>SubDrive</strong>
-        <span>子用户网盘</span>
+        <span data-i18n="auth.brand">子用户网盘</span>
       </div>
     </div>
     <div class="topbar-right">
-      <button id="btn-admin" class="btn-ghost hidden" type="button">管理后台</button>
-      <div class="user-chip" id="user-chip" title="点这里改名字">
+      <button id="btn-admin" class="btn-ghost hidden" type="button" data-i18n="top.admin">管理后台</button>
+      <div class="user-chip" id="user-chip" title="点这里改名字" data-i18n-title="top.chipTitle">
         <div class="avatar" id="user-avatar">?</div>
         <div class="user-meta">
           <strong id="user-name">—</strong>
           <span id="user-sub">—</span>
         </div>
       </div>
-      <button id="btn-chpw" class="btn-ghost" type="button">改密码</button>
-      <button id="btn-logout" class="btn-ghost" type="button">退出</button>
+      <button id="lang-toggle" class="lang-btn" type="button">中</button>
+      <button id="btn-chpw" class="btn-ghost" type="button" data-i18n="top.chpw">改密码</button>
+      <button id="btn-logout" class="btn-ghost" type="button" data-i18n="top.logout">退出</button>
     </div>
   </header>
 
   <main class="drive-main">
     <div class="quota-card">
       <div class="quota-text">
-        <span class="quota-label">存储空间</span>
+        <span class="quota-label" data-i18n="quota.label">存储空间</span>
         <strong id="quota-text">—</strong>
         <span class="quota-pct" id="quota-pct"></span>
       </div>
@@ -107,49 +108,49 @@
     </div>
 
     <nav class="seg seg-scope" id="nav-scope">
-      <button type="button" class="seg-btn selected" data-scope="mine">我的网盘</button>
-      <button type="button" class="seg-btn" data-scope="public">公共区域</button>
+      <button type="button" class="seg-btn selected" data-scope="mine" data-i18n="scope.mine">我的网盘</button>
+      <button type="button" class="seg-btn" data-scope="public" data-i18n="scope.public">公共区域</button>
     </nav>
 
     <div class="toolbar">
       <nav class="crumbs" id="crumbs"></nav>
       <div class="toolbar-actions">
-        <button id="btn-mkdir" class="btn-soft" type="button">＋ 新建</button>
+        <button id="btn-mkdir" class="btn-soft" type="button" data-i18n="toolbar.mkdir">＋ 新建</button>
         <div class="menu-wrap">
-          <button id="btn-upload" class="btn-primary" type="button">⬆ 上传</button>
+          <button id="btn-upload" class="btn-primary" type="button" data-i18n="toolbar.upload">⬆ 上传</button>
           <div id="upload-menu" class="menu hidden">
-            <button id="btn-upload-files" type="button">上传文件</button>
-            <button id="btn-upload-folder" type="button">上传文件夹</button>
+            <button id="btn-upload-files" type="button" data-i18n="toolbar.uploadFiles">上传文件</button>
+            <button id="btn-upload-folder" type="button" data-i18n="toolbar.uploadFolder">上传文件夹</button>
           </div>
         </div>
-        <button id="btn-speed" class="btn-soft" type="button">⚡ 测速</button>
+        <button id="btn-speed" class="btn-soft" type="button" data-i18n="toolbar.speed">⚡ 测速</button>
         <input id="file-input" type="file" multiple hidden>
         <input id="folder-input" type="file" webkitdirectory directory hidden>
       </div>
     </div>
 
     <div id="foreign-bar" class="vault-bar hidden">
-      <span>你正在浏览 <strong id="foreign-owner">—</strong> 的共享文件夹；你上传或新建的内容会存进以你用户名命名的子文件夹。</span>
-      <button id="btn-my-cell" class="btn-ghost" type="button">只看我的</button>
+      <span><span data-i18n="foreign.before">你正在浏览</span> <strong id="foreign-owner">—</strong><span data-i18n="foreign.after">的共享文件夹；你上传或新建的内容会存进以你用户名命名的子文件夹。</span></span>
+      <button id="btn-my-cell" class="btn-ghost" type="button" data-i18n="foreign.mine">只看我的</button>
     </div>
 
     <section id="shared-card" class="shared-card hidden">
       <div class="shared-head">
-        <strong>共享文件夹</strong>
+        <strong data-i18n="shared.title">共享文件夹</strong>
         <span id="shared-hint" class="shared-hint"></span>
       </div>
       <div id="shared-list" class="shared-list"></div>
     </section>
 
     <div id="vault-bar" class="vault-bar hidden">
-      <span>🔒 <strong>加密文件夹</strong> · 文件名与内容只在你的浏览器里解密；服务器只看得到密文的大小与数量。</span>
-      <button id="btn-vault-lock" class="btn-ghost" type="button">锁定</button>
+      <span>🔒 <strong data-i18n="vault.title">加密文件夹</strong><span data-i18n="vault.barNote"> · 文件名与内容只在你的浏览器里解密；服务器只看得到密文的大小与数量。</span></span>
+      <button id="btn-vault-lock" class="btn-ghost" type="button" data-i18n="vault.lock">锁定</button>
     </div>
 
     <section id="public-panel" class="public-panel hidden">
       <header class="public-head">
         <div class="public-title">
-          <h2>公共区域</h2>
+          <h2 data-i18n="scope.public">公共区域</h2>
           <p id="public-hint" class="public-sub"></p>
         </div>
         <span id="public-count" class="public-count"></span>
@@ -157,27 +158,27 @@
       <div id="public-list" class="public-grid"></div>
       <div id="public-empty" class="public-empty hidden">
         <div class="public-empty-icon">📁</div>
-        <p>还没有你能进的共享文件夹</p>
-        <small>管理员可以在「＋ 新建」里勾「公开共享」建一个。</small>
+        <p data-i18n="public.emptyTitle">还没有你能进的共享文件夹</p>
+        <small data-i18n="public.emptyHint">管理员可以在「＋ 新建」里勾「公开共享」建一个。</small>
       </div>
     </section>
 
     <div class="list-card" id="dropzone">
       <div class="drop-hint" id="drop-hint">
-        <div class="drop-hint-inner">松开，把文件或文件夹放进来</div>
+        <div class="drop-hint-inner" data-i18n="list.dropHint">松开，把文件或文件夹放进来</div>
       </div>
       <div class="list-head">
-        <label class="sel-cell" title="全选"><input type="checkbox" id="sel-all"></label>
-        <span class="col-name">名称</span>
-        <span class="col-size">大小</span>
-        <span class="col-time">修改时间</span>
+        <label class="sel-cell" title="全选" data-i18n-title="list.selectAll"><input type="checkbox" id="sel-all"></label>
+        <span class="col-name" data-i18n="list.colName">名称</span>
+        <span class="col-size" data-i18n="list.colSize">大小</span>
+        <span class="col-time" data-i18n="list.colTime">修改时间</span>
         <span class="col-act"></span>
       </div>
       <div id="vault-lock" class="vault-lock hidden">
         <div class="vault-lock-icon">🔒</div>
-        <h3>这是一个加密文件夹</h3>
-        <p>文件名与内容都经过加密，服务器上只存有密文。<br>输入这个文件夹的密码才能查看——密码只在你的浏览器里使用，不会发送给服务器。</p>
-        <button id="btn-vault-unlock" class="btn-primary" type="button">输入密码解锁</button>
+        <h3 data-i18n="vault.lockedTitle">这是一个加密文件夹</h3>
+        <p><span data-i18n="vault.lockedBody1">文件名与内容都经过加密，服务器上只存有密文。</span><br><span data-i18n="vault.lockedBody2">输入这个文件夹的密码才能查看——密码只在你的浏览器里使用，不会发送给服务器。</span></p>
+        <button id="btn-vault-unlock" class="btn-primary" type="button" data-i18n="vault.unlockBtn">输入密码解锁</button>
       </div>
       <div id="file-list"></div>
       <div id="empty-state" class="empty hidden">
@@ -192,12 +193,12 @@
           <circle cx="60" cy="54" r="11" fill="none" stroke="url(#eg)" stroke-width="2.5"/>
           <path d="M60 48v12M54 54h12" stroke="url(#eg)" stroke-width="2.5" stroke-linecap="round"/>
         </svg>
-        <h3>这里空空如也</h3>
-        <p>点「上传文件 / 上传文件夹」，或把文件、文件夹直接拖到这里</p>
+        <h3 data-i18n="list.emptyTitle">这里空空如也</h3>
+        <p data-i18n="list.emptyHint">点「上传文件 / 上传文件夹」，或把文件、文件夹直接拖到这里</p>
       </div>
-      <div id="list-loading" class="list-loading hidden">加载中…</div>
+      <div id="list-loading" class="list-loading hidden" data-i18n="list.loading">加载中…</div>
     </div>
-    <p class="drive-foot">文件保存在你的专属空间里，只有你能访问。</p>
+    <p class="drive-foot" data-i18n="list.foot">文件保存在你的专属空间里，只有你能访问。</p>
   </main>
 </section>
 
@@ -205,44 +206,44 @@
 <section id="view-admin" class="admin-wrap hidden">
   <header class="topbar">
     <div class="topbar-left">
-      <button id="btn-back-drive" class="btn-ghost" type="button">← 返回网盘</button>
-      <div class="top-title"><strong>管理后台</strong><span>邀请码 · 用户 · 用量</span></div>
+      <button id="btn-back-drive" class="btn-ghost" type="button" data-i18n="admin.back">← 返回网盘</button>
+      <div class="top-title"><strong data-i18n="top.admin">管理后台</strong><span data-i18n="admin.sub">邀请码 · 用户 · 用量</span></div>
     </div>
     <div class="topbar-right"><span class="admin-badge">ADMIN</span></div>
   </header>
   <main class="admin-main">
     <div class="admin-card">
       <div class="admin-card-head">
-        <h2>邀请码</h2>
+        <h2 data-i18n="admin.invites">邀请码</h2>
         <form id="form-invite" class="invite-form">
-          <input id="inv-note" type="text" placeholder="备注（发给谁）">
-          <label class="inv-field">有效期
-            <input id="inv-days" type="number" value="7" min="0" step="1"> 天
+          <input id="inv-note" type="text" placeholder="备注（发给谁）" data-i18n-placeholder="admin.notePh">
+          <label class="inv-field"><span data-i18n="admin.validity">有效期</span>
+            <input id="inv-days" type="number" value="7" min="0" step="1"> <span data-i18n="admin.days">天</span>
           </label>
-          <label class="inv-field">可用次数
+          <label class="inv-field"><span data-i18n="admin.uses">可用次数</span>
             <input id="inv-uses" type="number" value="1" min="1" step="1">
           </label>
-          <button class="btn-primary" type="submit">签发新码</button>
+          <button class="btn-primary" type="submit" data-i18n="admin.issue">签发新码</button>
         </form>
       </div>
       <div id="new-code-box" class="new-code hidden">
-        <span>新邀请码（请复制后发给对方）：</span>
+        <span data-i18n="admin.newCode">新邀请码（请复制后发给对方）：</span>
         <code id="new-code-text"></code>
-        <button id="btn-copy-code" class="btn-soft" type="button">复制</button>
+        <button id="btn-copy-code" class="btn-soft" type="button" data-i18n="admin.copy">复制</button>
       </div>
       <div class="table-wrap">
         <table class="table" id="invite-table">
-          <thead><tr><th>邀请码</th><th>备注</th><th>状态</th><th>使用</th><th>到期</th><th></th></tr></thead>
+          <thead><tr><th data-i18n="admin.thCode">邀请码</th><th data-i18n="admin.thNote">备注</th><th data-i18n="admin.thStatus">状态</th><th data-i18n="admin.thUses">使用</th><th data-i18n="admin.thExpires">到期</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
     </div>
 
     <div class="admin-card">
-      <div class="admin-card-head"><h2>用户</h2><span class="admin-total" id="admin-total"></span></div>
+      <div class="admin-card-head"><h2 data-i18n="admin.users">用户</h2><span class="admin-total" id="admin-total"></span></div>
       <div class="table-wrap">
         <table class="table" id="user-table">
-          <thead><tr><th>用户</th><th>状态</th><th>用量 / 配额</th><th>最后登录</th><th>操作</th></tr></thead>
+          <thead><tr><th data-i18n="admin.thUser">用户</th><th data-i18n="admin.thStatus">状态</th><th data-i18n="admin.thQuota">用量 / 配额</th><th data-i18n="admin.thLastLogin">最后登录</th><th data-i18n="admin.thActions">操作</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -253,11 +254,11 @@
 <!-- ================= 弹窗 / 提示 ================= -->
 <div id="modal-overlay" class="overlay hidden">
   <div class="modal" role="dialog" aria-modal="true">
-    <h3 id="modal-title">标题</h3>
+    <h3 id="modal-title" data-i18n="modal.title">标题</h3>
     <div id="modal-body"></div>
     <div class="modal-actions">
-      <button id="modal-cancel" class="btn-soft" type="button">取消</button>
-      <button id="modal-ok" class="btn-primary" type="button">确定</button>
+      <button id="modal-cancel" class="btn-soft" type="button" data-i18n="common.cancel">取消</button>
+      <button id="modal-ok" class="btn-primary" type="button" data-i18n="common.ok">确定</button>
     </div>
   </div>
 </div>
@@ -265,10 +266,10 @@
 <div id="preview-overlay" class="overlay hidden">
   <div class="preview-box" role="dialog" aria-modal="true">
     <div class="preview-head">
-      <span id="preview-title">预览</span>
+      <span id="preview-title" data-i18n="preview.title">预览</span>
       <span class="preview-actions">
-        <button id="preview-download" class="btn-soft" type="button">下载</button>
-        <button id="preview-close" class="btn-ghost" type="button">✕ 关闭</button>
+        <button id="preview-download" class="btn-soft" type="button" data-i18n="common.download">下载</button>
+        <button id="preview-close" class="btn-ghost" type="button" data-i18n="common.close">✕ 关闭</button>
       </span>
     </div>
     <div id="preview-body" class="preview-body"></div>
@@ -276,29 +277,29 @@
 </div>
 
 <div id="speed-panel" class="speed-panel hidden">
-  <div class="speed-head"><strong>⚡ 上下行测速</strong><button id="speed-close" type="button">✕</button></div>
+  <div class="speed-head"><strong data-i18n="speed.head">⚡ 上下行测速</strong><button id="speed-close" type="button">✕</button></div>
   <p class="speed-note" id="speed-note"></p>
   <div class="speed-controls">
-    <label class="inv-field">数据量
+    <label class="inv-field"><span data-i18n="speed.size">数据量</span>
       <select id="speed-size">
         <option value="10">10 MB</option>
         <option value="25" selected>25 MB</option>
         <option value="50">50 MB</option>
       </select>
     </label>
-    <button id="speed-run" class="btn-primary" type="button">开始测速</button>
+    <button id="speed-run" class="btn-primary" type="button" data-i18n="speed.run">开始测速</button>
   </div>
-  <div class="speed-row"><span class="speed-lab">下载</span>
+  <div class="speed-row"><span class="speed-lab" data-i18n="speed.down">下载</span>
     <div class="u-bar"><div class="u-fill" id="speed-down-fill"></div></div>
     <span class="speed-val" id="speed-down-val">—</span></div>
-  <div class="speed-row"><span class="speed-lab">上传</span>
+  <div class="speed-row"><span class="speed-lab" data-i18n="speed.up">上传</span>
     <div class="u-bar"><div class="u-fill" id="speed-up-fill"></div></div>
     <span class="speed-val" id="speed-up-val">—</span></div>
   <div id="speed-result" class="speed-result"></div>
 </div>
 
 <div id="upload-panel" class="upload-panel hidden">
-  <div class="upload-panel-head"><strong>上传进度</strong><button id="upload-close" type="button">✕</button></div>
+  <div class="upload-panel-head"><strong data-i18n="upload.title">上传进度</strong><button id="upload-close" type="button">✕</button></div>
   <div id="upload-items"></div>
 </div>
 
@@ -306,11 +307,11 @@
 
 <!-- 批量操作条：勾选任意行后浮出 -->
 <div id="batch-bar" class="hidden">
-  <span id="batch-count">已选 0 项</span>
-  <button id="batch-download" type="button">下载</button>
-  <button id="batch-move" type="button">移动</button>
-  <button id="batch-delete" type="button" class="danger">删除</button>
-  <button id="batch-clear" type="button" class="ghost">取消</button>
+  <span id="batch-count" data-i18n="batch.none">已选 0 项</span>
+  <button id="batch-download" type="button" data-i18n="common.download">下载</button>
+  <button id="batch-move" type="button" data-i18n="common.move">移动</button>
+  <button id="batch-delete" type="button" class="danger" data-i18n="common.delete">删除</button>
+  <button id="batch-clear" type="button" class="ghost" data-i18n="common.cancel">取消</button>
 </div>
 
 <script src="/static/vault.js"></script>

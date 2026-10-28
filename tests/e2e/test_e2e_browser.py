@@ -452,6 +452,74 @@ def run() -> int:
             need("退出后本地令牌已清除",
                  not bob.evaluate("() => localStorage.getItem('subdrive_token')"))
 
+            # ---- 11. 中英双语切换（默认中文，切 EN 后整页零中文）----
+            # 零 CJK 断言需要 body.innerText 里没有中文用户数据，故另起一个 ASCII 昵称的用户。
+            inv2 = httpx.post(base + "/api/admin/invite-codes", headers=auth,
+                              json={"note": "e2e-i18n", "max_uses": 1}, timeout=10).json()
+            i18n_ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+            en_page = i18n_ctx.new_page()
+            en_page.on("pageerror", lambda e: errors.append(str(e)))
+            register(en_page, base, "emma", "Emma", "emmapass123", invite=inv2["code"])
+            need("语言按钮默认显示「中」且页面是中文",
+                 en_page.inner_text("#lang-toggle").strip() == "中" and "新建" in en_page.inner_text("#btn-mkdir"),
+                 en_page.inner_text("#lang-toggle") + " | " + en_page.inner_text("#btn-mkdir"))
+            en_page.click("#lang-toggle")
+            en_page.wait_for_function("() => document.documentElement.lang === 'en'", timeout=5000)
+            en_btn = en_page.inner_text("#btn-mkdir")
+            en_col = en_page.inner_text(".col-name").strip()
+            check("切到 EN 后新建按钮与文件表头变英文", ("New" in en_btn) and en_col == "Name", f"btn={en_btn} col={en_col}")
+            # 公共区域也切一遍：EN 下的共享列表 / 空态都在扫描范围内
+            en_page.click('#nav-scope [data-scope="public"]')
+            en_page.wait_for_selector("#public-panel:not(.hidden)", timeout=10000)
+            # 配额、共享列表这些是切换后异步重画的：轮询到整页零 CJK 为止（切换前的旧 toast 已由 setLang 收回）
+            zero_cjk = """() => {
+                const cjk = /[\\u4e00-\\u9fff]/;
+                if (cjk.test(document.body.innerText)) return false;
+                return ![...document.querySelectorAll("[placeholder],[title]")].some((el) =>
+                    cjk.test(el.getAttribute("placeholder") || "") || cjk.test(el.getAttribute("title") || ""));
+            }"""
+            settled = True
+            try:
+                en_page.wait_for_function(zero_cjk, timeout=15000)
+            except Exception:
+                settled = False
+            en_pub = en_page.inner_text("#public-panel").strip().replace("\n", " / ")
+            scan = en_page.evaluate("""() => {
+                const cjk = /[\\u4e00-\\u9fff]/;
+                const hits = [];
+                const body = document.body.innerText;
+                if (cjk.test(body)) {
+                    document.querySelectorAll("#view-drive *").forEach((el) => {
+                        if (el.children.length) return;
+                        const t = (el.innerText || "").trim();
+                        if (t && cjk.test(t) && hits.length < 12) hits.push("text " + el.tagName + "#" + el.id + "." + el.className + " = " + t);
+                    });
+                    const bt = body.match(/[\\u4e00-\\u9fff]/g);
+                    if (bt && hits.length < 12) hits.push("innerText 剩余字符: " + [...new Set(bt)].join(""));
+                }
+                document.querySelectorAll("[placeholder]").forEach((el) => {
+                    const v = el.getAttribute("placeholder");
+                    if (cjk.test(v) && hits.length < 16) hits.push("placeholder " + (el.id || el.tagName) + " = " + v);
+                });
+                document.querySelectorAll("[title]").forEach((el) => {
+                    const v = el.getAttribute("title");
+                    if (cjk.test(v) && hits.length < 20) hits.push("title " + (el.id || el.tagName + "." + el.className) + " = " + v);
+                });
+                return { hits: hits, len: body.length };
+            }""")
+            print("      公共区域(EN)：" + en_pub[:160], flush=True)
+            print("      零 CJK 扫描：innerText " + str(scan["len"]) + " 字符，命中 " + str(len(scan["hits"]))
+                  + " 处，异步重画已落地=" + str(settled), flush=True)
+            need("EN 模式 body.innerText 与全部 placeholder/title 零 CJK", settled and not scan["hits"],
+                 "等待超时（异步区域仍是旧语言）; " + "; ".join(scan["hits"][:6]))
+            en_page.click('#nav-scope [data-scope="mine"]')
+            en_page.click("#lang-toggle")
+            en_page.wait_for_function("() => document.documentElement.lang === 'zh-CN'", timeout=5000)
+            check("切回中文后按钮与表头恢复",
+                  "新建" in en_page.inner_text("#btn-mkdir") and en_page.inner_text(".col-name").strip() == "名称",
+                  en_page.inner_text("#btn-mkdir") + " | " + en_page.inner_text(".col-name"))
+            i18n_ctx.close()
+
             need("页面没有未捕获的 JS 异常", not errors, "; ".join(errors[:3]))
             try:
                 boss_ctx.close()

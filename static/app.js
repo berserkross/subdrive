@@ -3,6 +3,739 @@
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 
+/* ---------------- 国际化 ---------------- */
+// 语言存在 localStorage，刷新后保持；任何非法值（含旧数据）都回落中文。
+let lang = localStorage.getItem("subdrive_lang") === "en" ? "en" : "zh";
+// 字典按「屏」分组，key 用点分命名；zh 是基准，en 必须与之等长（tests/e2e 会校验）。
+const I18N = {
+  zh: {
+    "app.title": "SubDrive · 子用户网盘",
+    "req.failed": "请求失败 ({status})",
+    "lang.switch": "切换语言",
+
+    "auth.brand": "子用户网盘",
+    "auth.tag1": "你的私人文件空间",
+    "auth.tag2": "简单、安全、随时取用",
+    "auth.tabLogin": "登录",
+    "auth.tabRegister": "注册",
+    "auth.username": "用户名",
+    "auth.password": "密码",
+    "auth.phUsername": "你的用户名",
+    "auth.login": "登 录",
+    "auth.loginHint": "还没有账号？用邀请码在「注册」页开通。",
+    "auth.invite": "邀请码",
+    "auth.phInvite": "SD-XXXX-XXXX-…（首个用户免填）",
+    "auth.phRegUsername": "3–24 位，小写字母开头",
+    "auth.regUsernameNote": "仅小写字母、数字、下划线、连字符；注册后不可修改",
+    "auth.nickname": "昵称（可选）",
+    "auth.phNickname": "展示用的名字",
+    "auth.phPassword": "至少 8 位",
+    "auth.register": "注册并开通网盘",
+    "auth.foot": "Ourmetaverse · 自托管服务",
+    "auth.regDone": "注册成功，你的网盘已开通 🎉",
+
+    "top.admin": "管理后台",
+    "top.chipTitle": "点这里改名字",
+    "top.chpw": "改密码",
+    "top.logout": "退出",
+
+    "quota.label": "存储空间",
+    "quota.used": "已用 {used} / {total}",
+
+    "scope.mine": "我的网盘",
+    "scope.public": "公共区域",
+    "crumbs.sharedOf": "{owner} 的共享",
+
+    "toolbar.mkdir": "＋ 新建",
+    "toolbar.upload": "⬆ 上传",
+    "toolbar.uploadFiles": "上传文件",
+    "toolbar.uploadFolder": "上传文件夹",
+    "toolbar.speed": "⚡ 测速",
+
+    "foreign.before": "你正在浏览",
+    "foreign.after": "的共享文件夹；你上传或新建的内容会存进以你用户名命名的子文件夹。",
+    "foreign.mine": "只看我的",
+
+    "list.dropHint": "松开，把文件或文件夹放进来",
+    "list.selectAll": "全选",
+    "list.colName": "名称",
+    "list.colSize": "大小",
+    "list.colTime": "修改时间",
+    "list.loading": "加载中…",
+    "list.emptyTitle": "这里空空如也",
+    "list.emptyHint": "点「上传文件 / 上传文件夹」，或把文件、文件夹直接拖到这里",
+    "list.foot": "文件保存在你的专属空间里，只有你能访问。",
+    "list.folder": "文件夹",
+    "list.selectHint": "勾选后可批量操作",
+    "list.vaultBadge": "🔒 加密",
+    "list.vaultRowSub": "加密文件夹 · 需密码打开",
+    "list.sharedBadge": "🔗 共享",
+    "list.preview": "预览",
+    "list.manageShare": "管理共享",
+    "list.shareFolder": "共享此文件夹",
+
+    "public.countOne": "1 个共享文件夹",
+    "public.count": "{n} 个共享文件夹",
+    "public.emptyTitle": "还没有你能进的共享文件夹",
+    "public.emptyHint": "管理员可以在「＋ 新建」里勾「公开共享」建一个。",
+    "public.hint": "点进去就是那个共享目录，可查看、下载、上传；配额算上传者自己",
+
+    "shared.title": "共享文件夹",
+    "shared.hint": "被授权的共享文件夹可查看、下载、上传；配额算上传者自己",
+    "shared.unlimited": "不限",
+    "shared.capMembers": "上限 {n} 人",
+    "shared.noCap": "不限成员",
+    "shared.memberCount": "{n} 人",
+    "shared.allMembers": "全员",
+    "shared.mineBadge": "我创建",
+    "shared.itemTitleMine": "点进入；在目录里点「管理共享」改名单",
+    "shared.itemTitleOther": "{owner} 分享给你",
+    "shared.stop": "取消共享",
+    "shared.stopBody": "「{path}」将退回私有文件夹：成员立刻失去访问权限，目录里的内容全部保留。",
+    "shared.stopped": "已取消共享",
+    "shared.dialogEdit": "「{path}」已共享。成员可查看、下载、上传（各自配额）；改名单立即生效。",
+    "shared.dialogCreate": "把「{path}」变成共享文件夹：名单内成员可查看、下载、上传，上传内容存进各自用户名子文件夹；配额算上传者自己。创建后即公开，可随时改名单或取消共享。",
+    "shared.membersUpdated": "成员名单已更新",
+    "shared.create": "创建共享",
+    "shared.created": "已创建共享文件夹",
+
+    "picker.who": "谁能看到",
+    "picker.limits": "上限",
+    "picker.modeAll": "全部成员",
+    "picker.modeSome": "仅指定成员",
+    "picker.noteAll": "所有注册成员都能看到、下载、上传（各自配额）。",
+    "picker.noteSome": "只有勾选的成员看得到；一个都不勾不会被当成「全员」。",
+    "picker.searchPh": "搜索昵称或用户名…",
+    "picker.count": "已选 {n} 人",
+    "picker.clear": "清空勾选",
+    "picker.empty": "没有匹配的成员",
+    "picker.ownerSelf": "创建者本人，不用勾",
+    "picker.disabled": "已禁用",
+    "picker.errNone": "选了「仅指定成员」却一个都没勾：请勾选成员，或改选「全部成员」",
+    "picker.loadFailed": "成员名单加载失败：{msg}",
+
+    "limits.emptyEdit": "留空＝保持当前值",
+    "limits.emptyDefault": "留空＝默认 {bytes}",
+    "limits.capacity": "容量上限",
+    "limits.members": "成员上限",
+    "limits.capacityNote": "{empty}；这是整个共享目录的总量（所有人的文件加起来）",
+    "limits.membersNote": "{empty}；默认 {def} 人，最多 {hard} 人",
+    "limits.errCapacity": "容量上限必须大于 0",
+    "limits.errMembers": "成员上限必须大于 0",
+
+    "common.save": "保存",
+    "common.cancel": "取消",
+    "common.delete": "删除",
+    "common.move": "移动",
+    "common.download": "下载",
+    "common.rename": "重命名",
+    "common.ok": "确定",
+    "common.close": "✕ 关闭",
+    "common.root": "我的网盘（根目录）",
+
+    "rename.title": "重命名",
+    "rename.label": "新名称",
+    "rename.done": "已重命名",
+    "delete.title": "删除",
+    "delete.body": "确定删除「{name}」吗？删除后文件会进入回收站，此操作无法在本页面撤销。",
+    "delete.done": "已删除",
+    "move.title": "移动到",
+    "move.body": "把「{name}」移动到：",
+    "move.done": "已移动",
+
+    "batch.none": "已选 0 项",
+    "batch.count": "已选 {n} 项",
+    "batch.dlTitle": "下载选中的 {n} 个文件（文件夹会跳过）",
+    "batch.dlNoFiles": "选中项里没有文件",
+    "batch.deleteTitle": "批量删除",
+    "batch.deleteBody": "删除选中的 {n} 项？文件夹会连同里面的内容一起删掉。",
+    "batch.moveTitle": "批量移动",
+    "batch.moveBody": "把选中的 {n} 项移动到：",
+    "batch.deleted": "已删除 {ok} 项",
+    "batch.deletedSome": "已删除 {ok} 项，{fail} 项失败：{msg}",
+    "batch.moved": "已移动 {ok} 项",
+    "batch.movedSome": "已移动 {ok} 项，{fail} 项失败：{msg}",
+    "batch.downloaded": "已下载 {n} 个文件，跳过 {skipped} 个文件夹",
+
+    "download.failed": "下载失败",
+    "read.failed": "读取失败",
+
+    "mkdir.title": "新建文件夹",
+    "mkdir.name": "文件夹名称",
+    "mkdir.namePh": "例如：照片",
+    "mkdir.type": "类型",
+    "mkdir.plain": "普通文件夹",
+    "mkdir.vault": "🔒 加密文件夹",
+    "mkdir.vaultPw": "文件夹密码（至少 8 位，与登录密码相互独立）",
+    "mkdir.vaultPw2": "再次输入密码",
+    "mkdir.warn1": "⚠️ 文件名与内容在你的浏览器里加密后才上传，服务器只看得到密文的大小与数量。",
+    "mkdir.warn2": "文件夹密码一旦丢失将无法恢复",
+    "mkdir.warn3": "，任何人都帮不了你，请存进密码管理器。",
+    "mkdir.vis": "可见性",
+    "mkdir.private": "私密（仅自己）",
+    "mkdir.public": "公开共享",
+    "mkdir.create": "创建",
+    "mkdir.errName": "请输入名称",
+    "mkdir.errPwLen": "文件夹密码至少 8 位",
+    "mkdir.errPwDiff": "两次输入的密码不一致",
+    "mkdir.vaultDone": "加密文件夹已创建并解锁",
+    "mkdir.done": "文件夹已创建",
+    "mkdir.sharedDone": "已创建公开共享文件夹",
+    "mkdir.sharedFailed": "文件夹已建，但设为共享失败：{msg}",
+
+    "chpw.title": "修改密码",
+    "chpw.old": "当前密码",
+    "chpw.new": "新密码（至少 8 位）",
+    "chpw.done": "密码已修改，其他设备的登录已失效",
+    "nick.title": "改名字",
+    "nick.label": "显示名（昵称）",
+    "nick.note": "登录名 @{user} 不变（它是路径与授权的锚点）；留空就回落到登录名。",
+    "nick.done": "名字已更新",
+
+    "upload.title": "上传进度",
+    "upload.queued": "排队中…",
+    "upload.mkdirFailShort": "创建文件夹失败",
+    "upload.mkdirFail": "创建文件夹失败：{msg}",
+    "upload.folderCreated": "文件夹已创建",
+    "upload.uploading": "上传中…",
+    "upload.skipped": "已跳过",
+    "upload.progress": "上传中 {pct}% · {size}",
+    "upload.done": "完成 ✓",
+    "upload.failed": "上传失败",
+    "upload.netError": "网络错误",
+    "upload.failedStatus": "上传失败 ({status})",
+    "upload.vaultNoFolders": "加密文件夹暂不支持整文件夹上传，已跳过文件夹内容",
+    "upload.vaultLocked": "加密文件夹已锁定，请先解锁再上传",
+
+    "conflict.title": "已经有同名文件",
+    "conflict.body": "「{name}」在这个目录里已存在（{size}，{time}）。",
+    "conflict.overwrite": "替换",
+    "conflict.keep": "两者都保留",
+    "conflict.skip": "跳过",
+
+    "vault.title": "加密文件夹",
+    "vault.barNote": " · 文件名与内容只在你的浏览器里解密；服务器只看得到密文的大小与数量。",
+    "vault.lock": "锁定",
+    "vault.lockedTitle": "这是一个加密文件夹",
+    "vault.lockedBody1": "文件名与内容都经过加密，服务器上只存有密文。",
+    "vault.lockedBody2": "输入这个文件夹的密码才能查看——密码只在你的浏览器里使用，不会发送给服务器。",
+    "vault.unlockBtn": "输入密码解锁",
+    "vault.unlocked": "加密文件夹已解锁",
+    "vault.unlockTitle": "解锁加密文件夹",
+    "vault.pwLabel": "文件夹密码",
+    "vault.pwPh": "创建时设置的文件夹密码",
+    "vault.pwNote": "密码只在你的浏览器里用于解密，不会发送到服务器；密码错误将无法打开。",
+    "vault.unlock": "解锁",
+    "vault.errNoPw": "请输入文件夹密码",
+    "vault.errWrong": "文件夹密码错误，请重试",
+    "vault.lockedToast": "已锁定，密钥已从内存清除",
+    "vault.preview": "预览（本地解密）",
+    "vault.download": "下载并解密",
+    "vault.encrypting": "本地加密中…",
+    "vault.uploading": "上传密文中…",
+    "vault.manifest": "写入清单…",
+    "vault.done": "完成 ✓（已加密）",
+    "vault.dlFailed": "下载/解密失败：{msg}",
+    "vault.renameTitle": "重命名（仅修改显示名）",
+    "vault.renameNote": "显示名只存在于加密清单中，改名不触碰服务器上的密文。",
+    "vault.deleteTitle": "删除加密文件",
+    "vault.deleteBody": "确定删除「{name}」吗？其密文将被删除，无法恢复。",
+
+    "preview.title": "预览",
+    "preview.tooBig": "文本文件过大，不适合在线预览。",
+    "preview.cannot": "该文件无法在线预览。",
+    "preview.fallbackSub": "可以点右上角「下载」保存到本地查看。",
+    "preview.loadFailed": "预览加载失败",
+    "preview.decrypting": "本地解密中…",
+    "preview.decryptFailed": "预览解密失败：{msg}",
+
+    "speed.head": "⚡ 上下行测速",
+    "speed.size": "数据量",
+    "speed.run": "开始测速",
+    "speed.down": "下载",
+    "speed.up": "上传",
+    "speed.noteLive": "经后端流式转发实测，与实际上传/下载走同一条链路；测速流量不占配额、不存文件。",
+    "speed.noteStub": "⚠️ 当前为本地测试链路（stub 假存储）：测的是这台机器到后端的速度，不代表真实 Seafile / e2 的速度。测速流量不占配额。",
+    "speed.running": "测速中…",
+    "speed.waitDown": "等待下载完成…",
+    "speed.failDown": "下载测速失败 ({status})",
+    "speed.failUp": "上传测速失败 ({status})",
+    "speed.errUp": "上传测速网络错误",
+    "speed.resDown": "下载 {speed}（{size}）",
+    "speed.resUp": "上传 {speed}（服务器确认收到 {size}，未存盘）",
+
+    "admin.back": "← 返回网盘",
+    "admin.sub": "邀请码 · 用户 · 用量",
+    "admin.invites": "邀请码",
+    "admin.notePh": "备注（发给谁）",
+    "admin.validity": "有效期",
+    "admin.days": "天",
+    "admin.uses": "可用次数",
+    "admin.issue": "签发新码",
+    "admin.newCode": "新邀请码（请复制后发给对方）：",
+    "admin.copy": "复制",
+    "admin.thCode": "邀请码",
+    "admin.thNote": "备注",
+    "admin.thStatus": "状态",
+    "admin.thUses": "使用",
+    "admin.thExpires": "到期",
+    "admin.users": "用户",
+    "admin.thUser": "用户",
+    "admin.thQuota": "用量 / 配额",
+    "admin.thLastLogin": "最后登录",
+    "admin.thActions": "操作",
+    "admin.total": "全员总用量 {bytes}",
+    "invite.ok": "可用",
+    "invite.usedUp": "已用完",
+    "invite.revoked": "已撤销",
+    "invite.expired": "已过期",
+    "invite.never": "永久",
+    "invite.revoke": "撤销",
+    "invite.revokedToast": "邀请码已撤销",
+    "invite.copied": "已复制",
+    "invite.copyFailed": "复制失败，请手动复制",
+    "user.admin": "管理员",
+    "user.active": "正常",
+    "user.disabledPill": "已禁用",
+    "user.never": "从未",
+    "user.setQuota": "设配额",
+    "user.recalc": "校准",
+    "user.makeAdmin": "设为管理员",
+    "user.unmakeAdmin": "取消管理员",
+    "user.disable": "禁用",
+    "user.enable": "启用",
+    "user.quotaTitle": "设置配额 · {user}",
+    "user.quotaLabel": "配额（GB，留空 = 系统默认）",
+    "user.quotaSaved": "配额已更新",
+    "user.recalcDone": "校准完成：{bytes}",
+    "user.makeAdminBody": "将「{user}」设为管理员后，对方将能访问管理后台、管理用户与邀请码。确定吗？",
+    "user.makeAdminDone": "已设为管理员",
+    "user.unmakeAdminBody": "取消「{user}」的管理员权限后，对方将无法访问管理后台。确定吗？",
+    "user.unmakeAdminDone": "已取消管理员",
+    "user.disableTitle": "禁用用户",
+    "user.disableBody": "禁用「{user}」后，其所有登录立即失效，但文件会保留。确定禁用吗？",
+    "user.disabledToast": "已禁用",
+    "user.enabledToast": "已启用",
+    "modal.title": "标题",
+  },
+  en: {
+    "app.title": "SubDrive · Personal drive",
+    "req.failed": "Request failed ({status})",
+    "lang.switch": "Switch language",
+
+    "auth.brand": "Personal drive",
+    "auth.tag1": "Your private file space",
+    "auth.tag2": "Simple, secure, always within reach",
+    "auth.tabLogin": "Sign in",
+    "auth.tabRegister": "Sign up",
+    "auth.username": "Username",
+    "auth.password": "Password",
+    "auth.phUsername": "Your username",
+    "auth.login": "Sign in",
+    "auth.loginHint": "No account yet? Use an invite code on the Sign up tab.",
+    "auth.invite": "Invite code",
+    "auth.phInvite": "SD-XXXX-XXXX-… (not needed for the first user)",
+    "auth.phRegUsername": "3–24 chars, starting with a lowercase letter",
+    "auth.regUsernameNote": "Lowercase letters, digits, underscore and hyphen only; cannot be changed later",
+    "auth.nickname": "Nickname (optional)",
+    "auth.phNickname": "Display name",
+    "auth.phPassword": "At least 8 characters",
+    "auth.register": "Create account",
+    "auth.foot": "Ourmetaverse · Self-hosted service",
+    "auth.regDone": "Signed up — your drive is ready 🎉",
+
+    "top.admin": "Admin console",
+    "top.chipTitle": "Click to change your display name",
+    "top.chpw": "Change password",
+    "top.logout": "Sign out",
+
+    "quota.label": "Storage",
+    "quota.used": "Used {used} / {total}",
+
+    "scope.mine": "My drive",
+    "scope.public": "Public area",
+    "crumbs.sharedOf": "{owner}'s share",
+
+    "toolbar.mkdir": "+ New",
+    "toolbar.upload": "⬆ Upload",
+    "toolbar.uploadFiles": "Upload files",
+    "toolbar.uploadFolder": "Upload folder",
+    "toolbar.speed": "⚡ Speed test",
+
+    "foreign.before": "You are browsing a shared folder of",
+    "foreign.after": "; anything you upload or create goes into a subfolder named after your username.",
+    "foreign.mine": "Only mine",
+
+    "list.dropHint": "Drop files or folders here",
+    "list.selectAll": "Select all",
+    "list.colName": "Name",
+    "list.colSize": "Size",
+    "list.colTime": "Modified",
+    "list.loading": "Loading…",
+    "list.emptyTitle": "Nothing here yet",
+    "list.emptyHint": "Use “Upload files / Upload folder”, or drag files and folders here",
+    "list.foot": "Your files live in your own space; only you can reach them.",
+    "list.folder": "Folder",
+    "list.selectHint": "Check rows to enable bulk actions",
+    "list.vaultBadge": "🔒 Encrypted",
+    "list.vaultRowSub": "Encrypted folder · password required",
+    "list.sharedBadge": "🔗 Shared",
+    "list.preview": "Preview",
+    "list.manageShare": "Manage sharing",
+    "list.shareFolder": "Share this folder",
+
+    "public.countOne": "1 shared folder",
+    "public.count": "{n} shared folders",
+    "public.emptyTitle": "No shared folder you can enter yet",
+    "public.emptyHint": "An admin can create one via \"+ New\" with \"Public share\" checked.",
+    "public.hint": "Opens that shared folder: browse, download and upload; usage counts toward the uploader",
+
+    "shared.title": "Shared folders",
+    "shared.hint": "Shared folders you were granted: browse, download and upload; usage counts toward the uploader",
+    "shared.unlimited": "Unlimited",
+    "shared.capMembers": "max {n} members",
+    "shared.noCap": "unlimited members",
+    "shared.memberCount": "{n} members",
+    "shared.allMembers": "everyone",
+    "shared.mineBadge": "Created by me",
+    "shared.itemTitleMine": "Click to open; use “Manage sharing” inside to edit the list",
+    "shared.itemTitleOther": "Shared with you by {owner}",
+    "shared.stop": "Stop sharing",
+    "shared.stopBody": "“{path}” becomes a private folder again: members lose access immediately and all contents are kept.",
+    "shared.stopped": "Sharing stopped",
+    "shared.dialogEdit": "“{path}” is shared. Members can browse, download and upload on their own quota; member changes apply immediately.",
+    "shared.dialogCreate": "Turn “{path}” into a shared folder: listed members can browse, download and upload, and their uploads go into subfolders named after them; usage counts toward the uploader. It is shared as soon as you create it, and you can edit the list or stop sharing at any time.",
+    "shared.membersUpdated": "Member list updated",
+    "shared.create": "Create share",
+    "shared.created": "Shared folder created",
+
+    "picker.who": "Who can see it",
+    "picker.limits": "Limits",
+    "picker.modeAll": "All members",
+    "picker.modeSome": "Selected members only",
+    "picker.noteAll": "Every registered member can browse, download and upload, each on their own quota.",
+    "picker.noteSome": "Only checked members can see it; checking nobody is not treated as “everyone”.",
+    "picker.searchPh": "Search nickname or username…",
+    "picker.count": "{n} selected",
+    "picker.clear": "Clear selection",
+    "picker.empty": "No matching members",
+    "picker.ownerSelf": "Owner — no need to check",
+    "picker.disabled": "Disabled",
+    "picker.errNone": "“Selected members only” is on but nobody is checked: check some members or switch to “All members”",
+    "picker.loadFailed": "Failed to load the member list: {msg}",
+
+    "limits.emptyEdit": "empty = keep the current value",
+    "limits.emptyDefault": "empty = default {bytes}",
+    "limits.capacity": "Capacity limit",
+    "limits.members": "Member limit",
+    "limits.capacityNote": "{empty}; this is the total for the whole shared folder, all members combined",
+    "limits.membersNote": "{empty}; default {def}, hard maximum {hard}",
+    "limits.errCapacity": "Capacity limit must be greater than 0",
+    "limits.errMembers": "Member limit must be greater than 0",
+
+    "common.save": "Save",
+    "common.cancel": "Cancel",
+    "common.delete": "Delete",
+    "common.move": "Move",
+    "common.download": "Download",
+    "common.rename": "Rename",
+    "common.ok": "OK",
+    "common.close": "✕ Close",
+    "common.root": "My drive (root)",
+
+    "rename.title": "Rename",
+    "rename.label": "New name",
+    "rename.done": "Renamed",
+    "delete.title": "Delete",
+    "delete.body": "Delete “{name}”? It moves to the recycle bin; this action cannot be undone here.",
+    "delete.done": "Deleted",
+    "move.title": "Move to",
+    "move.body": "Move “{name}” to:",
+    "move.done": "Moved",
+
+    "batch.none": "0 selected",
+    "batch.count": "{n} selected",
+    "batch.dlTitle": "Download the {n} selected files (folders are skipped)",
+    "batch.dlNoFiles": "No files in the selection",
+    "batch.deleteTitle": "Delete selected",
+    "batch.deleteBody": "Delete the {n} selected items? Folders are deleted together with their contents.",
+    "batch.moveTitle": "Move selected",
+    "batch.moveBody": "Move the {n} selected items to:",
+    "batch.deleted": "Deleted {ok} item(s)",
+    "batch.deletedSome": "Deleted {ok}; {fail} failed: {msg}",
+    "batch.moved": "Moved {ok} item(s)",
+    "batch.movedSome": "Moved {ok}; {fail} failed: {msg}",
+    "batch.downloaded": "Downloaded {n} files; skipped {skipped} folders",
+
+    "download.failed": "Download failed",
+    "read.failed": "Failed to read",
+
+    "mkdir.title": "New folder",
+    "mkdir.name": "Folder name",
+    "mkdir.namePh": "e.g. Photos",
+    "mkdir.type": "Type",
+    "mkdir.plain": "Regular folder",
+    "mkdir.vault": "🔒 Encrypted folder",
+    "mkdir.vaultPw": "Folder password (8+ characters, independent of your login password)",
+    "mkdir.vaultPw2": "Repeat the password",
+    "mkdir.warn1": "⚠️ Names and contents are encrypted in your browser before upload; the server sees only ciphertext size and count.",
+    "mkdir.warn2": "A lost folder password cannot be recovered",
+    "mkdir.warn3": ", nobody can help you, so keep it in a password manager.",
+    "mkdir.vis": "Visibility",
+    "mkdir.private": "Private (only me)",
+    "mkdir.public": "Public share",
+    "mkdir.create": "Create",
+    "mkdir.errName": "Please enter a name",
+    "mkdir.errPwLen": "The folder password must be at least 8 characters",
+    "mkdir.errPwDiff": "The two passwords do not match",
+    "mkdir.vaultDone": "Encrypted folder created and unlocked",
+    "mkdir.done": "Folder created",
+    "mkdir.sharedDone": "Public shared folder created",
+    "mkdir.sharedFailed": "The folder was created, but sharing failed: {msg}",
+
+    "chpw.title": "Change password",
+    "chpw.old": "Current password",
+    "chpw.new": "New password (8+ characters)",
+    "chpw.done": "Password changed; sessions on other devices were signed out",
+    "nick.title": "Change display name",
+    "nick.label": "Display name (nickname)",
+    "nick.note": "Your login name @{user} stays the same (it anchors paths and permissions); leave this empty to fall back to it.",
+    "nick.done": "Display name updated",
+
+    "upload.title": "Upload progress",
+    "upload.queued": "Queued…",
+    "upload.mkdirFailShort": "Failed to create the folder",
+    "upload.mkdirFail": "Failed to create the folder: {msg}",
+    "upload.folderCreated": "Folder created",
+    "upload.uploading": "Uploading…",
+    "upload.skipped": "Skipped",
+    "upload.progress": "Uploading {pct}% · {size}",
+    "upload.done": "Done ✓",
+    "upload.failed": "Upload failed",
+    "upload.netError": "Network error",
+    "upload.failedStatus": "Upload failed ({status})",
+    "upload.vaultNoFolders": "Whole-folder upload is not supported for encrypted folders; folder contents were skipped",
+    "upload.vaultLocked": "The encrypted folder is locked; unlock it before uploading",
+
+    "conflict.title": "A file with the same name already exists",
+    "conflict.body": "“{name}” already exists in this folder ({size}, {time}).",
+    "conflict.overwrite": "Replace",
+    "conflict.keep": "Keep both",
+    "conflict.skip": "Skip",
+
+    "vault.title": "Encrypted folder",
+    "vault.barNote": " · Names and contents are decrypted only in your browser; the server sees only ciphertext size and count.",
+    "vault.lock": "Lock",
+    "vault.lockedTitle": "This is an encrypted folder",
+    "vault.lockedBody1": "Names and contents are encrypted; only ciphertext is stored on the server.",
+    "vault.lockedBody2": "Enter this folder's password to view it — the password is used only in your browser and is never sent to the server.",
+    "vault.unlockBtn": "Unlock with password",
+    "vault.unlocked": "Encrypted folder unlocked",
+    "vault.unlockTitle": "Unlock encrypted folder",
+    "vault.pwLabel": "Folder password",
+    "vault.pwPh": "The folder password set at creation",
+    "vault.pwNote": "The password is used only in your browser for decryption and is never sent to the server; a wrong password will not open it.",
+    "vault.unlock": "Unlock",
+    "vault.errNoPw": "Please enter the folder password",
+    "vault.errWrong": "Wrong folder password, please try again",
+    "vault.lockedToast": "Locked; the key was cleared from memory",
+    "vault.preview": "Preview (decrypted locally)",
+    "vault.download": "Download and decrypt",
+    "vault.encrypting": "Encrypting locally…",
+    "vault.uploading": "Uploading ciphertext…",
+    "vault.manifest": "Writing manifest…",
+    "vault.done": "Done ✓ (encrypted)",
+    "vault.dlFailed": "Download or decryption failed: {msg}",
+    "vault.renameTitle": "Rename (display name only)",
+    "vault.renameNote": "The display name lives only in the encrypted manifest; renaming never touches the ciphertext on the server.",
+    "vault.deleteTitle": "Delete encrypted file",
+    "vault.deleteBody": "Delete “{name}”? Its ciphertext will be deleted and cannot be recovered.",
+
+    "preview.title": "Preview",
+    "preview.tooBig": "This text file is too large for an in-browser preview.",
+    "preview.cannot": "This file cannot be previewed in the browser.",
+    "preview.fallbackSub": "Use “Download” at the top right to save it and open it locally.",
+    "preview.loadFailed": "Preview failed to load",
+    "preview.decrypting": "Decrypting locally…",
+    "preview.decryptFailed": "Preview decryption failed: {msg}",
+
+    "speed.head": "⚡ Upload / download speed test",
+    "speed.size": "Data size",
+    "speed.run": "Start test",
+    "speed.down": "Download",
+    "speed.up": "Upload",
+    "speed.noteLive": "Measured through the backend's streaming relay, the same path real uploads and downloads use; test traffic does not consume quota and stores no files.",
+    "speed.noteStub": "⚠️ This is the local test path (stub storage): it measures this machine's link to the backend, not real Seafile / e2 speed. Test traffic does not consume quota.",
+    "speed.running": "Testing…",
+    "speed.waitDown": "Waiting for the download…",
+    "speed.failDown": "Download test failed ({status})",
+    "speed.failUp": "Upload test failed ({status})",
+    "speed.errUp": "Upload test network error",
+    "speed.resDown": "Download {speed} ({size})",
+    "speed.resUp": "Upload {speed} (server confirmed {size}, nothing stored)",
+
+    "admin.back": "← Back to drive",
+    "admin.sub": "Invites · Users · Usage",
+    "admin.invites": "Invite codes",
+    "admin.notePh": "Note (who it is for)",
+    "admin.validity": "Valid for",
+    "admin.days": "days",
+    "admin.uses": "Uses",
+    "admin.issue": "Issue code",
+    "admin.newCode": "New invite code (copy it and send it over):",
+    "admin.copy": "Copy",
+    "admin.thCode": "Code",
+    "admin.thNote": "Note",
+    "admin.thStatus": "Status",
+    "admin.thUses": "Uses",
+    "admin.thExpires": "Expires",
+    "admin.users": "Users",
+    "admin.thUser": "User",
+    "admin.thQuota": "Usage / Quota",
+    "admin.thLastLogin": "Last login",
+    "admin.thActions": "Actions",
+    "admin.total": "Total usage {bytes}",
+    "invite.ok": "Active",
+    "invite.usedUp": "Used up",
+    "invite.revoked": "Revoked",
+    "invite.expired": "Expired",
+    "invite.never": "Never",
+    "invite.revoke": "Revoke",
+    "invite.revokedToast": "Invite code revoked",
+    "invite.copied": "Copied",
+    "invite.copyFailed": "Copy failed — please copy it manually",
+    "user.admin": "Admin",
+    "user.active": "Active",
+    "user.disabledPill": "Disabled",
+    "user.never": "Never",
+    "user.setQuota": "Set quota",
+    "user.recalc": "Recalculate",
+    "user.makeAdmin": "Make admin",
+    "user.unmakeAdmin": "Remove admin",
+    "user.disable": "Disable",
+    "user.enable": "Enable",
+    "user.quotaTitle": "Set quota · {user}",
+    "user.quotaLabel": "Quota (GB, empty = system default)",
+    "user.quotaSaved": "Quota updated",
+    "user.recalcDone": "Recalculation done: {bytes}",
+    "user.makeAdminBody": "Making “{user}” an admin gives them access to the admin console, user management and invite codes. Continue?",
+    "user.makeAdminDone": "Now an admin",
+    "user.unmakeAdminBody": "Removing admin rights from “{user}” blocks their access to the admin console. Continue?",
+    "user.unmakeAdminDone": "Admin rights removed",
+    "user.disableTitle": "Disable user",
+    "user.disableBody": "Disabling “{user}” invalidates all their sessions but keeps their files. Continue?",
+    "user.disabledToast": "Disabled",
+    "user.enabledToast": "Enabled",
+    "modal.title": "Title",
+  },
+};
+
+// 后端消息保持中文（后端一行不改）。en 下按 detail.error 的 code 查这里的英文，
+// 查不到就原样显示服务端文本——宁可露出中文，也不吞掉真实错误。
+const ERROR_I18N = {
+  unauthorized: "Please sign in first",
+  account_disabled: "This account is disabled",
+  admin_required: "Admin rights required",
+  not_found: "Not found",
+  path_rejected: "That path is not allowed",
+  range_not_satisfiable: "Requested range is not available",
+  bad_invite: "Invalid or expired invite code",
+  bad_limit: "Invalid limit",
+  bad_member: "Invalid member",
+  bad_on_conflict: "Invalid conflict policy",
+  bad_path: "Invalid path",
+  bad_username: "Invalid username",
+  cell_move: "This item cannot be moved",
+  cell_rename: "This item cannot be renamed",
+  last_admin: "The last admin cannot be removed",
+  not_a_dir: "Not a folder",
+  not_a_file: "Not a file",
+  owner_protected: "The owner cannot be changed",
+  shared_delete: "A shared folder cannot be deleted",
+  shared_move: "A shared folder cannot be moved",
+  shared_rename: "A shared folder cannot be renamed",
+  too_many_members: "Too many members",
+  username_taken: "That username is taken",
+  weak_password: "Password is too weak",
+  bad_credentials: "Wrong username or password",
+  forbidden: "You do not have permission to do that",
+  owner_required: "Only the owner can do that",
+  already_shared: "Already shared",
+  conflict: "Conflicts with existing data",
+  speedtest_busy: "A speed test is already running",
+  file_too_large: "File is too large",
+  quota_exceeded: "Not enough quota left",
+  shared_full: "The shared folder is full",
+  speedtest_too_large: "Test size is too large",
+  login_locked: "Too many failed attempts; try again later",
+  rate_limited: "Too many requests; slow down",
+  storage_error: "Storage layer error",
+  range_error: "Invalid byte range",
+  invalid_move: "A folder cannot be moved into itself",
+  seafile_unreachable: "Storage backend unreachable",
+  seafile_auth_failed: "Storage backend authentication failed",
+};
+
+// 插值用 split/join：这个项目不用模板字符串拼界面文案。
+function t(key, vars) {
+  const table = I18N[lang] || I18N.zh;
+  let s = table[key];
+  if (s === undefined) s = I18N.zh[key];
+  if (s === undefined) return key;
+  if (vars) {
+    for (const k in vars) {
+      if (Object.prototype.hasOwnProperty.call(vars, k)) {
+        s = s.split("{" + k + "}").join(String(vars[k]));
+      }
+    }
+  }
+  return s;
+}
+
+// 静态文案靠 data-i18n / data-i18n-placeholder / data-i18n-title 标注，这里统一刷。
+function applyLang() {
+  document.documentElement.lang = lang === "en" ? "en" : "zh-CN";
+  document.title = t("app.title");
+  $$("[data-i18n]").forEach((el) => { el.textContent = t(el.getAttribute("data-i18n")); });
+  $$("[data-i18n-placeholder]").forEach((el) => {
+    el.placeholder = t(el.getAttribute("data-i18n-placeholder"));
+  });
+  $$("[data-i18n-title]").forEach((el) => {
+    el.title = t(el.getAttribute("data-i18n-title"));
+  });
+  const btn = $("#lang-toggle");
+  if (btn) {
+    // 按钮显示「当前语言」：en 下是 EN，这样它自己不会污染「零中文」那类检查
+    btn.textContent = lang === "en" ? "EN" : "中";
+    btn.title = t("lang.switch");
+    btn.setAttribute("aria-label", t("lang.switch"));
+  }
+}
+
+/* 切语言后把 JS 拼出来的区域重画一遍（applyLang 只认 data-i18n 属性） */
+function rerenderI18n() {
+  if (!me) return;
+  renderCrumbs();
+  updateBatchBar();
+  updateVaultChrome();
+  refreshQuota();
+  refreshShared();
+  if (!$("#view-admin").classList.contains("hidden")) loadAdmin();
+  else refreshList();
+}
+
+function setLang(next) {
+  lang = next === "en" ? "en" : "zh";
+  localStorage.setItem("subdrive_lang", lang);
+  // 切换前写下的 toast 是旧语言原文，切完立刻收回，别让页面上留着另一种语言的字
+  $("#toast").className = "toast hidden";
+  // 关着的弹窗/预览层里还留着上一次渲染的旧语言 DOM（含 placeholder、title），清掉免得残留
+  $("#modal-body").innerHTML = "";
+  $("#preview-body").innerHTML = "";
+  applyLang();
+  rerenderI18n();
+}
+
 let token = localStorage.getItem("subdrive_token") || "";
 let me = null;
 let curPath = ""; // "" = 根目录；否则 "a/b"
@@ -86,10 +819,14 @@ async function api(path, opts = {}) {
   try { data = await resp.json(); } catch { /* 非 JSON */ }
   if (!resp.ok) {
     const detail = data && data.detail ? data.detail : data;
-    const msg = (detail && detail.message) || (data && data.message) || `请求失败 (${resp.status})`;
+    const code = detail && detail.error;
+    // en 下先按 error code 查英文；查不到就显示服务端原文（后端消息保持中文，不改）
+    const msg = (lang === "en" && code && ERROR_I18N[code])
+      || (detail && detail.message) || (data && data.message)
+      || t("req.failed", { status: resp.status });
     const e = new Error(msg);
     e.status = resp.status;
-    e.code = detail && detail.error;
+    e.code = code;
     if (resp.status === 401 && token) { /* 会话失效，回到登录页 */ logout(false); }
     throw e;
   }
@@ -188,7 +925,7 @@ $("#form-register").addEventListener("submit", async (e) => {
       },
     });
     setSession(data);
-    toast("注册成功，你的网盘已开通 🎉");
+    toast(t("auth.regDone"));
   } catch (err) {
     errEl.textContent = err.message;
   } finally { btn.disabled = false; }
@@ -212,20 +949,19 @@ function logout(callApi = true) {
 $("#btn-logout").addEventListener("click", () => logout(true));
 $("#user-chip").addEventListener("click", () => {
   if (!me) return;
-  openModal("改名字",
-    '<label class="field"><span>显示名（昵称）</span>'
+  openModal(t("nick.title"),
+    '<label class="field"><span>' + t("nick.label") + '</span>'
     + '<input id="nick-input" class="field-input" type="text" maxlength="40" value="'
     + esc(me.nickname || "") + '"></label>'
-    + '<p class="field-note">登录名 @' + esc(me.username)
-    + ' 不变（它是路径与授权的锚点）；留空就回落到登录名。</p>',
-    "保存", async () => {
+    + '<p class="field-note">' + t("nick.note", { user: esc(me.username) }) + '</p>',
+    t("common.save"), async () => {
       const u = await api("/api/me/nickname", { method: "POST",
         body: { nickname: ($("#nick-input").value || "").trim() } });
       me = Object.assign(me || {}, u);
       $("#user-name").textContent = u.nickname || u.username;
       $("#user-avatar").textContent = (u.nickname || u.username).slice(0, 1);
       $("#user-sub").textContent = "@" + u.username;
-      toast("名字已更新");
+      toast(t("nick.done"));
     });
 });
 $("#btn-my-cell").addEventListener("click", () => {
@@ -273,16 +1009,16 @@ const FOLDER_SVG = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">'
 function sharedItemEl(f) {
   const el = document.createElement("div");
   el.className = "shared-item" + (f.is_mine ? " mine" : "");
-  const capBytes = f.max_bytes ? fmtBytes(f.max_bytes) : "不限";
-  const capMem = f.max_members ? "上限 " + f.max_members + " 人" : "不限成员";
-  const memText = f.members.length ? f.members.length + " 人" : "全员";
+  const capBytes = f.max_bytes ? fmtBytes(f.max_bytes) : t("shared.unlimited");
+  const capMem = f.max_members ? t("shared.capMembers", { n: f.max_members }) : t("shared.noCap");
+  const memText = f.members.length ? t("shared.memberCount", { n: f.members.length }) : t("shared.allMembers");
   const used = f.bytes || 0;
   const pct = f.max_bytes ? Math.min(100, (used / f.max_bytes) * 100) : 0;
   el.innerHTML = '<div class="si-icon">' + FOLDER_SVG + '</div>'
     + '<div class="si-body">'
     +   '<div class="si-head">'
     +     '<strong class="si-name">' + esc(f.path) + '</strong>'
-    +     '<span class="si-owner">' + (f.is_mine ? "我创建" : esc(f.owner)) + '</span>'
+    +     '<span class="si-owner">' + (f.is_mine ? t("shared.mineBadge") : esc(f.owner)) + '</span>'
     +   '</div>'
     +   '<div class="si-stats">'
     +     '<span class="si-meta">👥 ' + memText + ' · ' + capMem + '</span>'
@@ -291,7 +1027,7 @@ function sharedItemEl(f) {
     +   (f.max_bytes ? '<div class="si-bar"><i style="width:' + pct.toFixed(1) + '%"></i></div>' : '')
     + '</div>'
     + '<span class="si-go">›</span>';
-  el.title = f.is_mine ? "点进入；在目录里点「管理共享」改名单" : f.owner + " 分享给你";
+  el.title = f.is_mine ? t("shared.itemTitleMine") : t("shared.itemTitleOther", { owner: f.owner });
   el.addEventListener("click", () => enterShared(f));
   return el;
 }
@@ -309,16 +1045,18 @@ async function refreshShared() {
   list.innerHTML = "";
   card.classList.toggle("hidden", scope !== "mine" || folders.length === 0);
   $("#shared-hint").textContent = folders.length
-    ? "被授权的共享文件夹可查看、下载、上传；配额算上传者自己"
+    ? t("shared.hint")
     : "";
   for (const f of folders) list.appendChild(sharedItemEl(f));
   const pub = $("#public-list");
   pub.innerHTML = "";
   for (const f of folders) pub.appendChild(sharedItemEl(f));
   $("#public-empty").classList.toggle("hidden", folders.length > 0);
-  $("#public-count").textContent = folders.length ? folders.length + " 个共享文件夹" : "";
+  $("#public-count").textContent = folders.length
+    ? t(folders.length === 1 ? "public.countOne" : "public.count", { n: folders.length })
+    : "";
   $("#public-hint").textContent = folders.length
-    ? "点进去就是那个共享目录，可查看、下载、上传；配额算上传者自己"
+    ? t("public.hint")
     : "";
 }
 
@@ -371,12 +1109,12 @@ function enterShared(f) {
 
 /* ---------------- 共享对话框 ---------------- */
 function revokeShare(folder) {
-  openModal("取消共享",
-    `<p class="modal-text">「${esc(folder.path)}」将退回私有文件夹：成员立刻失去访问权限，目录里的内容全部保留。</p>`,
-    "取消共享", async () => {
+  openModal(t("shared.stop"),
+    '<p class="modal-text">' + t("shared.stopBody", { path: esc(folder.path) }) + '</p>',
+    t("shared.stop"), async () => {
       try {
         await api("/api/shared/" + folder.id, { method: "DELETE" });
-        toast("已取消共享");
+        toast(t("shared.stopped"));
         await refreshShared();
         refreshList();
       } catch (e) { toast(e.message, true); }
@@ -396,12 +1134,12 @@ async function openShareDialog(path, grant) {
   const memberNames = (mineOne || grant || {}).members || [];
   await prepareShareUI();
   const body = isMine
-    ? '<p class="modal-hint">「' + esc(path) + '」已共享。成员可查看、下载、上传（各自配额）；改名单立即生效。</p>'
-      + '<label class="field-label">谁能看到</label>' + memberPickerHTML("s")
-      + '<label class="field-label">上限</label>' + limitsHTML("s", mineOne, "edit")
-    : '<p class="modal-hint">把「' + esc(path) + '」变成共享文件夹：名单内成员可查看、下载、上传，上传内容存进各自用户名子文件夹；配额算上传者自己。创建后即公开，可随时改名单或取消共享。</p>'
-      + '<label class="field-label">谁能看到</label>' + memberPickerHTML("s");
-  openModal("共享文件夹", body, isMine ? "保存" : "创建共享", async () => {
+    ? '<p class="modal-hint">' + t("shared.dialogEdit", { path: esc(path) }) + '</p>'
+      + '<label class="field-label">' + t("picker.who") + '</label>' + memberPickerHTML("s")
+      + '<label class="field-label">' + t("picker.limits") + '</label>' + limitsHTML("s", mineOne, "edit")
+    : '<p class="modal-hint">' + t("shared.dialogCreate", { path: esc(path) }) + '</p>'
+      + '<label class="field-label">' + t("picker.who") + '</label>' + memberPickerHTML("s");
+  openModal(t("shared.title"), body, isMine ? t("common.save") : t("shared.create"), async () => {
     const members = readMemberPicker("s");
     if (isMine) {
       await api("/api/shared/" + mineOne.id + "/members", { method: "POST", body: { members } });
@@ -410,10 +1148,10 @@ async function openShareDialog(path, grant) {
       if (Object.keys(limits).length) {
         await api("/api/shared/" + mineOne.id, { method: "PATCH", body: limits });
       }
-      toast("成员名单已更新");
+      toast(t("shared.membersUpdated"));
     } else {
       await api("/api/shared/create", { method: "POST", body: { path: "/" + path, members } });
-      toast("已创建共享文件夹");
+      toast(t("shared.created"));
     }
     await refreshShared();
     refreshList();
@@ -426,7 +1164,7 @@ async function refreshQuota() {
     quota = await api("/api/quota");
     const used = quota.used_bytes, total = quota.quota_bytes;
     const pct = total > 0 ? Math.min(100, (used / total) * 100) : 0;
-    $("#quota-text").textContent = `已用 ${fmtBytes(used)} / ${fmtBytes(total)}`;
+    $("#quota-text").textContent = t("quota.used", { used: fmtBytes(used), total: fmtBytes(total) });
     $("#quota-pct").textContent = `· ${pct.toFixed(pct >= 10 ? 0 : 1)}%`;
     const fill = $("#quota-fill");
     fill.style.width = pct + "%";
@@ -469,25 +1207,25 @@ function renderCrumbs() {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "crumb";
-    b.textContent = "公共区域";
+    b.textContent = t("scope.public");
     b.addEventListener("click", () => setScope("public"));
     nav.appendChild(b);
     if (curOwner) {
       sep();
-      nav.appendChild(mk(curOwner + " 的共享", "", parts.length === 0, curOwner));
+      nav.appendChild(mk(t("crumbs.sharedOf", { owner: curOwner }), "", parts.length === 0, curOwner));
     }
     trail(curOwner);
     return;
   }
   if (curOwner) {
     // 别人的共享目录：第一格回到自己的网盘，第二格是共享根
-    nav.appendChild(mk("我的网盘", "", false, ""));
+    nav.appendChild(mk(t("scope.mine"), "", false, ""));
     sep();
-    nav.appendChild(mk(curOwner + " 的共享", "", parts.length === 0, curOwner));
+    nav.appendChild(mk(t("crumbs.sharedOf", { owner: curOwner }), "", parts.length === 0, curOwner));
     trail(curOwner);
     return;
   }
-  nav.appendChild(mk("我的网盘", "", parts.length === 0));
+  nav.appendChild(mk(t("scope.mine"), "", parts.length === 0));
   trail("");
 }
 
@@ -575,7 +1313,7 @@ function renderEntries(entries) {
         <div class="file-icon ${cls}">${svg}</div>
         <div style="min-width:0">
           <div class="row-name">${esc(entry.name)}</div>
-          <div class="row-sub">${entry.type === "dir" ? "文件夹" : sizeText} · ${fmtDate(entry.mtime)}</div>
+          <div class="row-sub">${entry.type === "dir" ? t("list.folder") : sizeText} · ${fmtDate(entry.mtime)}</div>
         </div>
       </div>
       <span class="col-size">${sizeText}</span>
@@ -584,7 +1322,7 @@ function renderEntries(entries) {
     const rel = (curPath ? curPath + "/" : "") + entry.name;
     const sel = document.createElement("label");
     sel.className = "sel-cell";
-    sel.title = "勾选后可批量操作";
+    sel.title = t("list.selectHint");
     const cb = document.createElement("input");
     cb.type = "checkbox";
     cb.className = "row-sel";
@@ -601,33 +1339,33 @@ function renderEntries(entries) {
     if (entry.type === "dir" && !curOwner && vaultDirMarks.has(rel)) {
       $(".file-icon", row).classList.add("vault-icon");
       $(".row-name", row).insertAdjacentHTML("beforeend",
-        ' <span class="vault-badge">🔒 加密</span>');
-      $(".row-sub", row).textContent = "加密文件夹 · 需密码打开";
+        ' <span class="vault-badge">' + t("list.vaultBadge") + '</span>');
+      $(".row-sub", row).textContent = t("list.vaultRowSub");
     }
     const shared = entry.type === "dir" && !curOwner
       ? sharedMine.find((s) => s.path === rel) : null;
     if (shared) {
       $(".row-name", row).insertAdjacentHTML("beforeend",
-        ' <span class="shared-badge">🔗 共享</span>');
+        ' <span class="shared-badge">' + t("list.sharedBadge") + '</span>');
     }
     const act = $(".col-act", row);
     if (entry.type === "file") {
       if (previewKind(entry.name)) {
-        act.appendChild(actionBtn(ICONS.eye, "预览", () => openPreview(rel, entry)));
+        act.appendChild(actionBtn(ICONS.eye, t("list.preview"), () => openPreview(rel, entry)));
       }
-      act.appendChild(actionBtn(ICONS.download, "下载", () => downloadFile(rel, entry.name)));
+      act.appendChild(actionBtn(ICONS.download, t("common.download"), () => downloadFile(rel, entry.name)));
     }
     if (entry.type === "dir" && !curOwner && !vaultDirMarks.has(rel) && me.is_admin) {
-      act.appendChild(actionBtn(ICONS.share, shared ? "管理共享" : "共享此文件夹",
+      act.appendChild(actionBtn(ICONS.share, shared ? t("list.manageShare") : t("list.shareFolder"),
         () => openShareDialog(rel, shared)));
       if (shared) {
-        act.appendChild(actionBtn(ICONS.unshare, "取消共享", () => revokeShare(shared), true));
+        act.appendChild(actionBtn(ICONS.unshare, t("shared.stop"), () => revokeShare(shared), true));
       }
     }
     if ((!curOwner || inOwnCell()) && !isOwnCellDir(entry)) {
-      act.appendChild(actionBtn(ICONS.rename, "重命名", () => renameItem(rel, entry.name)));
-      act.appendChild(actionBtn(ICONS.move, "移动", () => moveItem(rel, entry.name)));
-      act.appendChild(actionBtn(ICONS.trash, "删除", () => deleteItem(rel, entry.name), true));
+      act.appendChild(actionBtn(ICONS.rename, t("common.rename"), () => renameItem(rel, entry.name)));
+      act.appendChild(actionBtn(ICONS.move, t("common.move"), () => moveItem(rel, entry.name)));
+      act.appendChild(actionBtn(ICONS.trash, t("common.delete"), () => deleteItem(rel, entry.name), true));
     }
     row.addEventListener("click", (ev) => {
       if (ev.target.closest(".col-act")) return;
@@ -656,11 +1394,11 @@ function updateBatchBar() {
   if (!bar) return;
   const n = selected.size;
   bar.classList.toggle("hidden", n === 0);
-  $("#batch-count").textContent = `已选 ${n} 项`;
+  $("#batch-count").textContent = t("batch.count", { n: n });
   const files = currentEntries.filter((e) => e.type === "file" && selected.has(relOf(e)));
   const dl = $("#batch-download");
   dl.disabled = files.length === 0;
-  dl.title = files.length ? `下载选中的 ${files.length} 个文件（文件夹会跳过）` : "选中项里没有文件";
+  dl.title = files.length ? t("batch.dlTitle", { n: files.length }) : t("batch.dlNoFiles");
   const all = currentEntries.length > 0 && currentEntries.every((e) => selected.has(relOf(e)));
   const allBox = $("#sel-all");
   if (allBox) { allBox.checked = all; allBox.indeterminate = !all && n > 0; }
@@ -674,21 +1412,21 @@ function clearSelection() {
   });
   updateBatchBar();
 }
-async function runBatch(list, fn, verb) {
+async function runBatch(list, fn, okKey, failKey) {
   let ok = 0, fail = 0, firstErr = "";
   for (const rel of list) {
     try { await fn(rel); ok++; } catch (e) { fail++; if (!firstErr) firstErr = e.message; }
   }
-  if (fail) toast(`已${verb} ${ok} 项，${fail} 项失败：${firstErr}`, true);
-  else toast(`已${verb} ${ok} 项`);
+  if (fail) toast(t(failKey, { ok: ok, fail: fail, msg: firstErr }), true);
+  else toast(t(okKey, { ok: ok }));
 }
 function batchDelete() {
   const list = [...selected];
   if (!list.length) return;
-  openModal("批量删除", `<p class="modal-text">删除选中的 ${list.length} 项？文件夹会连同里面的内容一起删掉。</p>`,
-    "删除", async () => {
+  openModal(t("batch.deleteTitle"), '<p class="modal-text">' + t("batch.deleteBody", { n: list.length }) + '</p>',
+    t("common.delete"), async () => {
       await runBatch(list, (rel) =>
-        api("/api/files/delete" + ownerQS("?"), { method: "POST", body: { path: "/" + rel } }), "删除");
+        api("/api/files/delete" + ownerQS("?"), { method: "POST", body: { path: "/" + rel } }), "batch.deleted", "batch.deletedSome");
       refreshList();
       refreshQuota();
     }, true);
@@ -705,13 +1443,13 @@ async function batchMove() {
   const srcDirs = new Set(list.map((rel) => (rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "")));
   dirs = dirs.filter((d) => !srcDirs.has(d) && !list.some((rel) => d === rel || d.startsWith(rel + "/")));
   let chosen = rootDir;
-  openModal("批量移动", `
-    <p class="modal-text">把选中的 ${list.length} 项移动到：</p>
+  openModal(t("batch.moveTitle"), `
+    <p class="modal-text">${t("batch.moveBody", { n: list.length })}</p>
     <div class="folder-pick">${dirs.map((d) =>
-      `<button type="button" data-dir="${esc(d)}">📁 ${d === "" ? "我的网盘（根目录）" : esc("/" + d)}</button>`).join("")}
-    </div>`, "移动", async () => {
+      `<button type="button" data-dir="${esc(d)}">📁 ${d === "" ? t("common.root") : esc("/" + d)}</button>`).join("")}
+    </div>`, t("common.move"), async () => {
       await runBatch(list, (rel) => api("/api/files/move" + ownerQS("?"),
-        { method: "POST", body: { path: "/" + rel, dest_dir: chosen ? "/" + chosen : "" } }), "移动");
+        { method: "POST", body: { path: "/" + rel, dest_dir: chosen ? "/" + chosen : "" } }), "batch.moved", "batch.movedSome");
       refreshList();
     });
   $$("#modal-body .folder-pick button").forEach((b) => {
@@ -727,7 +1465,7 @@ async function batchDownload() {
   if (!files.length) return;
   const skipped = selected.size - files.length;
   for (const e of files) await downloadFile(relOf(e), e.name);
-  if (skipped > 0) toast(`已下载 ${files.length} 个文件，跳过 ${skipped} 个文件夹`);
+  if (skipped > 0) toast(t("batch.downloaded", { n: files.length, skipped: skipped }));
 }
 $("#sel-all").addEventListener("change", (e) => {
   const on = e.target.checked;
@@ -755,7 +1493,7 @@ async function downloadFile(rel, name) {
     });
     if (!resp.ok) {
       const d = await resp.json().catch(() => null);
-      throw new Error((d && d.detail && d.detail.message) || "下载失败");
+      throw new Error((d && d.detail && d.detail.message) || t("download.failed"));
     }
     const blob = await resp.blob();
     const a = document.createElement("a");
@@ -774,7 +1512,7 @@ function openModal(title, bodyHTML, okText, onOk, danger = false) {
   $("#modal-title").textContent = title;
   $("#modal-body").innerHTML = bodyHTML;
   const ok = $("#modal-ok");
-  ok.textContent = okText || "确定";
+  ok.textContent = okText || t("common.ok");
   ok.className = "btn-primary" + (danger ? " danger-btn" : "");
   modalOkHandler = onOk;
   $("#modal-overlay").classList.remove("hidden");
@@ -794,23 +1532,23 @@ $("#modal-ok").addEventListener("click", async () => {
 });
 
 function renameItem(rel, name) {
-  openModal("重命名", `
-    <label class="field"><span>新名称</span>
+  openModal(t("rename.title"), `
+    <label class="field"><span>${t("rename.label")}</span>
     <input id="m-name" type="text" value="${esc(name)}"></label>`,
-    "保存", async () => {
+    t("common.save"), async () => {
       const newName = $("#m-name").value.trim();
       if (!newName || newName === name) return;
       await api("/api/files/rename" + ownerQS("?"),
         { method: "POST", body: { path: "/" + rel, new_name: newName } });
-      toast("已重命名");
+      toast(t("rename.done"));
       refreshList();
     });
 }
 function deleteItem(rel, name) {
-  openModal("删除", `<p class="modal-text">确定删除「${esc(name)}」吗？删除后文件会进入回收站，此操作无法在本页面撤销。</p>`,
-    "删除", async () => {
+  openModal(t("delete.title"), '<p class="modal-text">' + t("delete.body", { name: esc(name) }) + '</p>',
+    t("common.delete"), async () => {
       await api("/api/files/delete" + ownerQS("?"), { method: "POST", body: { path: "/" + rel } });
-      toast("已删除");
+      toast(t("delete.done"));
       refreshList(); refreshQuota();
     }, true);
 }
@@ -840,14 +1578,14 @@ async function moveItem(rel, name) {
   const srcDir = rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "";
   dirs = dirs.filter((d) => d !== rel && d !== srcDir && !d.startsWith(rel + "/"));
   let chosen = rootDir;
-  openModal("移动到", `
-    <p class="modal-text">把「${esc(name)}」移动到：</p>
+  openModal(t("move.title"), `
+    <p class="modal-text">${t("move.body", { name: esc(name) })}</p>
     <div class="folder-pick">${dirs.map((d) =>
-      `<button type="button" data-dir="${esc(d)}">📁 ${d === "" ? "我的网盘（根目录）" : esc("/" + d)}</button>`).join("")}
-    </div>`, "移动", async () => {
+      `<button type="button" data-dir="${esc(d)}">📁 ${d === "" ? t("common.root") : esc("/" + d)}</button>`).join("")}
+    </div>`, t("common.move"), async () => {
       await api("/api/files/move" + ownerQS("?"),
         { method: "POST", body: { path: "/" + rel, dest_dir: chosen ? "/" + chosen : "" } });
-      toast("已移动");
+      toast(t("move.done"));
       refreshList();
     });
   $$("#modal-body .folder-pick button").forEach((b) => {
@@ -885,22 +1623,22 @@ async function prepareShareUI() {
     }
     await loadDirectory();
   } catch (e) {
-    toast("成员名单加载失败：" + e.message, true);
+    toast(t("picker.loadFailed", { msg: e.message }), true);
   }
 }
 
 function memberPickerHTML(p) {
   return '<div class="member-picker">'
     + '<div class="seg" id="' + p + '-mode">'
-    + '<button type="button" class="seg-btn selected" data-mode="all">全部成员</button>'
-    + '<button type="button" class="seg-btn" data-mode="some">仅指定成员</button>'
+    + '<button type="button" class="seg-btn selected" data-mode="all">' + t("picker.modeAll") + '</button>'
+    + '<button type="button" class="seg-btn" data-mode="some">' + t("picker.modeSome") + '</button>'
     + '</div>'
-    + '<p class="field-note" id="' + p + '-note">所有注册成员都能看到、下载、上传（各自配额）。</p>'
+    + '<p class="field-note" id="' + p + '-note">' + t("picker.noteAll") + '</p>'
     + '<div id="' + p + '-some" class="hidden">'
-    + '<input id="' + p + '-search" class="field-input" type="text" placeholder="搜索昵称或用户名…">'
+    + '<input id="' + p + '-search" class="field-input" type="text" placeholder="' + t("picker.searchPh") + '">'
     + '<div id="' + p + '-list" class="member-list"></div>'
-    + '<div class="member-foot"><span id="' + p + '-count">已选 0 人</span>'
-    + '<button type="button" class="btn-ghost" id="' + p + '-clear">清空勾选</button></div>'
+    + '<div class="member-foot"><span id="' + p + '-count">' + t("picker.count", { n: 0 }) + '</span>'
+    + '<button type="button" class="btn-ghost" id="' + p + '-clear">' + t("picker.clear") + '</button></div>'
     + '</div></div>';
 }
 
@@ -913,13 +1651,13 @@ function bindMemberPicker(p, users, selected, ownerName) {
   const list = $('#' + p + '-list');
   const note = $('#' + p + '-note');
   const modeBtns = $$('#' + p + '-mode .seg-btn');
-  const count = () => { $('#' + p + '-count').textContent = '已选 ' + sel.size + ' 人'; };
+  const count = () => { $('#' + p + '-count').textContent = t("picker.count", { n: sel.size }); };
   const render = (kw) => {
     const q = (kw || '').trim().toLowerCase();
     const rows = all.filter((u) => !q
       || u.nickname.toLowerCase().includes(q) || u.username.toLowerCase().includes(q));
     list.innerHTML = '';
-    if (!rows.length) { list.innerHTML = '<p class="field-note">没有匹配的成员</p>'; return; }
+    if (!rows.length) { list.innerHTML = '<p class="field-note">' + t("picker.empty") + '</p>'; return; }
     for (const u of rows) {
       const el = document.createElement('label');
       el.className = 'member-item';
@@ -928,8 +1666,8 @@ function bindMemberPicker(p, users, selected, ownerName) {
         + (isOwner ? ' disabled' : '') + '>'
         + '<span class="mi-nick">' + esc(u.nickname) + '</span>'
         + '<code class="mi-user">' + esc(u.username) + '</code>'
-        + (isOwner ? '<span class="mi-off">创建者本人，不用勾</span>'
-          : (u.disabled ? '<span class="mi-off">已禁用</span>' : ''));
+        + (isOwner ? '<span class="mi-off">' + t("picker.ownerSelf") + '</span>'
+          : (u.disabled ? '<span class="mi-off">' + t("picker.disabled") + '</span>' : ''));
       const cb = el.querySelector('input');
       cb.checked = !isOwner && sel.has(u.username);
       if (!isOwner) {
@@ -946,8 +1684,8 @@ function bindMemberPicker(p, users, selected, ownerName) {
     const some = b.dataset.mode === 'some';
     box.classList.toggle('hidden', !some);
     note.textContent = some
-      ? '只有勾选的成员看得到；一个都不勾不会被当成「全员」。'
-      : '所有注册成员都能看到、下载、上传（各自配额）。';
+      ? t("picker.noteSome")
+      : t("picker.noteAll");
   }));
   $('#' + p + '-search').addEventListener('input', (e) => render(e.target.value));
   $('#' + p + '-clear').addEventListener('click', () => {
@@ -965,7 +1703,7 @@ function readMemberPicker(p) {
   if (!some) return [];
   const picked = $$('#' + p + '-list input:checked').map((c) => c.value);
   if (!picked.length) {
-    throw new Error('选了「仅指定成员」却一个都没勾：请勾选成员，或改选「全部成员」');
+    throw new Error(t("picker.errNone"));
   }
   return picked;
 }
@@ -975,19 +1713,19 @@ function limitsHTML(p, cur, variant) {
   const b = (cur && cur.max_bytes) || 0;
   const useGb = !b || b % 1073741824 === 0;
   const capVal = b ? (useGb ? b / 1073741824 : b / 1048576) : '';
-  const emptyNote = variant === 'edit' ? '留空＝保持当前值' : ('留空＝默认 ' + fmtBytes(def.max_bytes));
+  const emptyNote = variant === 'edit' ? t("limits.emptyEdit") : t("limits.emptyDefault", { bytes: fmtBytes(def.max_bytes) });
   return '<div class="limit-row">'
-    + '<label class="field"><span>容量上限</span><div class="limit-inline">'
+    + '<label class="field"><span>' + t("limits.capacity") + '</span><div class="limit-inline">'
     + '<input id="' + p + '-cap" class="field-input" type="number" min="0" step="0.1" value="' + capVal + '">'
     + '<select id="' + p + '-unit" class="field-input">'
     + '<option value="gb"' + (useGb ? ' selected' : '') + '>GB</option>'
     + '<option value="mb"' + (useGb ? '' : ' selected') + '>MB</option>'
     + '</select></div>'
-    + '<small class="field-note">' + emptyNote + '；这是整个共享目录的总量（所有人的文件加起来）</small></label>'
-    + '<label class="field"><span>成员上限</span>'
+    + '<small class="field-note">' + t("limits.capacityNote", { empty: emptyNote }) + '</small></label>'
+    + '<label class="field"><span>' + t("limits.members") + '</span>'
     + '<input id="' + p + '-maxmem" class="field-input" type="number" min="0" step="1" max="' + def.hard_members + '" value="'
     + (cur && cur.max_members ? cur.max_members : '') + '">'
-    + '<small class="field-note">' + emptyNote + '；默认 ' + def.max_members + ' 人，最多 ' + def.hard_members + ' 人</small></label>'
+    + '<small class="field-note">' + t("limits.membersNote", { empty: emptyNote, def: def.max_members, hard: def.hard_members }) + '</small></label>'
     + '</div>';
 }
 
@@ -999,7 +1737,7 @@ function readShareLimits(p) {
     if (raw) {
       const unit = $('#' + p + '-unit').value === 'gb' ? 1073741824 : 1048576;
       const v = Math.round(Number(raw) * unit);
-      if (!Number.isFinite(v) || v < 1) throw new Error('容量上限必须大于 0');
+      if (!Number.isFinite(v) || v < 1) throw new Error(t("limits.errCapacity"));
       out.max_bytes = v;
     }
   }
@@ -1008,7 +1746,7 @@ function readShareLimits(p) {
     const raw = (mmEl.value || '').trim();
     if (raw) {
       const v = Math.floor(Number(raw));
-      if (!Number.isFinite(v) || v < 1) throw new Error('成员上限必须大于 0');
+      if (!Number.isFinite(v) || v < 1) throw new Error(t("limits.errMembers"));
       out.max_members = v;
     }
   }
@@ -1019,52 +1757,52 @@ $("#btn-mkdir").addEventListener("click", async () => {
   let kind = "plain";
   let vis = "private";
   if (canShare) await prepareShareUI();
-  openModal("新建文件夹", `
-    <label class="field"><span>文件夹名称</span>
-    <input id="m-name" type="text" placeholder="例如：照片"></label>
-    <div class="field"><span>类型</span>
+  openModal(t("mkdir.title"), `
+    <label class="field"><span>${t("mkdir.name")}</span>
+    <input id="m-name" type="text" placeholder="${t("mkdir.namePh")}"></label>
+    <div class="field"><span>${t("mkdir.type")}</span>
       <div class="seg" id="m-kind">
-        <button type="button" class="seg-btn selected" data-kind="plain">普通文件夹</button>
-        <button type="button" class="seg-btn" data-kind="vault">🔒 加密文件夹</button>
+        <button type="button" class="seg-btn selected" data-kind="plain">${t("mkdir.plain")}</button>
+        <button type="button" class="seg-btn" data-kind="vault">${t("mkdir.vault")}</button>
       </div>
     </div>
     <div id="m-vault-box" class="hidden">
-      <label class="field"><span>文件夹密码（至少 8 位，与登录密码相互独立）</span>
+      <label class="field"><span>${t("mkdir.vaultPw")}</span>
       <input id="m-vpass" type="password" autocomplete="new-password"></label>
-      <label class="field"><span>再次输入密码</span>
+      <label class="field"><span>${t("mkdir.vaultPw2")}</span>
       <input id="m-vpass2" type="password" autocomplete="new-password"></label>
-      <p class="modal-text warn-text">⚠️ 文件名与内容在你的浏览器里加密后才上传，服务器只看得到密文的大小与数量。
-      <strong>文件夹密码一旦丢失将无法恢复</strong>，任何人都帮不了你，请存进密码管理器。</p>
+      <p class="modal-text warn-text">${t("mkdir.warn1")}
+      <strong>${t("mkdir.warn2")}</strong>${t("mkdir.warn3")}</p>
     </div>
     <div id="m-plain-box">
-      <div class="field"><span>可见性</span>
+      <div class="field"><span>${t("mkdir.vis")}</span>
         <div class="seg" id="m-vis">
-          <button type="button" class="seg-btn selected" data-vis="private">私密（仅自己）</button>
-          ${canShare ? '<button type="button" class="seg-btn" data-vis="shared">公开共享</button>' : ""}
+          <button type="button" class="seg-btn selected" data-vis="private">${t("mkdir.private")}</button>
+          ${canShare ? '<button type="button" class="seg-btn" data-vis="shared">' + t("mkdir.public") + '</button>' : ""}
         </div>
       </div>
       ${canShare ? `<div id="m-share-box" class="hidden">
-        <label class="field-label">谁能看到</label>
+        <label class="field-label">${t("picker.who")}</label>
         ${memberPickerHTML("m")}
-        <label class="field-label">上限</label>
+        <label class="field-label">${t("picker.limits")}</label>
         ${limitsHTML("m", null, "create")}
       </div>` : ""}
     </div>`,
-    "创建", async () => {
+    t("mkdir.create"), async () => {
       const name = $("#m-name").value.trim();
-      if (!name) throw new Error("请输入名称");
+      if (!name) throw new Error(t("mkdir.errName"));
       const base = curPath ? "/" + curPath : "";
       if (kind === "vault") {
         const p1 = $("#m-vpass").value, p2 = $("#m-vpass2").value;
-        if (p1.length < 8) throw new Error("文件夹密码至少 8 位");
-        if (p1 !== p2) throw new Error("两次输入的密码不一致");
+        if (p1.length < 8) throw new Error(t("mkdir.errPwLen"));
+        if (p1 !== p2) throw new Error(t("mkdir.errPwDiff"));
         await createVault(name, p1);
-        toast("加密文件夹已创建并解锁");
+        toast(t("mkdir.vaultDone"));
         return;
       }
       await api("/api/files/mkdir", { method: "POST", body: { path: base, name } });
       if (vis !== "shared") {
-        toast("文件夹已创建");
+        toast(t("mkdir.done"));
         refreshList();
         return;
       }
@@ -1075,10 +1813,10 @@ $("#btn-mkdir").addEventListener("click", async () => {
       Object.assign(body, readShareLimits("m"));
       try {
         await api("/api/shared/create", { method: "POST", body });
-        toast("已创建公开共享文件夹");
+        toast(t("mkdir.sharedDone"));
         await refreshShared();
       } catch (e) {
-        toast("文件夹已建，但设为共享失败：" + e.message, true);
+        toast(t("mkdir.sharedFailed", { msg: e.message }), true);
       }
       refreshList();
     });
@@ -1103,15 +1841,15 @@ $("#btn-mkdir").addEventListener("click", async () => {
 });
 
 $("#btn-chpw").addEventListener("click", () => {
-  openModal("修改密码", `
-    <label class="field"><span>当前密码</span><input id="m-old" type="password" autocomplete="current-password"></label>
-    <label class="field"><span>新密码（至少 8 位）</span><input id="m-new" type="password" autocomplete="new-password"></label>`,
-    "保存", async () => {
+  openModal(t("chpw.title"), `
+    <label class="field"><span>${t("chpw.old")}</span><input id="m-old" type="password" autocomplete="current-password"></label>
+    <label class="field"><span>${t("chpw.new")}</span><input id="m-new" type="password" autocomplete="new-password"></label>`,
+    t("common.save"), async () => {
       await api("/api/auth/change-password", {
         method: "POST",
         body: { old_password: $("#m-old").value, new_password: $("#m-new").value },
       });
-      toast("密码已修改，其他设备的登录已失效");
+      toast(t("chpw.done"));
     });
 });
 
@@ -1214,10 +1952,10 @@ function enqueuePicked(entries, extraDirs = []) {
     const loose = entries.filter((en) => !en.relPath.includes("/"));
     const withDirs = entries.length - loose.length;
     if (vault && vault.path === curPath) {
-      if (withDirs || extraDirs.length) toast("加密文件夹暂不支持整文件夹上传，已跳过文件夹内容", true);
+      if (withDirs || extraDirs.length) toast(t("upload.vaultNoFolders"), true);
       if (loose.length) vaultEnqueueFiles(loose.map((en) => en.file));
     } else {
-      toast("加密文件夹已锁定，请先解锁再上传", true);
+      toast(t("upload.vaultLocked"), true);
     }
     return;
   }
@@ -1256,7 +1994,7 @@ async function enqueuePlanned(entries, extraDirs = []) {
     item.className = "upload-item";
     item.innerHTML = `<div class="u-name">${esc(pf.relPath)}</div>
       <div class="u-bar"><div class="u-fill"></div></div>
-      <div class="u-state">排队中…</div>`;
+      <div class="u-state">${t("upload.queued")}</div>`;
     $("#upload-items").appendChild(item);
     return { pf, item };
   });
@@ -1275,12 +2013,12 @@ async function enqueuePlanned(entries, extraDirs = []) {
     try {
       await ensureDirOnce(parentRel, segs[segs.length - 1]);
     } catch (e) {
-      dirErrors.set(dirRel, e.message || "创建文件夹失败");
+      dirErrors.set(dirRel, e.message || t("upload.mkdirFailShort"));
     }
   }
   if (!rows.length) { // 只拖入了空文件夹：目录已建好，给个明确反馈
-    if (dirErrors.size) toast(`创建文件夹失败：${[...dirErrors.values()][0]}`, true);
-    else toast("文件夹已创建");
+    if (dirErrors.size) toast(t("upload.mkdirFail", { msg: [...dirErrors.values()][0] }), true);
+    else toast(t("upload.folderCreated"));
     refreshList();
     return;
   }
@@ -1311,13 +2049,13 @@ function pumpUploads() {
 function askConflict(name, old) {
   return new Promise((resolve) => {
     const pick = (v) => { $("#modal-overlay").classList.add("hidden"); resolve(v); };
-    openModal("已经有同名文件", `
-      <p class="modal-text">「${esc(name)}」在这个目录里已存在（${fmtBytes(old.size)}，${fmtDate(old.mtime)}）。</p>
+    openModal(t("conflict.title"), `
+      <p class="modal-text">${t("conflict.body", { name: esc(name), size: fmtBytes(old.size), time: fmtDate(old.mtime) })}</p>
       <div class="conflict-actions">
-        <button type="button" class="btn-primary" data-v="overwrite">替换</button>
-        <button type="button" data-v="rename">两者都保留</button>
-        <button type="button" data-v="skip">跳过</button>
-      </div>`, "替换", async () => pick("overwrite"));
+        <button type="button" class="btn-primary" data-v="overwrite">${t("conflict.overwrite")}</button>
+        <button type="button" data-v="rename">${t("conflict.keep")}</button>
+        <button type="button" data-v="skip">${t("conflict.skip")}</button>
+      </div>`, t("conflict.overwrite"), async () => pick("overwrite"));
     $$("#modal-body .conflict-actions button").forEach((b) =>
       b.addEventListener("click", () => pick(b.dataset.v)));
     // 点取消 / 点遮罩 也当「跳过」，否则上传队列会卡在这个 Promise 上
@@ -1329,7 +2067,7 @@ function askConflict(name, old) {
 async function uploadOne({ file, item, targetDir, owner }) {
   const fill = $(".u-fill", item);
   const state = $(".u-state", item);
-  state.textContent = "上传中…";
+  state.textContent = t("upload.uploading");
   /* 同名先问。只在个人空间探：共享目录的服务端落点是 <目录>/<我>/，前端不复制那套规则（D34） */
   let onConflict = "overwrite";
   let expected = -1;
@@ -1340,7 +2078,7 @@ async function uploadOne({ file, item, targetDir, owner }) {
       if (old && old.type === "file") {
         const choice = await askConflict(file.name, old);
         if (choice === "skip") {
-          state.textContent = "已跳过";
+          state.textContent = t("upload.skipped");
           uploadsPendingRefresh = true;
           return;
         }
@@ -1361,17 +2099,17 @@ async function uploadOne({ file, item, targetDir, owner }) {
       if (e.lengthComputable) {
         const pct = Math.round((e.loaded / e.total) * 100);
         fill.style.width = pct + "%";
-        state.textContent = `上传中 ${pct}% · ${fmtBytes(file.size)}`;
+        state.textContent = t("upload.progress", { pct: pct, size: fmtBytes(file.size) });
       }
     });
     xhr.addEventListener("load", () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         fill.style.width = "100%";
         item.classList.add("done");
-        state.textContent = "完成 ✓";
+        state.textContent = t("upload.done");
       } else {
         item.classList.add("failed");
-        let msg = "上传失败";
+        let msg = t("upload.failed");
         try { const d = JSON.parse(xhr.responseText); msg = (d.detail && d.detail.message) || d.message || msg; } catch { }
         state.textContent = msg;
         toast(`${file.name}：${msg}`, true);
@@ -1381,7 +2119,7 @@ async function uploadOne({ file, item, targetDir, owner }) {
     });
     xhr.addEventListener("error", () => {
       item.classList.add("failed");
-      state.textContent = "网络错误";
+      state.textContent = t("upload.netError");
       uploadsPendingRefresh = true;
       resolve();
     });
@@ -1404,7 +2142,7 @@ async function rawDownloadBytes(rel) {
   });
   if (!resp.ok) {
     const d = await resp.json().catch(() => null);
-    throw new Error((d && d.detail && d.detail.message) || "读取失败");
+    throw new Error((d && d.detail && d.detail.message) || t("read.failed"));
   }
   return new Uint8Array(await resp.arrayBuffer());
 }
@@ -1416,7 +2154,7 @@ async function uploadBytes(dirRel, filename, bytes) {
   });
   if (!resp.ok) {
     const d = await resp.json().catch(() => null);
-    throw new Error((d && d.detail && d.detail.message) || `上传失败 (${resp.status})`);
+    throw new Error((d && d.detail && d.detail.message) || t("upload.failedStatus", { status: resp.status }));
   }
   return resp.json();
 }
@@ -1453,11 +2191,11 @@ function renderVaultEntries() {
       <span class="col-act"></span>`;
     const act = $(".col-act", row);
     if (previewKind(f.name)) {
-      act.appendChild(actionBtn(ICONS.eye, "预览（本地解密）", () => openVaultPreview(f)));
+      act.appendChild(actionBtn(ICONS.eye, t("vault.preview"), () => openVaultPreview(f)));
     }
-    act.appendChild(actionBtn(ICONS.download, "下载并解密", () => vaultDownload(f)));
-    act.appendChild(actionBtn(ICONS.rename, "重命名", () => vaultRename(f)));
-    act.appendChild(actionBtn(ICONS.trash, "删除", () => vaultDelete(f), true));
+    act.appendChild(actionBtn(ICONS.download, t("vault.download"), () => vaultDownload(f)));
+    act.appendChild(actionBtn(ICONS.rename, t("common.rename"), () => vaultRename(f)));
+    act.appendChild(actionBtn(ICONS.trash, t("common.delete"), () => vaultDelete(f), true));
     row.addEventListener("click", (ev) => {
       if (ev.target.closest(".col-act")) return;
       if (previewKind(f.name)) openVaultPreview(f);
@@ -1476,27 +2214,27 @@ async function attemptUnlock(password) {
   const manifest = SDVault.parseManifest(await SDVault.decryptBlob(key, manBytes));
   vault = { path: rel, key, manifest };
   await refreshList();
-  toast("加密文件夹已解锁");
+  toast(t("vault.unlocked"));
 }
 $("#btn-vault-unlock").addEventListener("click", () => {
-  openModal("解锁加密文件夹", `
-    <label class="field"><span>文件夹密码</span>
-    <input id="m-vpass" type="password" autocomplete="off" placeholder="创建时设置的文件夹密码"></label>
-    <p class="modal-text">密码只在你的浏览器里用于解密，不会发送到服务器；密码错误将无法打开。</p>`,
-    "解锁", async () => {
+  openModal(t("vault.unlockTitle"), `
+    <label class="field"><span>${t("vault.pwLabel")}</span>
+    <input id="m-vpass" type="password" autocomplete="off" placeholder="${t("vault.pwPh")}"></label>
+    <p class="modal-text">${t("vault.pwNote")}</p>`,
+    t("vault.unlock"), async () => {
       const pw = $("#m-vpass").value;
-      if (!pw) throw new Error("请输入文件夹密码");
+      if (!pw) throw new Error(t("vault.errNoPw"));
       try {
         await attemptUnlock(pw);
       } catch (e) {
-        throw new Error(e.message === "文件夹密码错误" ? "文件夹密码错误，请重试" : e.message);
+        throw new Error(e.message === "文件夹密码错误" ? t("vault.errWrong") : e.message);
       }
     });
 });
 $("#btn-vault-lock").addEventListener("click", () => {
   vault = null;
   refreshList();
-  toast("已锁定，密钥已从内存清除");
+  toast(t("vault.lockedToast"));
 });
 
 /* 加密文件夹的创建入口已并入「＋ 新建」，这里只保留底层构建函数。 */
@@ -1522,7 +2260,7 @@ async function vaultEnqueueFiles(files) {
     item.className = "upload-item";
     item.innerHTML = `<div class="u-name">🔒 ${esc(file.name)}</div>
       <div class="u-bar"><div class="u-fill"></div></div>
-      <div class="u-state">排队中…</div>`;
+      <div class="u-state">${t("upload.queued")}</div>`;
     $("#upload-items").appendChild(item);
     try {
       await vaultEncryptUpload(file, item);
@@ -1537,15 +2275,15 @@ async function vaultEnqueueFiles(files) {
 async function vaultEncryptUpload(file, item) {
   const state = $(".u-state", item);
   const fill = $(".u-fill", item);
-  state.textContent = "本地加密中…";
+  state.textContent = t("vault.encrypting");
   const plain = new Uint8Array(await file.arrayBuffer());
   const blob = await SDVault.encryptBlob(vault.key, plain);
   fill.style.width = "45%";
-  state.textContent = "上传密文中…";
+  state.textContent = t("vault.uploading");
   const id = SDVault.randomId();
   await uploadBytes(vault.path + "/blobs", id + ".enc", blob); // 先 blob 后清单（CRYPTO.md §6）
   fill.style.width = "80%";
-  state.textContent = "写入清单…";
+  state.textContent = t("vault.manifest");
   vault.manifest.files.push({
     id, name: file.name, size: plain.length,
     mime: file.type || "application/octet-stream",
@@ -1554,7 +2292,7 @@ async function vaultEncryptUpload(file, item) {
   await saveVaultManifest();
   fill.style.width = "100%";
   item.classList.add("done");
-  state.textContent = "完成 ✓（已加密）";
+  state.textContent = t("vault.done");
   renderVaultEntries();
 }
 async function vaultDownload(entry) {
@@ -1569,27 +2307,27 @@ async function vaultDownload(entry) {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   } catch (e) {
-    toast("下载/解密失败：" + e.message, true);
+    toast(t("vault.dlFailed", { msg: e.message }), true);
   }
 }
 function vaultRename(entry) {
-  openModal("重命名（仅修改显示名）", `
-    <label class="field"><span>新名称</span>
+  openModal(t("vault.renameTitle"), `
+    <label class="field"><span>${t("rename.label")}</span>
     <input id="m-name" type="text" value="${esc(entry.name)}"></label>
-    <p class="modal-text">显示名只存在于加密清单中，改名不触碰服务器上的密文。</p>`,
-    "保存", async () => {
+    <p class="modal-text">${t("vault.renameNote")}</p>`,
+    t("common.save"), async () => {
       const nn = $("#m-name").value.trim();
       if (!nn || nn === entry.name) return;
       entry.name = nn;
       await saveVaultManifest();
-      toast("已重命名");
+      toast(t("rename.done"));
       renderVaultEntries();
     });
 }
 function vaultDelete(entry) {
-  openModal("删除加密文件", `
-    <p class="modal-text">确定删除「${esc(entry.name)}」吗？其密文将被删除，无法恢复。</p>`,
-    "删除", async () => {
+  openModal(t("vault.deleteTitle"), `
+    <p class="modal-text">${t("vault.deleteBody", { name: esc(entry.name) })}</p>`,
+    t("common.delete"), async () => {
       vault.manifest.files = vault.manifest.files.filter((f) => f.id !== entry.id);
       await saveVaultManifest(); // 先改清单，再删 blob（CRYPTO.md §6）
       try {
@@ -1598,7 +2336,7 @@ function vaultDelete(entry) {
           body: { path: "/" + vault.path + "/blobs/" + entry.id + ".enc" },
         });
       } catch { /* 孤儿 blob 由用量校准兜底 */ }
-      toast("已删除");
+      toast(t("delete.done"));
       renderVaultEntries();
       refreshQuota();
     }, true);
@@ -1626,8 +2364,8 @@ function setPreviewContent(html) { $("#preview-body").innerHTML = html; }
 function previewFallbackHtml(entry) {
   const big = entry && entry.size > PREVIEW_TEXT_CAP;
   return `<div class="pv-fallback"><div class="pv-fallback-icon">${ICONS.file}</div>
-    <p>${big ? "文本文件过大，不适合在线预览。" : "该文件无法在线预览。"}</p>
-    <p class="pv-fallback-sub">可以点右上角「下载」保存到本地查看。</p></div>`;
+    <p>${big ? t("preview.tooBig") : t("preview.cannot")}</p>
+    <p class="pv-fallback-sub">${t("preview.fallbackSub")}</p></div>`;
 }
 function closePreview() {
   $("#preview-overlay").classList.add("hidden");
@@ -1662,12 +2400,12 @@ async function openPreview(rel, entry) {
   $("#preview-overlay").classList.remove("hidden");
   if (kind === "text" || kind === "markdown") {
     if (entry.size > PREVIEW_TEXT_CAP) { setPreviewContent(previewFallbackHtml(entry)); return; }
-    setPreviewContent('<div class="list-loading">加载中…</div>');
+    setPreviewContent('<div class="list-loading">' + t("list.loading") + '</div>');
     try {
       const resp = await fetch("/api/files/preview?path=" + encodeURIComponent("/" + rel) + ownerQS("&"), {
         headers: { Authorization: "Bearer " + token },
       });
-      if (!resp.ok) throw new Error("预览加载失败");
+      if (!resp.ok) throw new Error(t("preview.loadFailed"));
       fillTextPreview(kind, await resp.text());
     } catch { setPreviewContent(previewFallbackHtml(entry)); }
     return;
@@ -1682,7 +2420,7 @@ async function openVaultPreview(entry) {
   previewCtx = { vaultEntry: entry, name: entry.name };
   $("#preview-title").textContent = "🔒 " + entry.name;
   $("#preview-overlay").classList.remove("hidden");
-  setPreviewContent('<div class="list-loading">本地解密中…</div>');
+  setPreviewContent('<div class="list-loading">' + t("preview.decrypting") + '</div>');
   try {
     const blobBytes = await rawDownloadBytes(vault.path + "/blobs/" + entry.id + ".enc");
     const plain = await SDVault.decryptBlob(vault.key, blobBytes);
@@ -1695,7 +2433,7 @@ async function openVaultPreview(entry) {
       fillMediaPreview(kind, entry.name, url);
     }
   } catch (e) {
-    toast("预览解密失败：" + e.message, true);
+    toast(t("preview.decryptFailed", { msg: e.message }), true);
     closePreview();
   }
 }
@@ -1761,8 +2499,8 @@ function renderMarkdown(src) {
 $("#btn-speed").addEventListener("click", () => {
   $("#speed-panel").classList.remove("hidden");
   $("#speed-note").textContent = me && me.storage_mode === "live"
-    ? "经后端流式转发实测，与实际上传/下载走同一条链路；测速流量不占配额、不存文件。"
-    : "⚠️ 当前为本地测试链路（stub 假存储）：测的是这台机器到后端的速度，不代表真实 Seafile / e2 的速度。测速流量不占配额。";
+    ? t("speed.noteLive")
+    : t("speed.noteStub");
 });
 $("#speed-close").addEventListener("click", () => $("#speed-panel").classList.add("hidden"));
 
@@ -1781,7 +2519,7 @@ $("#speed-run").addEventListener("click", async () => {
   const result = $("#speed-result");
   btn.disabled = true;
   dFill.style.width = "0%"; uFill.style.width = "0%";
-  dVal.textContent = "测速中…"; uVal.textContent = "等待下载完成…";
+  dVal.textContent = t("speed.running"); uVal.textContent = t("speed.waitDown");
   result.textContent = "";
   const stamp = new Date().toLocaleString();
   try {
@@ -1792,7 +2530,7 @@ $("#speed-run").addEventListener("click", async () => {
     });
     if (!resp.ok) {
       const d = await resp.json().catch(() => null);
-      throw new Error((d && d.detail && d.detail.message) || `下载测速失败 (${resp.status})`);
+      throw new Error((d && d.detail && d.detail.message) || t("speed.failDown", { status: resp.status }));
     }
     const reader = resp.body.getReader();
     let got = 0;
@@ -1805,7 +2543,7 @@ $("#speed-run").addEventListener("click", async () => {
     const downSec = (performance.now() - t0) / 1000;
     dVal.textContent = fmtSpeed(got, downSec);
     // 上传：生成等量数据，XHR 报进度；服务器只数不存
-    uVal.textContent = "测速中…";
+    uVal.textContent = t("speed.running");
     const payload = new Uint8Array(total);
     for (let i = 0; i < total; i += 65536) {
       const chunk = payload.subarray(i, Math.min(total, i + 65536));
@@ -1824,19 +2562,19 @@ $("#speed-run").addEventListener("click", async () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           resolve({ sec: (performance.now() - start) / 1000, resp: JSON.parse(xhr.responseText) });
         } else {
-          let msg = `上传测速失败 (${xhr.status})`;
+          let msg = t("speed.failUp", { status: xhr.status });
           try { const d = JSON.parse(xhr.responseText); msg = (d.detail && d.detail.message) || msg; } catch { }
           reject(new Error(msg));
         }
       });
-      xhr.addEventListener("error", () => reject(new Error("上传测速网络错误")));
+      xhr.addEventListener("error", () => reject(new Error(t("speed.errUp"))));
       xhr.send(new Blob([payload]));
     });
     uFill.style.width = "100%";
     uVal.textContent = fmtSpeed(up.resp.received_bytes, up.sec);
     result.innerHTML =
-      `下载 ${fmtSpeed(got, downSec)}（${fmtBytes(got)}）<br>` +
-      `上传 ${fmtSpeed(up.resp.received_bytes, up.sec)}（服务器确认收到 ${fmtBytes(up.resp.received_bytes)}，未存盘）<br>` +
+      `${t("speed.resDown", { speed: fmtSpeed(got, downSec), size: fmtBytes(got) })}<br>` +
+      `${t("speed.resUp", { speed: fmtSpeed(up.resp.received_bytes, up.sec), size: fmtBytes(up.resp.received_bytes) })}<br>` +
       `<span class="speed-stamp">${stamp}</span>`;
   } catch (e) {
     result.textContent = "";
@@ -1869,15 +2607,15 @@ $("#form-invite").addEventListener("submit", async (e) => {
   } catch (err) { toast(err.message, true); }
 });
 $("#btn-copy-code").addEventListener("click", async () => {
-  try { await navigator.clipboard.writeText($("#new-code-text").textContent); toast("已复制"); }
-  catch { toast("复制失败，请手动复制", true); }
+  try { await navigator.clipboard.writeText($("#new-code-text").textContent); toast(t("invite.copied")); }
+  catch { toast(t("invite.copyFailed"), true); }
 });
 
 function pillFor(status, usedCount, maxUses) {
-  if (status === "active") return '<span class="pill ok">可用</span>';
-  if (status === "used_up") return '<span class="pill mut">已用完</span>';
-  if (status === "revoked") return '<span class="pill off">已撤销</span>';
-  if (status === "expired") return '<span class="pill warn">已过期</span>';
+  if (status === "active") return '<span class="pill ok">' + t("invite.ok") + '</span>';
+  if (status === "used_up") return '<span class="pill mut">' + t("invite.usedUp") + '</span>';
+  if (status === "revoked") return '<span class="pill off">' + t("invite.revoked") + '</span>';
+  if (status === "expired") return '<span class="pill warn">' + t("invite.expired") + '</span>';
   return `<span class="pill mut">${esc(status)}</span>`;
 }
 async function loadInvites() {
@@ -1891,14 +2629,14 @@ async function loadInvites() {
       <td>${esc(r.note || "—")}</td>
       <td>${pillFor(r.status, r.used_count, r.max_uses)}</td>
       <td>${r.used_count} / ${r.max_uses}</td>
-      <td>${r.expires_at ? fmtTime(r.expires_at) : "永久"}</td>
-      <td>${r.status === "active" ? `<button class="mini-btn danger" data-revoke="${r.id}">撤销</button>` : ""}</td>`;
+      <td>${r.expires_at ? fmtTime(r.expires_at) : t("invite.never")}</td>
+      <td>${r.status === "active" ? '<button class="mini-btn danger" data-revoke="' + r.id + '">' + t("invite.revoke") + '</button>' : ""}</td>`;
     tb.appendChild(tr);
   }
   $$("[data-revoke]", tb).forEach((b) => b.addEventListener("click", async () => {
     try {
       await api(`/api/admin/invite-codes/${b.dataset.revoke}/revoke`, { method: "POST" });
-      toast("邀请码已撤销");
+      toast(t("invite.revokedToast"));
       loadInvites();
     } catch (e) { toast(e.message, true); }
   }));
@@ -1906,7 +2644,7 @@ async function loadInvites() {
 async function loadUsers() {
   const [users, usage] = await Promise.all([api("/api/admin/users"), api("/api/admin/usage")]);
   const adminCount = users.filter((x) => x.is_admin).length;
-  $("#admin-total").textContent = `全员总用量 ${fmtBytes(usage.total_used_bytes)}`;
+  $("#admin-total").textContent = t("admin.total", { bytes: fmtBytes(usage.total_used_bytes) });
   const tb = $("#user-table tbody");
   tb.innerHTML = "";
   for (const u of users) {
@@ -1914,11 +2652,11 @@ async function loadUsers() {
     const pct = u.quota_bytes ? Math.min(100, Math.round((u.used_bytes / u.quota_bytes) * 100)) : 0;
     tr.innerHTML = `
       <td><div class="user-cell"><div class="avatar">${esc((u.nickname || u.username).slice(0, 1))}</div>
-        <div>${esc(u.nickname || u.username)}${u.is_admin ? ' <span class="pill warn">管理员</span>' : ""}
+        <div>${esc(u.nickname || u.username)}${u.is_admin ? ' <span class="pill warn">' + t("user.admin") + '</span>' : ""}
         <small>@${esc(u.username)}</small></div></div></td>
-      <td>${u.status === "active" ? '<span class="pill ok">正常</span>' : '<span class="pill off">已禁用</span>'}</td>
+      <td>${u.status === "active" ? '<span class="pill ok">' + t("user.active") + '</span>' : '<span class="pill off">' + t("user.disabledPill") + '</span>'}</td>
       <td class="usage-cell">${fmtBytes(u.used_bytes)} <span class="of">/ ${fmtBytes(u.quota_bytes)}（${pct}%）</span></td>
-      <td>${u.last_login_at ? fmtTime(u.last_login_at) : "从未"}</td>
+      <td>${u.last_login_at ? fmtTime(u.last_login_at) : t("user.never")}</td>
       <td></td>`;
     const act = tr.lastElementChild;
     const mkBtn = (label, fn, danger = false) => {
@@ -1928,59 +2666,59 @@ async function loadUsers() {
       b.addEventListener("click", fn);
       act.appendChild(b);
     };
-    mkBtn("设配额", async () => {
-      openModal(`设置配额 · ${u.username}`, `
-        <label class="field"><span>配额（GB，留空 = 系统默认）</span>
+    mkBtn(t("user.setQuota"), async () => {
+      openModal(t("user.quotaTitle", { user: u.username }), `
+        <label class="field"><span>${t("user.quotaLabel")}</span>
         <input id="m-gb" type="number" min="0" step="0.5" value="${u.quota_bytes ? (u.quota_bytes / 1073741824) : ""}"></label>`,
-        "保存", async () => {
+        t("common.save"), async () => {
           const v = $("#m-gb").value;
           const bytes = v === "" ? null : Math.round(Number(v) * 1073741824);
           await api(`/api/admin/users/${u.id}/quota`, { method: "POST", body: { quota_bytes: bytes } });
-          toast("配额已更新");
+          toast(t("user.quotaSaved"));
           loadUsers();
         });
     });
-    mkBtn("校准", async () => {
+    mkBtn(t("user.recalc"), async () => {
       try {
         const r = await api(`/api/admin/users/${u.id}/recalibrate`, { method: "POST" });
-        toast(`校准完成：${fmtBytes(r.used_bytes)}`);
+        toast(t("user.recalcDone", { bytes: fmtBytes(r.used_bytes) }));
         loadUsers();
       } catch (e) { toast(e.message, true); }
     });
     if (me && me.is_owner) {
       if (!u.is_admin) {
-        mkBtn("设为管理员", async () => {
-          openModal("设为管理员", `<p class="modal-text">将「${esc(u.username)}」设为管理员后，对方将能访问管理后台、管理用户与邀请码。确定吗？</p>`,
-            "设为管理员", async () => {
+        mkBtn(t("user.makeAdmin"), async () => {
+          openModal(t("user.makeAdmin"), '<p class="modal-text">' + t("user.makeAdminBody", { user: esc(u.username) }) + '</p>',
+            t("user.makeAdmin"), async () => {
               await api(`/api/admin/users/${u.id}/admin`, { method: "POST", body: { is_admin: true } });
-              toast("已设为管理员");
+              toast(t("user.makeAdminDone"));
               loadUsers();
             });
         });
       } else if (!u.is_owner && adminCount > 1) {
-        mkBtn("取消管理员", async () => {
-          openModal("取消管理员", `<p class="modal-text">取消「${esc(u.username)}」的管理员权限后，对方将无法访问管理后台。确定吗？</p>`,
-            "取消管理员", async () => {
+        mkBtn(t("user.unmakeAdmin"), async () => {
+          openModal(t("user.unmakeAdmin"), '<p class="modal-text">' + t("user.unmakeAdminBody", { user: esc(u.username) }) + '</p>',
+            t("user.unmakeAdmin"), async () => {
               await api(`/api/admin/users/${u.id}/admin`, { method: "POST", body: { is_admin: false } });
-              toast("已取消管理员");
+              toast(t("user.unmakeAdminDone"));
               loadUsers();
             }, true);
         }, true);
       }
     }
     if (u.status === "active") {
-      mkBtn("禁用", async () => {
-        openModal("禁用用户", `<p class="modal-text">禁用「${esc(u.username)}」后，其所有登录立即失效，但文件会保留。确定禁用吗？</p>`,
-          "禁用", async () => {
+      mkBtn(t("user.disable"), async () => {
+        openModal(t("user.disableTitle"), '<p class="modal-text">' + t("user.disableBody", { user: esc(u.username) }) + '</p>',
+          t("user.disable"), async () => {
             await api(`/api/admin/users/${u.id}/disable`, { method: "POST" });
-            toast("已禁用");
+            toast(t("user.disabledToast"));
             loadUsers();
           }, true);
       }, true);
     } else {
-      mkBtn("启用", async () => {
+      mkBtn(t("user.enable"), async () => {
         await api(`/api/admin/users/${u.id}/enable`, { method: "POST" });
-        toast("已启用");
+        toast(t("user.enabledToast"));
         loadUsers();
       });
     }
@@ -1993,7 +2731,13 @@ async function loadAdmin() {
 }
 
 /* ---------------- 启动 ---------------- */
+// 语言胶囊显示当前语言，点一下即切换；setLang 会同步 localStorage 与静态属性
+$("#lang-toggle").addEventListener("click", () => {
+  setLang(lang === "en" ? "zh" : "en");
+});
+
 (async function boot() {
+  applyLang();
   if (token) {
     try { await enterDrive(); return; } catch { /* 落到登录页 */ }
   }

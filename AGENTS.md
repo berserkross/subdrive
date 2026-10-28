@@ -220,7 +220,7 @@ $env:PYTHONIOENCODING="utf-8"
 .\.venv\Scripts\python.exe tests/test_storage_live.py  # 15 项，exit 0
 node tests/test_crypto.mjs                             # 10 项，exit 0
 node tests/test_uploadplan.mjs                         # 13 项，exit 0
-.\.venv\Scripts\python.exe tests/e2e/test_e2e_browser.py # 70 项，exit 0（要本机 Chrome）
+.\.venv\Scripts\python.exe tests/e2e/test_e2e_browser.py # 74 项，exit 0（要本机 Chrome）
 ```
 
 - 六条全 exit 0 且项数对得上才算通过；没有 CI，这就是唯一门禁。

@@ -177,3 +177,11 @@
   已知取舍：从公共区域点进自己的共享文件夹时，面包屑是「公共区域 › docs」而不是「我的网盘 › docs」。同一个目录两个入口，记住你从哪来比统一入口更有用。
    界面细节（同批改动）：作用域切换从逐个元素 classList.toggle("hidden") 改成 body.public-scope 一个 class 说清——原来那样写漏掉了 .drive-foot（「文件保存在你的专属空间里」），切到公共区域后它还赖在页面底部。卡片改成网格卡：渐变方角文件夹图标 + 名字 + 「我创建」小胶囊 + 「👥 全员 · 上限 20 人」与右对齐的「0 B / 2.0 GB」+ 一条用量条（max_bytes 为 0 时不渲染）；悬停上浮、描边转紫、顶部浮出一条渐变亮线。标题带渐变竖条，右侧数量胶囊 :empty 时自动消失。移动端单列。
    测试：tests/e2e/test_e2e_browser.py 追加 7 项（63 → 70），其中两项专门盯这次美化（数量胶囊文案、卡片用量条存在）。
+
+- **D40 全站中英双语：字典 + data-i18n 标注 + 一个胶囊开关，默认中文不动**｜起因是要给 CUHK-Shenzhen 的大会做英文易拉宝，界面截图必须是英文；但现有 263 项测试与 70 项 e2e 全靠中文文案断言。
+  做法：`static/app.js` 顶部 `const I18N = { zh, en }`（26 组、285 键，两边键完全等长）+ `const ERROR_I18N`（41 个后端 error code → 英文）+ `t(key, vars)`（split/join 插值，零依赖、零模板字符串）+ `applyLang()`（刷 textContent/placeholder/title，同时设 document.title 与 `<html lang>`）；`static/index.html` 用 95 处 `data-i18n`/`data-i18n-placeholder`/`data-i18n-title` 标注，需要拆词的元素拆成 span；顶栏 `.user-chip` 右侧加 `#lang-toggle` 胶囊（zh 显「中」、en 显「EN」），选择存 localStorage `subdrive_lang`，刷新保持。
+  为什么默认中文：测试与 e2e 断言都写死了中文文案，改默认值等于一次性打断 337 项断言；海报要英文，切一下再截图即可。
+  为什么不动后端：后端的中文 message 是给人看的兜底，前端在 `lang === "en"` 且 `ERROR_I18N[detail.error]` 命中时才换成英文，未命中原样显示服务端文本——翻译只在表现层，不改契约。
+  为什么不用 i18n 库：一个文件、一种语言对、两百多个键，引依赖换来的只是语法糖；手写 `t()` 反而能保证零构建、零体积。
+  已知边界：`attemptUnlock` 里 `e.message === "文件夹密码错误"` 是内部错误码语义，该常量必须保持中文，用户可见提示走 `t("vault.errWrong")`；用户昵称、文件名、备注属于数据不是文案，EN 下仍可能是中文；切语言会收起正在显示的 toast（避免旧语言残留）。
+  测试：`tests/e2e/test_e2e_browser.py` 追加 4 项（70 → 74）：默认「中」且页面中文、切 EN 后按钮与表头变英文、EN 下 `body.innerText` 与全部 placeholder/title 零 CJK、切回中文恢复。零 CJK 断言为此单独注册了一个 ASCII 昵称用户，避免昵称数据把这条断言变成假红。

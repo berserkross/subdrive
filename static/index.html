@@ -76,13 +76,6 @@
 <!-- ================= 网盘 ================= -->
 <section id="view-drive" class="drive-wrap hidden">
   <header class="topbar">
-    <a id="top-brand" class="top-brand" href="#" data-i18n-title="brand.home">
-      <img class="top-logo" src="/static/logo.png" alt="">
-      <span class="top-title">
-        <strong>SubDrive</strong>
-        <span data-i18n="auth.brand">子用户网盘</span>
-      </span>
-    </a>
     <button class="user-chip" id="user-chip" type="button" aria-haspopup="dialog" aria-expanded="false" data-i18n-title="menu.open">
       <span class="avatar" id="user-avatar">?</span>
       <span class="user-meta">
@@ -90,6 +83,13 @@
         <span id="user-sub">—</span>
       </span>
     </button>
+    <a id="top-brand" class="top-brand" href="#" data-i18n-title="brand.home">
+      <span class="top-title">
+        <strong>SubDrive</strong>
+        <span data-i18n="auth.brand">子用户网盘</span>
+      </span>
+      <img class="top-logo" src="/static/logo.png" alt="">
+    </a>
   </header>
 
   <main class="drive-main">
@@ -347,10 +347,6 @@
     </button>
   </div>
   <div class="side-links">
-    <button id="btn-settings" class="side-link" type="button">
-      <span data-i18n="set.title">设置</span>
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
-    </button>
     <button id="btn-admin" class="side-link hidden" type="button"><span data-i18n="top.admin">管理后台</span></button>
     <button id="btn-chpw" class="side-link" type="button"><span data-i18n="top.chpw">改密码</span></button>
   </div>
@@ -373,8 +369,12 @@
       <svg class="lang-caret" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
     </div>
   </div>
-  <div class="side-session">
-    <button id="btn-logout" class="side-link danger" type="button"><span data-i18n="top.logout">退出</span></button>
+  <div class="side-bottom">
+    <button id="btn-settings" class="side-more" type="button">
+      <span data-i18n="menu.more">更多设置</span>
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
+    <button id="btn-logout" class="side-logout" type="button"><span data-i18n="top.logout">退出</span></button>
   </div>
 </aside>
 

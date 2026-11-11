@@ -305,6 +305,9 @@ def run() -> int:
             boss.wait_for_selector("#s-mode", timeout=10000)
             boss.click("#modal-ok")
             boss.wait_for_selector("#shared-card:not(.hidden)", timeout=15000)
+            # 前面已经建过 team，共享卡本来就可见；这里必须等到 docs 自己进列表，
+            # 否则紧接着的清单断言会读到「建之前」的数据（曾偶发失败一次）。
+            boss.wait_for_selector('#shared-list .shared-item:has-text("docs")', timeout=15000)
             check("共享卡出现", boss.is_visible("#shared-card"))
             check("共享卡标明我创建", "我创建" in boss.inner_text("#shared-list"),
                  boss.inner_text("#shared-list"))
@@ -526,37 +529,74 @@ def run() -> int:
             check("切回中文后按钮与表头恢复",
                   "新建" in en_page.inner_text("#btn-mkdir") and en_page.inner_text(".col-name").strip() == "名称",
                   en_page.inner_text("#btn-mkdir") + " | " + en_page.inner_text(".col-name"))
-            # ---- 11b. 主题：浅色 / 深色 / 跟随系统（D42）----
+            # ---- 11b. 主题面板：明暗三选一 + 主色色板（D42）----
             theme_btn = ".topbar .theme-toggle"
+            pop = ".topbar .theme-pop"
             theme_attr = "() => document.documentElement.getAttribute('data-theme')"
             bg = "() => getComputedStyle(document.body).backgroundColor"
+            accent_var = "() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()"
+
+            def open_panel():
+                if not en_page.is_visible(pop):
+                    en_page.click(theme_btn)
+
             need("主题按钮默认跟随系统（不写 data-theme）",
                  en_page.evaluate(theme_attr) is None, str(en_page.evaluate(theme_attr)))
             en_page.click(theme_btn)
+            need("主题面板打开后有三档明暗与四个主色色板",
+                 en_page.is_visible(pop)
+                 and en_page.locator(pop + " [data-mode]").count() == 3
+                 and en_page.locator(pop + " [data-accent]").count() == 4)
+            en_page.click(pop + ' [data-mode="light"]')
             en_page.wait_for_timeout(250)
             light_bg = en_page.evaluate(bg)
-            need("切到浅色：data-theme=light 且背景随之变化",
+            need("选浅色：data-theme=light 且背景随之变化",
                  en_page.evaluate(theme_attr) == "light" and light_bg != "rgba(0, 0, 0, 0)", light_bg)
-            en_page.click(theme_btn)
+
+            open_panel()
+            en_page.click(pop + ' [data-mode="dark"]')
             en_page.wait_for_timeout(250)
             dark_bg = en_page.evaluate(bg)
-            need("切到深色：data-theme=dark 且背景比浅色深",
+            need("选深色：data-theme=dark 且背景比浅色深",
                  en_page.evaluate(theme_attr) == "dark" and dark_bg != light_bg,
                  light_bg + " -> " + dark_bg)
+
+            open_panel()
+            en_page.click(pop + ' [data-accent="ocean"]')
+            need("选主色预设 ocean：data-accent 与 --accent 同步",
+                 en_page.evaluate("() => document.documentElement.getAttribute('data-accent')") == "ocean"
+                 and en_page.evaluate(accent_var) == "#0f6fbf",
+                 str(en_page.evaluate(accent_var)))
+
+            en_page.click(theme_btn)
+            en_page.evaluate("""() => {
+                const el = document.querySelector('.topbar .theme-pop #tp-color');
+                el.value = '#00aa88';
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+            }""")
+            en_page.wait_for_timeout(150)
+            need("自选主色（#00aa88）通过 inline 变量生效",
+                 en_page.evaluate("() => document.documentElement.getAttribute('data-accent')") == "custom"
+                 and en_page.evaluate(accent_var) == "#00aa88",
+                 str(en_page.evaluate(accent_var)))
+
             en_page.reload(wait_until="networkidle")
             en_page.wait_for_selector("#view-drive:not(.hidden)", timeout=15000)
             en_page.wait_for_timeout(300)
-            need("刷新后主题保持深色",
-                 en_page.evaluate(theme_attr) == "dark", str(en_page.evaluate(theme_attr)))
-            en_page.evaluate("() => window.SubDriveTheme.accent('ocean')")
-            need("主色扩展点可用：data-accent 与 --accent 同步",
-                 en_page.evaluate("() => document.documentElement.getAttribute('data-accent')") == "ocean"
-                 and en_page.evaluate("() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()") == "#0f6fbf")
-            en_page.evaluate("() => { window.SubDriveTheme.accent(''); localStorage.setItem('subdrive_theme','auto'); }")
-            en_page.reload(wait_until="networkidle")
-            en_page.wait_for_selector("#view-drive:not(.hidden)", timeout=15000)
-            need("切回跟随系统后不再写 data-theme",
-                 en_page.evaluate(theme_attr) is None, str(en_page.evaluate(theme_attr)))
+            need("刷新后深色与自选主色都保持",
+                 en_page.evaluate(theme_attr) == "dark" and en_page.evaluate(accent_var) == "#00aa88",
+                 str(en_page.evaluate(accent_var)))
+
+            open_panel()
+            en_page.click(pop + ' [data-mode="auto"]')
+            open_panel()
+            en_page.click(pop + ' [data-accent=""]')
+            en_page.wait_for_timeout(200)
+            need("切回跟随系统与默认主色：不再写 data-theme/data-accent",
+                 en_page.evaluate(theme_attr) is None
+                 and en_page.evaluate("() => document.documentElement.getAttribute('data-accent')") is None
+                 and en_page.evaluate(accent_var) == "#5b5bd6",
+                 str(en_page.evaluate(accent_var)))
 
             i18n_ctx.close()
 

@@ -22,6 +22,9 @@ const I18N = {
     "theme.auto": "跟随系统",
     "theme.accent": "主题色",
     "theme.accentDefault": "默认",
+    "theme.customColor": "自選顏色",
+    "theme.customColor": "Custom colour",
+    "theme.customColor": "自选颜色",
     "app.title": "SubDrive · 子用户网盘",
     "req.failed": "请求失败 ({status})",
     "lang.switch": "切换语言",
@@ -3178,43 +3181,127 @@ async function loadAdmin() {
 const THEME_KEY = "subdrive_theme";
 const ACCENT_KEY = "subdrive_accent";
 const THEME_ICON = { light: "☀", dark: "☾", auto: "⚙" };
+// 主色预设的色值：与 style.css 里的 [data-accent] 段落保持一致（改配色时两处一起改）
+const ACCENT_SWATCH = { "": "#5b5bd6", ocean: "#0f6fbf", forest: "#1f8a5b", sunset: "#d9534f" };
+const HEX_RE = /^#[0-9a-f]{6}$/i;
+
 function currentTheme() {
   const v = localStorage.getItem(THEME_KEY);
   return v === "light" || v === "dark" ? v : "auto";
 }
+function currentAccent() {
+  return localStorage.getItem(ACCENT_KEY) || "";
+}
 function applyTheme() {
   const mode = currentTheme();
+  const root = document.documentElement;
   // 跟随系统时不写属性，交给 CSS 的 prefers-color-scheme 分支
-  if (mode === "auto") document.documentElement.removeAttribute("data-theme");
-  else document.documentElement.setAttribute("data-theme", mode);
-  const accent = localStorage.getItem(ACCENT_KEY);
-  if (accent) document.documentElement.setAttribute("data-accent", accent);
-  else document.documentElement.removeAttribute("data-accent");
+  if (mode === "auto") root.removeAttribute("data-theme");
+  else root.setAttribute("data-theme", mode);
+
+  const accent = currentAccent();
+  if (HEX_RE.test(accent)) {
+    // 用户自选色：不写 CSS，直接用 inline 变量覆盖 token；其余派生色交给 color-mix
+    root.setAttribute("data-accent", "custom");
+    root.style.setProperty("--accent", accent);
+    root.style.setProperty("--accent-2", "color-mix(in srgb, " + accent + " 72%, #ffffff)");
+    root.style.setProperty("--accent-grad", "linear-gradient(135deg, " + accent + ", color-mix(in srgb, " + accent + " 72%, #ffffff))");
+    root.style.setProperty("--accent-soft", "color-mix(in srgb, " + accent + " 14%, transparent)");
+  } else {
+    ["--accent", "--accent-2", "--accent-grad", "--accent-soft"].forEach((k) => root.style.removeProperty(k));
+    if (accent) root.setAttribute("data-accent", accent);
+    else root.removeAttribute("data-accent");
+  }
+
   const label = t(mode === "auto" ? "theme.auto" : (mode === "light" ? "theme.light" : "theme.dark"));
   $$(".theme-toggle").forEach((b) => {
     b.textContent = THEME_ICON[mode];
     b.title = t("theme.switch") + " · " + label;
     b.setAttribute("aria-label", b.title);
+    b.setAttribute("aria-expanded", "false");
   });
 }
 function setTheme(mode) {
   localStorage.setItem(THEME_KEY, mode);
   applyTheme();
 }
+function setAccent(v) {
+  const val = (v || "").trim();
+  if (val) localStorage.setItem(ACCENT_KEY, val);
+  else localStorage.removeItem(ACCENT_KEY);
+  applyTheme();
+}
 function cycleTheme() {
   setTheme({ light: "dark", dark: "auto", auto: "light" }[currentTheme()]);
 }
-$$(".theme-toggle").forEach((b) => b.addEventListener("click", cycleTheme));
-// 给下一步「自定义主题色 / 主题贴图」留的入口：setAccent("ocean")，或传 #hex 亦可
-window.SubDriveTheme = {
-  set: setTheme,
-  cycle: cycleTheme,
-  accent: function (v) {
-    if (v) localStorage.setItem(ACCENT_KEY, v);
-    else localStorage.removeItem(ACCENT_KEY);
-    applyTheme();
-  },
-};
+
+/* 主题面板：一个按钮 + 一个气泡，里面是「明暗三选一 + 主色五选一（含自选色）」。
+ * 面板内容每次打开时现画，选中态永远等于当前 localStorage，不需要额外的同步逻辑。 */
+function themePanelHTML() {
+  const mode = currentTheme();
+  const accent = currentAccent();
+  const modes = [["light", "☀", "theme.light"], ["dark", "☾", "theme.dark"], ["auto", "⚙", "theme.auto"]];
+  let html = '<div class="tp-title">' + esc(t("theme.switch")) + '</div><div class="tp-modes">';
+  modes.forEach(function (m) {
+    html += '<button type="button" class="tp-mode' + (mode === m[0] ? " on" : "") + '" data-mode="' + m[0] + '">'
+      + '<span class="tp-ico">' + m[1] + "</span>" + esc(t(m[2])) + "</button>";
+  });
+  html += "</div>";
+  html += '<div class="tp-title">' + esc(t("theme.accent")) + '</div><div class="tp-swatches">';
+  Object.keys(ACCENT_SWATCH).forEach(function (key) {
+    const on = accent === key || (!accent && key === "");
+    html += '<button type="button" class="tp-sw' + (on ? " on" : "") + '" data-accent="' + key + '"'
+      + ' style="background:' + ACCENT_SWATCH[key] + '" aria-label="' + esc(key || t("theme.accentDefault")) + '"'
+      + ' title="' + esc(key || t("theme.accentDefault")) + '"></button>';
+  });
+  html += '<label class="tp-custom" title="' + esc(t("theme.customColor")) + '">'
+    + '<input type="color" id="tp-color" value="' + (HEX_RE.test(accent) ? accent : ACCENT_SWATCH[""]) + '"'
+    + ' aria-label="' + esc(t("theme.customColor")) + '"></label>';
+  html += "</div>";
+  return html;
+}
+function closeThemePanels() {
+  $$(".theme-pop").forEach(function (p) { p.classList.add("hidden"); });
+  $$(".theme-toggle").forEach(function (b) { b.setAttribute("aria-expanded", "false"); });
+}
+function initThemeUI() {
+  $$(".theme-toggle").forEach(function (btn) {
+    const wrap = document.createElement("div");
+    wrap.className = "theme-wrap";
+    btn.parentNode.insertBefore(wrap, btn);
+    wrap.appendChild(btn);
+    const pop = document.createElement("div");
+    pop.className = "theme-pop hidden";
+    wrap.appendChild(pop);
+    btn.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      const wasOpen = !pop.classList.contains("hidden");
+      closeThemePanels();
+      if (wasOpen) return;
+      pop.innerHTML = themePanelHTML();
+      pop.classList.remove("hidden");
+      btn.setAttribute("aria-expanded", "true");
+    });
+    pop.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      const modeBtn = ev.target.closest("[data-mode]");
+      if (modeBtn) { setTheme(modeBtn.dataset.mode); pop.innerHTML = themePanelHTML(); return; }
+      const sw = ev.target.closest("[data-accent]");
+      if (sw) { setAccent(sw.dataset.accent); pop.innerHTML = themePanelHTML(); }
+    });
+    pop.addEventListener("input", function (ev) {
+      if (ev.target && ev.target.id === "tp-color") {
+        setAccent(ev.target.value);
+        pop.innerHTML = themePanelHTML();
+      }
+    });
+  });
+  document.addEventListener("click", closeThemePanels);
+  document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") closeThemePanels(); });
+}
+
+// 对外入口：脚本或未来的设置页都能用；accent 接受预设名或 #rrggbb
+window.SubDriveTheme = { set: setTheme, cycle: cycleTheme, accent: setAccent, current: currentTheme };
 
 /* ---------------- 启动 ---------------- */
 // 语言胶囊显示当前语言，点一下即切换；setLang 会同步 localStorage 与静态属性
@@ -3224,6 +3311,7 @@ $("#lang-toggle").addEventListener("click", () => {
 
 (async function boot() {
   applyLang();
+  initThemeUI();
   applyTheme();
   if (token) {
     try { await enterDrive(); return; } catch { /* 落到登录页 */ }

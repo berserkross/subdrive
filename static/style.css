@@ -217,6 +217,34 @@ input { font-family: inherit; font-size: 15px; color: var(--text); }
 }
 .lang-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
 .theme-toggle { font-size: 13px; line-height: 1; }
+/* 主题面板（D42）：一个气泡，明暗三选一 + 主色五选一 */
+.theme-wrap { position: relative; display: inline-flex; }
+.theme-pop {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 60; width: 236px; padding: 12px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  box-shadow: var(--shadow-md); animation: rise .14s ease both;
+}
+.tp-title { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text-3); margin: 2px 2px 8px; }
+.tp-modes { display: grid; gap: 3px; margin-bottom: 12px; }
+.tp-mode { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 10px;
+  border: 1px solid transparent; background: transparent; color: var(--text); font-size: 13px;
+  cursor: pointer; text-align: left; transition: background .12s, border-color .12s; }
+.tp-mode:hover { background: var(--surface-2); }
+.tp-mode.on { border-color: var(--accent); background: var(--accent-soft); }
+.tp-ico { width: 16px; text-align: center; color: var(--accent); font-size: 13px; }
+.tp-swatches { display: flex; gap: 9px; align-items: center; padding: 2px; }
+.tp-sw { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--surface); padding: 0;
+  box-shadow: 0 0 0 1px var(--border); cursor: pointer; }
+.tp-sw.on { outline: 2px solid var(--text); outline-offset: 2px; }
+/* 自选色：一个彩虹圆当入口，原生取色器透明覆盖在上面 */
+.tp-custom { position: relative; width: 24px; height: 24px; border-radius: 50%; overflow: hidden;
+  cursor: pointer; border: 1px solid var(--border);
+  background: conic-gradient(from 210deg, #f0663f, #f0c93f, #4fc98a, #3fa9f0, #8b5cf6, #f0663f); }
+.tp-custom::after { content: ""; position: absolute; inset: 0; display: grid; place-items: center;
+  color: #fff; font-size: 14px; font-weight: 700; text-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
+.tp-custom input { position: absolute; inset: 0; width: 100%; height: 100%; border: none; padding: 0;
+  background: none; opacity: 0; cursor: pointer; }
 /* 登录页右上角：没登录也能切主题，否则深色用户一进来就被闪一下 */
 .auth-theme { position: fixed; top: 16px; right: 18px; z-index: 20; background: var(--surface); }
 

@@ -197,7 +197,11 @@
   做法：`static/style.css` 顶部重写成 token 层——`:root` 只留字体/圆角/`--bg-image`；`:root, :root[data-theme="light"]` 放浅色；`:root[data-theme="dark"]` 放深色；`@media (prefers-color-scheme: dark)` 里只作用于 `:root:not([data-theme])`，即「没选过才跟随系统」。主色三组预设（ocean/forest/sunset）各自带深色下的 `--accent-soft`。`body` 的 `background-image: var(--bg-image)` 就是贴图入口。
     浅色为什么直接用现有值：`_poster/images` 里的截图就是这套 token 渲染出来的，所谓「严格参考图片」= 别改它；真正需要新写的是深色块与三个属性的接线。
     深色为什么用旧版那套：用户点名「深色模式即目前旧版的配色方案」，那就照抄 `#0d0f13`/`#15181e`，不重新设计。
-    为什么不做主色选择器 UI：这一步只承诺「预留空间」。`window.SubDriveTheme.accent("ocean")` 与 `#hex` 都能用，等真要放设置面板时接上即可，不必现在先造一个半成品控件。
+    主色选择器（同批补上）：主题按钮点开是一个面板——明暗三选一 + 五个色板（默认紫 / ocean / forest / sunset / 自选）。
+    自选色存 `#rrggbb`，`applyTheme()` 用 inline `--accent` 覆盖，并用 `color-mix` 派生 `--accent-2`/`--accent-grad`/`--accent-soft`。
+    为什么把「明暗」和「主色」放同一个面板而不是两个图标：它们是同一件事的两个维度（这套界面长什么样），
+    分开放会让顶栏多一个没有信息量的按钮；面板只在点开时现画，选中态直接读 localStorage，不需要额外的同步逻辑。
+    为什么自选色走 inline 变量而不是动态生成 CSS：写一条颜色不该往 `<style>` 里塞规则，inline 变量作用域正确，撤销也只差一次 removeProperty。
     顺带修掉的：`color-scheme` 跟着主题走，深色下原生复选框/滚动条不再发白。
   测试：e2e 新增 6 项（默认跟随系统、浅色、深色且背景确实变深、刷新保持、主色扩展点、复位后不再写 `data-theme`）。
 

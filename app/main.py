@@ -1579,7 +1579,10 @@ def admin_usage(request: Request):
 
 @app.get("/")
 def index():
-    return FileResponse(STATIC_DIR / "index.html")
+    # 入口页不许被缓存：HTML 换了而浏览器还拿旧 JS 时，页面会在顶层绑定处炸成空白
+    # （见 D45）。资源本身用 ?v= 版本串破缓存，这里只保证外壳永远是最新的。
+    return FileResponse(STATIC_DIR / "index.html",
+                        headers={"Cache-Control": "no-store, must-revalidate"})
 
 
 if STATIC_DIR.exists():

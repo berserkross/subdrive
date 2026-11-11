@@ -3348,16 +3348,32 @@ window.SubDriveTheme = { set: setTheme, cycle: cycleTheme, accent: setAccent, cu
 
 /* ---------------- 启动 ---------------- */
 // 语言胶囊显示当前语言，点一下即切换；setLang 会同步 localStorage 与静态属性
-$("#lang-select").addEventListener("change", (ev) => {
-  setLang(ev.target.value);
-});
+// 少了这个元素也不许炸：旧缓存的 JS 配新 HTML 时，顶层异常会让整页停在空白
+const langSelect = $("#lang-select");
+if (langSelect) {
+  langSelect.addEventListener("change", (ev) => { setLang(ev.target.value); });
+}
 
 (async function boot() {
-  applyLang();
-  initThemeUI();
-  applyTheme();
-  if (token) {
-    try { await enterDrive(); return; } catch { /* 落到登录页 */ }
+  try {
+    applyLang();
+    initThemeUI();
+    applyTheme();
+    if (token) {
+      try { await enterDrive(); return; } catch { /* 落到登录页 */ }
+    }
+    show("view-auth");
+  } catch (e) {
+    // 兜底：启动阶段出任何错，都要看得见登录页，而不是一块空白
+    console.error("[subdrive] boot failed:", e);
+    try { show("view-auth"); } catch { /* 连 show 都失败就只能靠下面的全局兜底 */ }
   }
-  show("view-auth");
 })();
+
+// 最后一道保险：任何未捕获的顶层异常，只要页面还没露出任何视图，就把登录页顶上去
+window.addEventListener("error", function () {
+  try {
+    if (document.querySelector("#view-auth:not(.hidden), #view-drive:not(.hidden)")) return;
+    document.getElementById("view-auth").classList.remove("hidden");
+  } catch { /* 忽略 */ }
+});

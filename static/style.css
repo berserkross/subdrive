@@ -241,6 +241,14 @@ input { font-family: inherit; font-size: 15px; color: var(--text); }
 .top-brand .top-title span { font-size: 11.5px; color: var(--text-2); }
 .user-chip { font: inherit; cursor: pointer; width: auto; max-width: 260px; min-height: 44px; padding: 5px 12px 5px 5px; }
 
+/* 整页外观（M2）：缩放只作用于内容区，顶栏与侧边栏保持原尺寸 */
+.drive-main, .settings-wrap, .admin-main { zoom: var(--ui-scale, 1); }
+body.dense .row { padding-top: 6px; padding-bottom: 6px; }
+body.dense .row-name { font-size: 13.5px; }
+.set-inline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.set-color { width: 38px; height: 32px; padding: 2px; border: 1px solid var(--border);
+  border-radius: 8px; background: var(--surface); cursor: pointer; }
+
 /* 站点设置（D48） */
 .admin-card.hidden { display: none; }
 .as-sub { font-size: 13px; margin: 18px 0 8px; color: var(--text-2); font-weight: 600; }

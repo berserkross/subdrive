@@ -234,6 +234,38 @@
           </div>
         </div>
         <div class="set-row">
+          <div class="set-label"><strong data-i18n="set.pageBg">页面背景</strong><span data-i18n="set.pageBgHint">纯色或一张图，只影响你自己的界面</span></div>
+          <div class="set-inline">
+            <input type="color" id="set-page-bg" class="set-color" value="#eceef3" aria-label="background">
+            <button id="set-page-img-btn" class="btn-soft" type="button" data-i18n="set.pickImage">选图</button>
+            <button id="set-page-img-clear" class="btn-ghost" type="button" data-i18n="set.clearImage">清除</button>
+            <input id="set-page-img" type="file" accept="image/*" hidden>
+          </div>
+        </div>
+        <div class="set-row">
+          <div class="set-label"><strong data-i18n="set.scale">界面缩放</strong><span data-i18n="set.scaleHint">90% – 115%，只缩放内容区</span></div>
+          <div class="set-slider">
+            <input id="set-ui-scale" type="range" min="0.9" max="1.15" step="0.05" value="1">
+            <output id="set-ui-scale-value">100%</output>
+          </div>
+        </div>
+        <div class="set-row">
+          <div class="set-label"><strong data-i18n="set.density">行密度</strong><span data-i18n="set.densityHint">紧凑模式一屏能多看几行</span></div>
+          <div class="seg" id="set-density">
+            <button class="seg-btn" type="button" data-density="comfortable" data-i18n="set.densityComfort">舒适</button>
+            <button class="seg-btn" type="button" data-density="compact" data-i18n="set.densityCompact">紧凑</button>
+          </div>
+        </div>
+        <div class="set-row">
+          <div class="set-label"><strong data-i18n="set.package">主题包</strong><span data-i18n="set.packageHint">导出成 JSON 带走，或导入别人的</span></div>
+          <div class="set-inline">
+            <button id="set-pkg-export" class="btn-soft" type="button" data-i18n="set.export">导出</button>
+            <button id="set-pkg-import-btn" class="btn-soft" type="button" data-i18n="set.import">导入</button>
+            <button id="set-reset-look" class="btn-ghost" type="button" data-i18n="set.resetLook">重置外观</button>
+            <input id="set-pkg-import" type="file" accept="application/json,.json" hidden>
+          </div>
+        </div>
+        <div class="set-row">
           <div class="set-label"><strong data-i18n="lang.switch">切换语言</strong><span data-i18n="set.langHint">界面语言，立即生效</span></div>
           <div class="lang-wrap">
             <select id="lang-select-settings" class="lang-select" aria-label="language">

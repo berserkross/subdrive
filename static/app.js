@@ -15,6 +15,24 @@ let lang = (function () {
 // 字典按「屏」分组，key 用点分命名；zh 是基准，en 必须与之等长（tests/e2e 会校验）。
 const I18N = {
   zh: {
+    "set.pageBg": "页面背景",
+    "set.pageBgHint": "纯色或一张图，只影响你自己的界面",
+    "set.pickImage": "选图",
+    "set.clearImage": "清除",
+    "set.scale": "界面缩放",
+    "set.scaleHint": "90% – 115%，只缩放内容区",
+    "set.density": "行密度",
+    "set.densityHint": "紧凑模式一屏能多看几行",
+    "set.densityComfort": "舒适",
+    "set.densityCompact": "紧凑",
+    "set.package": "主题包",
+    "set.packageHint": "导出成 JSON 带走，或导入别人的",
+    "set.export": "导出",
+    "set.import": "导入",
+    "set.resetLook": "重置外观",
+    "set.badPackage": "文件格式不对，需要一个 SubDrive 主题包",
+    "set.imported": "主题包已导入",
+    "set.resetDone": "已恢复默认外观",
     "site.open": "站点设置",
     "site.title": "站点设置",
     "site.save": "保存",
@@ -380,6 +398,24 @@ const I18N = {
     "modal.title": "标题",
   },
   hant: {
+    "set.pageBg": "頁面背景",
+    "set.pageBgHint": "純色或一張圖，只影響你自己的介面",
+    "set.pickImage": "選圖",
+    "set.clearImage": "清除",
+    "set.scale": "介面縮放",
+    "set.scaleHint": "90% – 115%，只縮放內容區",
+    "set.density": "列密度",
+    "set.densityHint": "緊湊模式一屏能多看幾列",
+    "set.densityComfort": "舒適",
+    "set.densityCompact": "緊湊",
+    "set.package": "主題包",
+    "set.packageHint": "匯出成 JSON 帶走，或匯入別人的",
+    "set.export": "匯出",
+    "set.import": "匯入",
+    "set.resetLook": "重設外觀",
+    "set.badPackage": "檔案格式不對，需要一個 SubDrive 主題包",
+    "set.imported": "主題包已匯入",
+    "set.resetDone": "已回復預設外觀",
     "site.open": "站點設定",
     "site.title": "站點設定",
     "site.save": "儲存",
@@ -746,6 +782,24 @@ const I18N = {
   },
 
   en: {
+    "set.pageBg": "Page background",
+    "set.pageBgHint": "A colour or an image; only affects your own view",
+    "set.pickImage": "Choose image",
+    "set.clearImage": "Clear",
+    "set.scale": "Interface scale",
+    "set.scaleHint": "90% – 115%, content area only",
+    "set.density": "Row density",
+    "set.densityHint": "Compact fits more rows on one screen",
+    "set.densityComfort": "Comfortable",
+    "set.densityCompact": "Compact",
+    "set.package": "Theme package",
+    "set.packageHint": "Export as JSON, or import someone else's",
+    "set.export": "Export",
+    "set.import": "Import",
+    "set.resetLook": "Reset appearance",
+    "set.badPackage": "Wrong file format — expected a SubDrive theme package",
+    "set.imported": "Theme package imported",
+    "set.resetDone": "Appearance reset",
     "site.open": "Site settings",
     "site.title": "Site settings",
     "site.save": "Save",
@@ -3606,6 +3660,116 @@ function initThemeUI() {
 // 对外入口：脚本或未来的设置页都能用；accent 接受预设名或 #rrggbb
 window.SubDriveTheme = { set: setTheme, cycle: cycleTheme, accent: setAccent, current: currentTheme };
 
+/* ---------------- 整页外观（M2） ----------------
+ * 只影响当前浏览器：背景色/背景图/缩放/密度存 localStorage，不碰服务端。
+ * 主题包是这套结构的序列化，将来管理员的「组织外观」发布也用同一份 JSON。 */
+const LOOK_KEY = "subdrive_look";
+const LOOK_DEFAULT = { v: 1, bg: "", image: "", scale: 1, density: "comfortable" };
+
+function lookState() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LOOK_KEY) || "null");
+    return Object.assign({}, LOOK_DEFAULT, raw && typeof raw === "object" ? raw : {});
+  } catch { return Object.assign({}, LOOK_DEFAULT); }
+}
+function applyLook() {
+  const l = lookState();
+  const root = document.documentElement;
+  root.style.setProperty("--ui-scale", String(Math.min(1.15, Math.max(0.9, Number(l.scale) || 1))));
+  document.body.classList.toggle("dense", l.density === "compact");
+  if (l.bg) document.body.style.backgroundColor = l.bg;
+  else document.body.style.removeProperty("background-color");
+  if (l.image) document.body.style.setProperty("--bg-image", "url(" + l.image + ")");
+  else document.body.style.removeProperty("--bg-image");
+}
+function saveLook(patch) {
+  const next = Object.assign(lookState(), patch || {});
+  localStorage.setItem(LOOK_KEY, JSON.stringify(next));
+  applyLook();
+  refreshLookUI();
+  return next;
+}
+function refreshLookUI() {
+  const l = lookState();
+  const bg = $("#set-page-bg");
+  if (bg && /^#[0-9a-f]{6}$/i.test(l.bg || "")) bg.value = l.bg;
+  const sc = $("#set-ui-scale"), scv = $("#set-ui-scale-value");
+  if (sc) sc.value = String(l.scale || 1);
+  if (scv) scv.textContent = Math.round((Number(l.scale) || 1) * 100) + "%";
+  $$("#set-density [data-density]").forEach((b) => b.classList.toggle("selected", b.dataset.density === l.density));
+}
+function shrinkImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      try {
+        const max = 1920;
+        const k = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(img.width * k));
+        c.height = Math.max(1, Math.round(img.height * k));
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        resolve(c.toDataURL("image/webp", 0.82));
+      } catch (e) { URL.revokeObjectURL(url); reject(e); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error(t("set.badPackage"))); };
+    img.src = url;
+  });
+}
+
+$("#set-page-bg").addEventListener("input", (ev) => saveLook({ bg: ev.target.value }));
+$("#set-page-img-btn").addEventListener("click", () => $("#set-page-img").click());
+$("#set-page-img").addEventListener("change", async (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (!f) return;
+  try { saveLook({ image: await shrinkImage(f) }); }
+  catch { toast(t("set.badPackage"), true); }
+  ev.target.value = "";
+});
+$("#set-page-img-clear").addEventListener("click", () => saveLook({ image: "" }));
+$("#set-ui-scale").addEventListener("input", (ev) => saveLook({ scale: Number(ev.target.value) || 1 }));
+$("#set-density").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-density]");
+  if (b) saveLook({ density: b.dataset.density });
+});
+$("#set-pkg-export").addEventListener("click", () => {
+  const pkg = { v: 1, kind: "subdrive-look", theme: currentTheme(), accent: currentAccent(), look: lookState() };
+  const blob = new Blob([JSON.stringify(pkg, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "subdrive-look.json";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+});
+$("#set-pkg-import-btn").addEventListener("click", () => $("#set-pkg-import").click());
+$("#set-pkg-import").addEventListener("change", async (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (!d || d.kind !== "subdrive-look" || !d.look) throw new Error(t("set.badPackage"));
+    const l = d.look;
+    saveLook({
+      bg: typeof l.bg === "string" && /^#[0-9a-f]{6}$/i.test(l.bg) ? l.bg : "",
+      image: typeof l.image === "string" && l.image.indexOf("data:image/") === 0 ? l.image : "",
+      scale: Math.min(1.15, Math.max(0.9, Number(l.scale) || 1)),
+      density: l.density === "compact" ? "compact" : "comfortable",
+    });
+    if (d.theme === "light" || d.theme === "dark" || d.theme === "auto") setTheme(d.theme);
+    if (typeof d.accent === "string") setAccent(d.accent);
+    toast(t("set.imported"));
+  } catch (e) { toast(e.message || t("set.badPackage"), true); }
+  ev.target.value = "";
+});
+$("#set-reset-look").addEventListener("click", () => {
+  localStorage.removeItem(LOOK_KEY);
+  applyLook();
+  refreshLookUI();
+  toast(t("set.resetDone"));
+});
+
 /* ---------------- 设置页（M1） ----------------
  * 一期只做「把散落的开关收进来」：外观（主题/主色/语言）、账号（昵称/密码）、上传并发、
  * 存储概况、关于。积木编辑器与组织推送留到 M3/M4。 */
@@ -3632,6 +3796,7 @@ function refreshSettingsUI() {
   if (colorEl) colorEl.value = HEX_RE.test(acc) ? acc : (ACCENT_SWATCH[acc] || ACCENT_SWATCH[""]);
   const ls = $("#lang-select-settings");
   if (ls) ls.value = lang;
+  refreshLookUI();
   const nv = $("#set-nickname-value");
   if (nv) nv.textContent = me ? (me.nickname || me.username) : "—";
   const cc = $("#set-concurrency"), cv = $("#set-concurrency-value");
@@ -3723,6 +3888,7 @@ if (langSelect) {
     applyLang();
     initThemeUI();
     applyTheme();
+    applyLook();
     if (token) {
       try {
         if (location.hash.indexOf("#/settings") === 0) { await enterDrive(); openSettings("appearance"); return; }

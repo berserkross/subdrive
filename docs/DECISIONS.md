@@ -247,3 +247,11 @@
   为什么用键值表而不是加列：站点设置会一直长（现在 10 个键，之后主题、公告、配额策略都要进来），加列每次都要迁移；键值表只增键不改表。
   为什么默认值写在代码里而不是写进库：升级时要能拿到新默认值，库里只存「管理员真的改过的那几项」，删掉键就回到新默认。
   已知边界：站点 Logo 目前只能填路径、还不支持上传（M4 与组织外观一起做）；审计只读、不能清空或筛选。
+
+
+- **D49 M2：整页外观存 localStorage，主题包就是它的 JSON**｜按拍板做「背景色/背景图 + 界面缩放 + 行密度 + 主题包导入导出」。
+  数据：`subdrive_look` = { v, bg, image, scale, density }；`applyLook()` 把 scale 写进 `--ui-scale`（只对 `.drive-main/.settings-wrap/.admin-main` 用 `zoom`，顶栏与侧边栏不缩放，否则侧边栏会跟着变大到出屏），density=compact 时给 body 加 `.dense`（收窄 `.row` 的上下内边距与字号），bg/image 直接写 body 的 inline 样式与 `--bg-image`。
+  图片：客户端先缩到长边 1920、webp 0.82，再存 data URL——localStorage 只有几 MB，不压缩的话一张手机照片就写不进去。
+  主题包：`{ v, kind: "subdrive-look", theme, accent, look }`，导出走 Blob 下载，导入用同一份 schema 校验（kind 不对、字段类型不对就整包拒绝），并把 theme/accent 一起带上——一套外观本来就包含明暗与主色。
+  为什么不做成服务端配置：拍板时定的是普通用户只本地生效；服务端那份留给 M4 的 org_theme（管理员发布），两者共用同一份 JSON，迁移成本为零。
+  已知边界：导出/导入没有版本迁移逻辑（v1 之外直接拒绝）；背景图存 localStorage，换设备不会带走，需要靠主题包导出。

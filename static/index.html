@@ -208,6 +208,7 @@
     <nav class="set-nav" id="set-nav">
       <button class="set-nav-item active" data-panel="appearance" type="button" data-i18n="set.navAppearance">外观与个性化</button>
       <button class="set-nav-item" data-panel="account" type="button" data-i18n="set.navAccount">账号与安全</button>
+      <button class="set-nav-item" data-panel="layout" type="button" data-i18n="set.navLayout">布局与积木</button>
       <button class="set-nav-item" data-panel="upload" type="button" data-i18n="set.navUpload">上传与性能</button>
       <button class="set-nav-item" data-panel="storage" type="button" data-i18n="set.navStorage">存储与配额</button>
       <button class="set-nav-item" data-panel="about" type="button" data-i18n="set.navAbout">关于</button>
@@ -275,6 +276,16 @@
             </select>
             <svg class="lang-caret" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
           </div>
+        </div>
+      </section>
+
+      <section class="set-panel hidden" data-panel="layout">
+        <h3 data-i18n="set.navLayout">布局与积木</h3>
+        <p class="set-note" data-i18n="set.layoutHint">每个模块都能单独配色/圆角/贴图，也能藏着或换顺序；改完立刻生效，只影响你自己。</p>
+        <div id="block-editor" class="block-editor"></div>
+        <div class="set-row">
+          <div class="set-label"><strong data-i18n="set.layoutReset">恢复默认布局</strong><span data-i18n="set.layoutResetHint">只重置模块，不动主题色与背景</span></div>
+          <button id="set-blocks-reset" class="btn-ghost" type="button" data-i18n="set.resetLayout">恢复默认</button>
         </div>
       </section>
 

@@ -255,3 +255,10 @@
   主题包：`{ v, kind: "subdrive-look", theme, accent, look }`，导出走 Blob 下载，导入用同一份 schema 校验（kind 不对、字段类型不对就整包拒绝），并把 theme/accent 一起带上——一套外观本来就包含明暗与主色。
   为什么不做成服务端配置：拍板时定的是普通用户只本地生效；服务端那份留给 M4 的 org_theme（管理员发布），两者共用同一份 JSON，迁移成本为零。
   已知边界：导出/导入没有版本迁移逻辑（v1 之外直接拒绝）；背景图存 localStorage，换设备不会带走，需要靠主题包导出。
+
+
+- **D50 M3：积木编辑器长在 `look.blocks` 上，顺序用 flex order**｜7 个模块各自可配色、圆角、贴图、隐藏、排序，改完立刻生效，只影响本人。
+  数据：`look.blocks[<id>] = { visible, order, bg, fg, radius, image }`；`.drive-main` 改成 flex 纵向容器，模块用 `style.order` 排序，隐藏用 `display:none`，其余写 inline 样式。模块与选择器：quota→`.quota-card`、scope→`#nav-scope`、toolbar→`.toolbar`、shared→`#shared-card`、files→`#dropzone`、foot→`.drive-foot`；topbar（`.topbar`）只允许配色，不允许隐藏/排序——它是唯一入口（品牌回首页、头像开侧边栏），藏了就没法回来。
+  为什么用 inline 样式而不是生成 CSS 变量：模块数量固定且只有 6 个，写 6 组 `--b-*` 变量还要配套 CSS 规则，收益不如直接 set style；将来模块若变多再换成变量表。
+  为什么排序不做拖拽：`order` 交换用一对 ↑↓ 就够，拖拽要处理 pointer 事件与占位符，M3 不值得。
+  已知边界：顺序只对 `.drive-main` 里的 6 个模块有效；`#shared-card` 与 `#public-panel` 同属共享区，公共区域面板不参与排序。

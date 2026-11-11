@@ -15,6 +15,28 @@ let lang = (function () {
 // 字典按「屏」分组，key 用点分命名；zh 是基准，en 必须与之等长（tests/e2e 会校验）。
 const I18N = {
   zh: {
+    "blk.colName": "模块",
+    "blk.colOrder": "顺序",
+    "blk.colBg": "背景",
+    "blk.colFg": "文字",
+    "blk.colRadius": "圆角",
+    "blk.colImage": "贴图",
+    "blk.bg": "背景色",
+    "blk.fg": "文字色",
+    "blk.radius": "圆角",
+    "set.navLayout": "布局与积木",
+    "set.layoutHint": "每个模块都能单独配色、圆角、贴图，也能藏着或换顺序；改完立刻生效，只影响你自己。",
+    "set.layoutReset": "恢复默认布局",
+    "set.layoutResetHint": "只重置模块，不动主题色与背景",
+    "set.resetLayout": "恢复默认",
+    "blk.quota": "存储条",
+    "blk.scope": "作用域切换",
+    "blk.toolbar": "工具栏",
+    "blk.shared": "共享文件夹",
+    "blk.files": "文件列表",
+    "blk.foot": "页脚",
+    "blk.topbar": "顶栏",
+    "blk.image": "贴图",
     "set.pageBg": "页面背景",
     "set.pageBgHint": "纯色或一张图，只影响你自己的界面",
     "set.pickImage": "选图",
@@ -398,6 +420,28 @@ const I18N = {
     "modal.title": "标题",
   },
   hant: {
+    "blk.colName": "模組",
+    "blk.colOrder": "順序",
+    "blk.colBg": "背景",
+    "blk.colFg": "文字",
+    "blk.colRadius": "圓角",
+    "blk.colImage": "貼圖",
+    "blk.bg": "背景色",
+    "blk.fg": "文字色",
+    "blk.radius": "圓角",
+    "set.navLayout": "版面與積木",
+    "set.layoutHint": "每個模組都能單獨配色、圓角、貼圖，也能隱藏或換順序；改完立刻生效，只影響你自己。",
+    "set.layoutReset": "回復預設版面",
+    "set.layoutResetHint": "只重設模組，不動主題色與背景",
+    "set.resetLayout": "回復預設",
+    "blk.quota": "儲存條",
+    "blk.scope": "作用域切換",
+    "blk.toolbar": "工具列",
+    "blk.shared": "共享資料夾",
+    "blk.files": "檔案清單",
+    "blk.foot": "頁尾",
+    "blk.topbar": "頂欄",
+    "blk.image": "貼圖",
     "set.pageBg": "頁面背景",
     "set.pageBgHint": "純色或一張圖，只影響你自己的介面",
     "set.pickImage": "選圖",
@@ -782,6 +826,28 @@ const I18N = {
   },
 
   en: {
+    "blk.colName": "Block",
+    "blk.colOrder": "Order",
+    "blk.colBg": "BG",
+    "blk.colFg": "Text",
+    "blk.colRadius": "Radius",
+    "blk.colImage": "Texture",
+    "blk.bg": "Background colour",
+    "blk.fg": "Text colour",
+    "blk.radius": "Corner radius",
+    "set.navLayout": "Layout blocks",
+    "set.layoutHint": "Each block can have its own colour, radius and texture; you can hide or reorder them. Applies instantly, only for you.",
+    "set.layoutReset": "Reset layout",
+    "set.layoutResetHint": "Blocks only — theme colour and background stay",
+    "set.resetLayout": "Reset",
+    "blk.quota": "Storage bar",
+    "blk.scope": "Scope switch",
+    "blk.toolbar": "Toolbar",
+    "blk.shared": "Shared folders",
+    "blk.files": "File list",
+    "blk.foot": "Footer",
+    "blk.topbar": "Top bar",
+    "blk.image": "Texture",
     "set.pageBg": "Page background",
     "set.pageBgHint": "A colour or an image; only affects your own view",
     "set.pickImage": "Choose image",
@@ -3664,7 +3730,7 @@ window.SubDriveTheme = { set: setTheme, cycle: cycleTheme, accent: setAccent, cu
  * 只影响当前浏览器：背景色/背景图/缩放/密度存 localStorage，不碰服务端。
  * 主题包是这套结构的序列化，将来管理员的「组织外观」发布也用同一份 JSON。 */
 const LOOK_KEY = "subdrive_look";
-const LOOK_DEFAULT = { v: 1, bg: "", image: "", scale: 1, density: "comfortable" };
+const LOOK_DEFAULT = { v: 1, bg: "", image: "", scale: 1, density: "comfortable", blocks: {} };
 
 function lookState() {
   try {
@@ -3681,7 +3747,133 @@ function applyLook() {
   else document.body.style.removeProperty("background-color");
   if (l.image) document.body.style.setProperty("--bg-image", "url(" + l.image + ")");
   else document.body.style.removeProperty("--bg-image");
+  applyBlocks(l.blocks || {});
 }
+
+/* 模块（积木）：6 个可排序模块 + 顶栏（只配色，不可隐藏/排序，否则连入口都没了） */
+const BLOCK_DEFS = [
+  { id: "quota", sel: ".quota-card", key: "blk.quota", orderable: true },
+  { id: "scope", sel: "#nav-scope", key: "blk.scope", orderable: true },
+  { id: "toolbar", sel: ".toolbar", key: "blk.toolbar", orderable: true },
+  { id: "shared", sel: "#shared-card", key: "blk.shared", orderable: true },
+  { id: "files", sel: "#dropzone", key: "blk.files", orderable: true },
+  { id: "foot", sel: ".drive-foot", key: "blk.foot", orderable: true },
+  { id: "topbar", sel: ".topbar", key: "blk.topbar", orderable: false, hideable: false },
+];
+function blockOrder(blocks, id, fallback) {
+  const st = blocks[id];
+  return st && Number.isFinite(Number(st.order)) ? Number(st.order) : fallback;
+}
+function applyBlocks(blocks) {
+  BLOCK_DEFS.forEach((b, i) => {
+    const el = document.querySelector(b.sel);
+    if (!el) return;
+    const st = blocks[b.id] || {};
+    if (b.id !== "topbar") {
+      el.style.display = st.visible === false ? "none" : "";
+      el.style.order = String(blockOrder(blocks, b.id, i));
+    }
+    el.style.background = st.bg || "";
+    if (st.fg) el.style.color = st.fg; else el.style.removeProperty("color");
+    if (st.radius) el.style.borderRadius = Number(st.radius) + "px"; else el.style.removeProperty("border-radius");
+    if (st.image) {
+      el.style.backgroundImage = "url(" + st.image + ")";
+      el.style.backgroundSize = "cover";
+    } else {
+      el.style.removeProperty("background-image");
+    }
+  });
+}
+function blockRowHTML(b) {
+  const st = (lookState().blocks || {})[b.id] || {};
+  const vis = st.visible !== false;
+  return '<div class="blk-row" data-block="' + b.id + '">'
+    + '<label class="blk-name"><input type="checkbox" data-act="vis"' + (vis ? " checked" : "")
+    + (b.hideable === false ? " disabled" : "") + ">" + esc(t(b.key)) + "</label>"
+    + '<div class="blk-order">'
+    + '<button type="button" data-act="up"' + (b.orderable ? "" : " disabled") + ">↑</button>"
+    + '<button type="button" data-act="down"' + (b.orderable ? "" : " disabled") + ">↓</button>"
+    + "</div>"
+    + '<input type="color" data-act="bg" value="' + (st.bg || "#ffffff") + '" title="' + esc(t("blk.bg")) + '">'
+    + '<input type="color" data-act="fg" value="' + (st.fg || "#16181d") + '" title="' + esc(t("blk.fg")) + '">'
+    + '<span class="blk-radius"><input type="range" min="0" max="28" step="2" data-act="radius" value="' + (Number(st.radius) || 0) + '" title="' + esc(t("blk.radius")) + '"><em>' + (Number(st.radius) || 0) + '</em></span>'
+    + '<span class="blk-img"><button type="button" class="mini" data-act="img">' + esc(t("blk.image")) + "</button>"
+    + '<button type="button" class="mini" data-act="imgclear">×</button></span>'
+    + '<input type="file" accept="image/*" data-act="file" hidden>'
+    + "</div>";
+}
+function buildBlockEditor() {
+  const box = $("#block-editor");
+  if (!box) return;
+  box.innerHTML = '<div class="blk-head"><span>' + esc(t("blk.colName")) + '</span><span>'
+    + esc(t("blk.colOrder")) + '</span><span>' + esc(t("blk.colBg")) + '</span><span>'
+    + esc(t("blk.colFg")) + '</span><span>' + esc(t("blk.colRadius")) + '</span><span>'
+    + esc(t("blk.colImage")) + "</span></div>"
+    + BLOCK_DEFS.map(blockRowHTML).join("");
+}
+function patchBlock(id, patch) {
+  const l = lookState();
+  const blocks = Object.assign({}, l.blocks || {});
+  blocks[id] = Object.assign({}, blocks[id] || {}, patch);
+  saveLook({ blocks });
+}
+function moveBlock(id, dir) {
+  const l = lookState();
+  const list = BLOCK_DEFS.filter((b) => b.orderable).map((b, i) => ({ id: b.id, order: blockOrder(l.blocks || {}, b.id, i) }));
+  list.sort((a, b) => a.order - b.order);
+  const idx = list.findIndex((x) => x.id === id);
+  const j = idx + dir;
+  if (idx < 0 || j < 0 || j >= list.length) return;
+  const t = list[idx]; list[idx] = list[j]; list[j] = t;
+  const blocks = Object.assign({}, l.blocks || {});
+  list.forEach((x, i) => { blocks[x.id] = Object.assign({}, blocks[x.id], { order: i }); });
+  saveLook({ blocks });
+  buildBlockEditor();
+}
+$("#block-editor").addEventListener("change", async (ev) => {
+  const row = ev.target.closest("[data-block]");
+  if (!row) return;
+  const id = row.dataset.block;
+  const act = ev.target.dataset.act;
+  if (act === "vis") patchBlock(id, { visible: !!ev.target.checked });
+  if (act === "bg") patchBlock(id, { bg: ev.target.value });
+  if (act === "fg") patchBlock(id, { fg: ev.target.value });
+  if (act === "radius") patchBlock(id, { radius: Number(ev.target.value) || 0 });
+  if (act === "file") {
+    const f = ev.target.files && ev.target.files[0];
+    if (f) {
+      try { patchBlock(id, { image: await shrinkImage(f) }); }
+      catch { toast(t("set.badPackage"), true); }
+    }
+    ev.target.value = "";
+  }
+});
+$("#block-editor").addEventListener("input", (ev) => {
+  const row = ev.target.closest("[data-block]");
+  if (!row) return;
+  const act = ev.target.dataset.act;
+  if (act === "radius") {
+    patchBlock(row.dataset.block, { radius: Number(ev.target.value) || 0 });
+    const em = row.querySelector(".blk-radius em");
+    if (em) em.textContent = String(Number(ev.target.value) || 0);
+  }
+});
+$("#block-editor").addEventListener("click", (ev) => {
+  const btn = ev.target.closest("[data-act]");
+  const row = ev.target.closest("[data-block]");
+  if (!btn || !row || btn.tagName !== "BUTTON") return;
+  const id = row.dataset.block;
+  const act = btn.dataset.act;
+  if (act === "up") moveBlock(id, -1);
+  if (act === "down") moveBlock(id, 1);
+  if (act === "img") { const f = row.querySelector('[data-act="file"]'); if (f) f.click(); }
+  if (act === "imgclear") patchBlock(id, { image: "" });
+});
+$("#set-blocks-reset").addEventListener("click", () => {
+  saveLook({ blocks: {} });
+  buildBlockEditor();
+  toast(t("set.resetDone"));
+});
 function saveLook(patch) {
   const next = Object.assign(lookState(), patch || {});
   localStorage.setItem(LOOK_KEY, JSON.stringify(next));
@@ -3774,7 +3966,7 @@ $("#set-reset-look").addEventListener("click", () => {
  * 一期只做「把散落的开关收进来」：外观（主题/主色/语言）、账号（昵称/密码）、上传并发、
  * 存储概况、关于。积木编辑器与组织推送留到 M3/M4。 */
 const UPLOAD_CONC_KEY = "subdrive_upload_conc";
-const SETTINGS_PANELS = ["appearance", "account", "upload", "storage", "about"];
+const SETTINGS_PANELS = ["appearance", "layout", "account", "upload", "storage", "about"];
 let storageMode = "";
 const APP_VERSION = "3.2.0-m1";
 
@@ -3889,6 +4081,7 @@ if (langSelect) {
     initThemeUI();
     applyTheme();
     applyLook();
+    buildBlockEditor();
     if (token) {
       try {
         if (location.hash.indexOf("#/settings") === 0) { await enterDrive(); openSettings("appearance"); return; }

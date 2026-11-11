@@ -15,6 +15,29 @@ let lang = (function () {
 // 字典按「屏」分组，key 用点分命名；zh 是基准，en 必须与之等长（tests/e2e 会校验）。
 const I18N = {
   zh: {
+    "site.open": "站点设置",
+    "site.title": "站点设置",
+    "site.save": "保存",
+    "site.defaults": "默认值与上限",
+    "site.quota": "新用户默认配额",
+    "site.sharedBytes": "共享目录默认容量",
+    "site.sharedMembers": "共享默认成员数",
+    "site.maxFile": "单文件上限",
+    "site.gb": "GB",
+    "site.day": "天",
+    "site.invite": "邀请与准入",
+    "site.inviteDays": "邀请码默认有效期",
+    "site.inviteUses": "邀请码默认次数",
+    "site.selfReg": "允许不收邀请码自行注册",
+    "site.info": "站点信息",
+    "site.name": "站点名",
+    "site.footer": "页脚署名",
+    "site.audit": "最近管理动作",
+    "site.thTime": "时间",
+    "site.thActor": "操作者",
+    "site.thAction": "动作",
+    "site.thDetail": "详情",
+    "site.saved": "站点设置已保存",
     "set.back": "← 返回网盘",
     "set.title": "设置",
     "set.navAppearance": "外观与个性化",
@@ -357,6 +380,29 @@ const I18N = {
     "modal.title": "标题",
   },
   hant: {
+    "site.open": "站點設定",
+    "site.title": "站點設定",
+    "site.save": "儲存",
+    "site.defaults": "預設值與上限",
+    "site.quota": "新使用者預設配額",
+    "site.sharedBytes": "共享目錄預設容量",
+    "site.sharedMembers": "共享預設成員數",
+    "site.maxFile": "單檔上限",
+    "site.gb": "GB",
+    "site.day": "天",
+    "site.invite": "邀請與准入",
+    "site.inviteDays": "邀請碼預設有效期",
+    "site.inviteUses": "邀請碼預設次數",
+    "site.selfReg": "允許不收邀請碼自行註冊",
+    "site.info": "站點資訊",
+    "site.name": "站點名稱",
+    "site.footer": "頁尾署名",
+    "site.audit": "最近管理動作",
+    "site.thTime": "時間",
+    "site.thActor": "操作者",
+    "site.thAction": "動作",
+    "site.thDetail": "詳情",
+    "site.saved": "站點設定已儲存",
     "set.back": "← 返回網盤",
     "set.title": "設定",
     "set.navAppearance": "外觀與個人化",
@@ -700,6 +746,29 @@ const I18N = {
   },
 
   en: {
+    "site.open": "Site settings",
+    "site.title": "Site settings",
+    "site.save": "Save",
+    "site.defaults": "Defaults & limits",
+    "site.quota": "Default quota for new users",
+    "site.sharedBytes": "Default shared-folder capacity",
+    "site.sharedMembers": "Default member cap",
+    "site.maxFile": "Max file size",
+    "site.gb": "GB",
+    "site.day": "days",
+    "site.invite": "Invites & access",
+    "site.inviteDays": "Default invite validity",
+    "site.inviteUses": "Default invite uses",
+    "site.selfReg": "Allow sign-up without an invite code",
+    "site.info": "Site identity",
+    "site.name": "Site name",
+    "site.footer": "Footer credit",
+    "site.audit": "Recent admin actions",
+    "site.thTime": "Time",
+    "site.thActor": "Actor",
+    "site.thAction": "Action",
+    "site.thDetail": "Detail",
+    "site.saved": "Site settings saved",
     "set.back": "← Back to drive",
     "set.title": "Settings",
     "set.navAppearance": "Appearance",
@@ -3338,6 +3407,65 @@ async function loadUsers() {
     tb.appendChild(tr);
   }
 }
+/* ---------------- 站点设置（D48，管理员） ---------------- */
+const GB = 1024 ** 3;
+
+async function loadAudit() {
+  const d = await api("/api/admin/audit?limit=20");
+  const tb = $("#audit-table tbody");
+  if (!tb) return;
+  tb.innerHTML = "";
+  (d.items || []).forEach((it) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = "<td>" + esc(String(it.ts || "").slice(0, 19).replace("T", " ")) + "</td>"
+      + "<td>" + esc(it.username || "—") + "</td>"
+      + "<td>" + esc(it.action || "") + "</td>"
+      + "<td>" + esc(it.detail || it.target_path || "") + "</td>";
+    tb.appendChild(tr);
+  });
+}
+
+async function loadAdminSite() {
+  const d = await api("/api/admin/site");
+  const v = d.settings;
+  $("#as-quota").value = Math.round(v.default_quota_bytes / GB);
+  $("#as-shared-bytes").value = Math.round(v.shared_max_bytes / GB);
+  $("#as-shared-members").value = v.shared_max_members;
+  $("#as-max-file").value = Math.round(v.max_file_bytes / GB);
+  $("#as-inv-days").value = v.invite_valid_days;
+  $("#as-inv-uses").value = v.invite_max_uses;
+  $("#as-self-reg").checked = !!v.allow_self_register;
+  $("#as-name").value = v.site_name || "";
+  $("#as-footer").value = v.site_footer || "";
+  await loadAudit();
+}
+
+$("#btn-site-settings").addEventListener("click", async () => {
+  const card = $("#admin-site-card");
+  card.classList.toggle("hidden");
+  if (!card.classList.contains("hidden")) {
+    try { await loadAdminSite(); } catch (e) { toast(e.message, true); }
+  }
+});
+
+$("#as-save").addEventListener("click", async () => {
+  try {
+    await api("/api/admin/site", { method: "PUT", body: {
+      default_quota_bytes: Number($("#as-quota").value) * GB,
+      shared_max_bytes: Number($("#as-shared-bytes").value) * GB,
+      shared_max_members: Number($("#as-shared-members").value),
+      max_file_bytes: Number($("#as-max-file").value) * GB,
+      invite_valid_days: Number($("#as-inv-days").value),
+      invite_max_uses: Number($("#as-inv-uses").value),
+      allow_self_register: $("#as-self-reg").checked ? 1 : 0,
+      site_name: $("#as-name").value.trim(),
+      site_footer: $("#as-footer").value.trim(),
+    }});
+    toast(t("site.saved"));
+    await loadAudit();
+  } catch (e) { toast(e.message, true); }
+});
+
 async function loadAdmin() {
   try { await Promise.all([loadInvites(), loadUsers()]); }
   catch (e) { toast(e.message, true); }

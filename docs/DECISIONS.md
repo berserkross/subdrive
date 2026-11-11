@@ -239,3 +239,11 @@
   为什么侧边栏用 fixed + translateX 而不是 modal 组件：抽屉要保留背景上下文（用户在哪个目录），且要能 Esc/点遮罩关闭；modal 的居中遮罩会把整个网盘挡死。
   为什么品牌块是 `<a>` 而不是 button：它是导航（回首页），要有链接语义（可右键、可新开），`preventDefault` 之后由 `goHome()` 统一收口（关抽屉 + 回根目录 + 刷新）。
   已知取舍：用户原话把品牌说成「右边」、用户图标「左边」，实现按常规（品牌左、用户在右）——镜像只需要交换 `.topbar` 两个子元素的顺序与 `justify-content`，一行的事。
+
+
+- **D48 管理员「站点设置」= 管理后台里的第二块，不是用户设置里的第六组**｜按 D46 的两面划分，把站点级能力落成 `site_settings` 键值表 + `/api/admin/site`（GET/PUT）+ `/api/admin/audit`（只读）。
+  做法：`app/main.py` 新增 `CREATE TABLE IF NOT EXISTS site_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`；`SITE_DEFAULTS`（default_quota_bytes / shared_max_bytes / shared_max_members / max_file_bytes / invite_valid_days / invite_max_uses / allow_self_register / site_name / site_footer / site_logo）与 `SITE_BOUNDS`；`site_settings_of(db)` 永远返回「默认 ← 覆盖」，所以老库不迁移、删一行即回默认。接线四处：`quota_of()` 用默认配额、注册时按 `allow_self_register` 决定要不要邀请码、共享创建用默认容量与成员数、邀请码签发用默认有效期与次数、上传的单文件上限改为每次读设置。`/api/meta` 额外返回 site 三项（站点名/页脚/Logo），登录页与关于页可读。
+  前端：管理后台顶栏加「站点设置」按钮（`#btn-site-settings`），点开 `#admin-site-card`（默认与上限 / 邀请与准入 / 站点信息 / 最近管理动作四段 + `#as-save`），值全部来自 GET，保存走 PUT，审计表读 `/api/admin/audit?limit=20`。
+  为什么用键值表而不是加列：站点设置会一直长（现在 10 个键，之后主题、公告、配额策略都要进来），加列每次都要迁移；键值表只增键不改表。
+  为什么默认值写在代码里而不是写进库：升级时要能拿到新默认值，库里只存「管理员真的改过的那几项」，删掉键就回到新默认。
+  已知边界：站点 Logo 目前只能填路径、还不支持上传（M4 与组织外观一起做）；审计只读、不能清空或筛选。

@@ -95,6 +95,10 @@ def init_db() -> None:
                 created_at TEXT NOT NULL,
                 last_login_at TEXT
             );
+            CREATE TABLE IF NOT EXISTS site_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS invite_codes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 code TEXT UNIQUE NOT NULL,
@@ -301,10 +305,56 @@ def user_public(row) -> dict:
 
 # ------------------------------------------------------------------ 配额
 
+# 站点级设置（D48）：键值表 + 一组默认值。读的时候永远是「默认 ← 覆盖」，
+# 所以老库不用迁移、删掉一行就等于回到默认。
+SITE_DEFAULTS = {
+    "default_quota_bytes": DEFAULT_QUOTA_BYTES,
+    "shared_max_bytes": 2 * 1024 ** 3,
+    "shared_max_members": 20,
+    "max_file_bytes": MAX_FILE_BYTES,
+    "invite_valid_days": 7,
+    "invite_max_uses": 1,
+    "allow_self_register": 1,
+    "site_name": "SubDrive",
+    "site_footer": "",
+    "site_logo": "/static/logo.png",
+}
+SITE_BOUNDS = {
+    "default_quota_bytes": (1 * 1024 ** 3, 1024 * 1024 ** 3),
+    "shared_max_bytes": (64 * 1024 ** 2, 1024 * 1024 ** 3),
+    "shared_max_members": (1, 200),
+    "max_file_bytes": (64 * 1024 ** 2, 64 * 1024 ** 3),
+    "invite_valid_days": (1, 365),
+    "invite_max_uses": (1, 500),
+}
+
+
+def site_settings_of(db) -> dict:
+    out = dict(SITE_DEFAULTS)
+    try:
+        for row in db.execute("SELECT key, value FROM site_settings"):
+            k = row["key"]
+            if k not in out:
+                continue
+            try:
+                out[k] = int(row["value"]) if isinstance(out[k], int) else row["value"]
+            except (TypeError, ValueError):
+                pass
+    except sqlite3.Error:
+        pass
+    return out
+
+
+def site_set(db, key: str, value) -> None:
+    db.execute("INSERT INTO site_settings (key, value) VALUES (?,?)"
+               " ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+               (key, str(value)))
+
+
 def quota_of(db, user) -> int:
     if user["quota_bytes"] is not None:
         return user["quota_bytes"]
-    return DEFAULT_QUOTA_BYTES
+    return int(site_settings_of(db)["default_quota_bytes"])
 
 
 def usage_of(db, user_id: int) -> dict:
@@ -521,7 +571,11 @@ def register(data: RegisterIn, request: Request):
         user_count = db.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
         first_user = user_count == 0
         invite = None
-        if not first_user:
+        site = site_settings_of(db)
+        if not first_user and not data.invite_code and int(site["allow_self_register"]):
+            # 站点允许自行注册：不发邀请码也能开号
+            invite = None
+        elif not first_user:
             # 邀请码试错限速（§7-6）
             if _recent_failures(db, f"reg:{ip}", 60) >= REGISTER_MAX_FAILS_PER_IP:
                 raise err(429, "rate_limited", "尝试过于频繁，请稍后再试")
@@ -941,7 +995,10 @@ def files_mkdir(data: MkdirIn, request: Request, owner: str = Query("")):
 @app.get("/api/meta")
 async def meta(request: Request):
     """给「关于」页用：版本与存储模式。不需要登录，内容不含敏感信息。"""
-    return {"version": "3.2.0-m1", "storage": STORAGE_MODE}
+    with _db_lock, get_db() as db:
+        site = site_settings_of(db)
+    return {"version": "3.2.0-m1", "storage": STORAGE_MODE,
+            "site": {k: site[k] for k in ("site_name", "site_footer", "site_logo")}}
 
 
 @app.post("/api/files/upload")
@@ -972,10 +1029,12 @@ async def files_upload(request: Request, path: str = Query(""), owner: str = Que
             if not chunk:
                 break
             size += len(chunk)
-            if size > MAX_FILE_BYTES:
+            with _db_lock, get_db() as _db:
+                max_file = int(site_settings_of(_db)["max_file_bytes"])
+            if size > max_file:
                 tmp.close()
                 Path(tmp.name).unlink(missing_ok=True)
-                raise err(413, "file_too_large", f"单文件上限 {MAX_FILE_BYTES} 字节")
+                raise err(413, "file_too_large", f"单文件上限 {max_file} 字节")
             tmp.write(chunk)
         tmp.close()
         t_stored_recv = time.perf_counter()
@@ -1220,7 +1279,9 @@ def shared_create(data: SharedCreateIn, request: Request):
                          (user["id"], rel)).fetchone()
         if dup:
             raise err(409, "already_shared", "该文件夹已经共享过了")
-        mb, mm = _clamp_limits(data.max_bytes, data.max_members)
+        site = site_settings_of(db)
+        mb, mm = _clamp_limits(data.max_bytes or int(site["shared_max_bytes"]),
+                               data.max_members or int(site["shared_max_members"]))
         ids = _resolve_members(db, data.members, user["username"], mm)
         if len(ids) > mm:
             raise err(400, "too_many_members", f"成员上限 {mm}")
@@ -1544,14 +1605,16 @@ def admin_invites(request: Request):
 def admin_create_invite(data: InviteCreateIn, request: Request):
     admin = require_admin(request)
     code = new_invite_code()
-    expires = None
-    if data.expires_days:
-        expires = (now_dt() + timedelta(days=data.expires_days)).isoformat()
+    with _db_lock, get_db() as _db:
+        site = site_settings_of(_db)
+    days = data.expires_days if data.expires_days is not None else float(site["invite_valid_days"])
+    expires = (now_dt() + timedelta(days=days)).isoformat() if days else None
     with _db_lock, get_db() as db:
         cur = db.execute(
             "INSERT INTO invite_codes (code, created_by, note, max_uses, expires_at, created_at)"
             " VALUES (?,?,?,?,?,?)",
-            (code, admin["id"], data.note.strip()[:100], max(1, data.max_uses), expires, now_iso()),
+            (code, admin["id"], data.note.strip()[:100],
+             max(1, data.max_uses or int(site["invite_max_uses"])), expires, now_iso()),
         )
         audit(db, admin["id"], "admin_invite_create", "", None, client_ip(request), "ok", code[:7] + "…")
         row = db.execute("SELECT * FROM invite_codes WHERE id = ?", (cur.lastrowid,)).fetchone()
@@ -1568,6 +1631,54 @@ def admin_revoke_invite(code_id: int, request: Request):
         db.execute("UPDATE invite_codes SET status = 'revoked' WHERE id = ?", (code_id,))
         audit(db, admin["id"], "admin_invite_revoke", "", None, client_ip(request), "ok")
     return {"ok": True}
+
+
+@app.get("/api/admin/site")
+def admin_site_get(request: Request):
+    admin = require_admin(request)
+    with _db_lock, get_db() as db:
+        site = site_settings_of(db)
+    return {"settings": site, "defaults": SITE_DEFAULTS, "bounds": SITE_BOUNDS}
+
+
+@app.put("/api/admin/site")
+async def admin_site_put(request: Request):
+    admin = require_admin(request)
+    body = await request.json()
+    site = {}
+    with _db_lock, get_db() as db:
+        cur = site_settings_of(db)
+        for key, value in (body or {}).items():
+            if key not in SITE_DEFAULTS:
+                continue
+            if key in SITE_BOUNDS:
+                lo, hi = SITE_BOUNDS[key]
+                try:
+                    value = max(lo, min(hi, int(value)))
+                except (TypeError, ValueError):
+                    continue
+            elif key == "allow_self_register":
+                value = 1 if value else 0
+            else:
+                value = str(value)[:200]
+            site_set(db, key, value)
+            cur[key] = value
+        audit(db, admin["id"], "admin_site_update", "", None, client_ip(request), "ok",
+              ",".join(sorted(k for k in (body or {}) if k in SITE_DEFAULTS)))
+        site = site_settings_of(db)
+    return {"ok": True, "settings": site}
+
+
+@app.get("/api/admin/audit")
+def admin_audit(request: Request, limit: int = Query(50)):
+    admin = require_admin(request)
+    limit = max(1, min(200, limit))
+    with _db_lock, get_db() as db:
+        rows = db.execute(
+            "SELECT a.ts, u.username, a.action, a.target_path, a.result, a.detail"
+            " FROM audit_log a LEFT JOIN users u ON u.id = a.actor_user_id"
+            " ORDER BY a.id DESC LIMIT ?", (limit,)).fetchall()
+    return {"items": [dict(r) for r in rows]}
 
 
 @app.get("/api/admin/usage")

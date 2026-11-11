@@ -93,6 +93,13 @@
   </header>
 
   <main class="drive-main">
+    <div id="org-banner" class="org-banner hidden">
+      <span class="org-text" data-i18n="org.text">管理员发布了新的外观</span>
+      <span class="org-actions">
+        <button id="org-adopt" class="btn-primary" type="button" data-i18n="org.adopt">采用</button>
+        <button id="org-keep" class="btn-ghost" type="button" data-i18n="org.keep">保留我的</button>
+      </span>
+    </div>
     <div class="quota-card">
       <div class="quota-text">
         <span class="quota-label" data-i18n="quota.label">存储空间</span>
@@ -364,6 +371,12 @@
       <div class="as-grid">
         <label class="as-field"><span data-i18n="site.name">站点名</span><input id="as-name" type="text" maxlength="60"></label>
         <label class="as-field"><span data-i18n="site.footer">页脚署名</span><input id="as-footer" type="text" maxlength="120"></label>
+      </div>
+      <h3 class="as-sub" data-i18n="site.theme">组织外观</h3>
+      <div class="as-inline">
+        <span class="as-hint" data-i18n="site.themeHint">把当前这套外观（主题、主色、背景、积木、缩放、密度）发布给全体成员</span>
+        <button id="as-theme-publish" class="btn-soft" type="button" data-i18n="site.publish">发布当前外观</button>
+        <button id="as-theme-revoke" class="btn-ghost" type="button" data-i18n="site.revoke">撤销</button>
       </div>
       <h3 class="as-sub" data-i18n="site.audit">最近管理动作</h3>
       <div class="table-wrap">

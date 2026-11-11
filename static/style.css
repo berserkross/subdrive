@@ -241,6 +241,15 @@ input { font-family: inherit; font-size: 15px; color: var(--text); }
 .top-brand .top-title span { font-size: 11.5px; color: var(--text-2); }
 .user-chip { font: inherit; cursor: pointer; width: auto; max-width: 260px; min-height: 44px; padding: 5px 12px 5px 5px; }
 
+/* 组织外观横幅（M4） */
+.org-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 14px; margin-bottom: 12px; border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); font-size: 13px; }
+.org-actions { display: flex; gap: 8px; }
+.as-inline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.as-hint { font-size: 12.5px; color: var(--text-2); flex: 1; min-width: 220px; }
+
 /* 积木编辑器（M3） */
 .block-editor { display: flex; flex-direction: column; gap: 8px; padding: 6px 0 2px; }
 .blk-head { display: grid; grid-template-columns: 132px 72px 46px 46px 1fr 88px; gap: 10px;

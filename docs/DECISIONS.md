@@ -262,3 +262,10 @@
   为什么用 inline 样式而不是生成 CSS 变量：模块数量固定且只有 6 个，写 6 组 `--b-*` 变量还要配套 CSS 规则，收益不如直接 set style；将来模块若变多再换成变量表。
   为什么排序不做拖拽：`order` 交换用一对 ↑↓ 就够，拖拽要处理 pointer 事件与占位符，M3 不值得。
   已知边界：顺序只对 `.drive-main` 里的 6 个模块有效；`#shared-card` 与 `#public-panel` 同属共享区，公共区域面板不参与排序。
+
+
+- **D51 M4：组织外观＝管理员发布一份 look JSON，成员自己决定要不要采用**｜表 `org_theme(id=1, payload, updated_at, updated_by)`；`GET /api/theme/org`（登录可读）、`PUT/DELETE /api/admin/theme`（管理员写/撤）。
+  payload 与 D49 的主题包同构：`{ look: { bg, image, scale, density, blocks }, theme, accent }`；管理员在「站点设置 → 组织外观」点「发布当前外观」，把自己浏览器里那套东西整体上抛。
+  成员侧：进入网盘后拉一次 `/api/theme/org`，用 `updated_at` 与 localStorage 的 `subdrive_org_seen` 比对，不同才弹横幅（采用 / 保留我的）。采用＝把 look 写进本地并 setTheme/setAccent；保留＝只记 seen，不动现有外观。
+  为什么不做强制覆盖：拍板时定的是个人可覆盖、管理员推送不是命令；强制覆盖会把用户的背景图与积木配置直接抹掉，且没有撤销路径。
+  已知边界：撤销只删服务端那一行，已经采用过的成员保留本地那份（不会回滚）；没有「一键恢复组织默认」按钮，需要成员自己重置外观。

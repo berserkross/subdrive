@@ -15,6 +15,16 @@ let lang = (function () {
 // 字典按「屏」分组，key 用点分命名；zh 是基准，en 必须与之等长（tests/e2e 会校验）。
 const I18N = {
   zh: {
+    "org.text": "管理员发布了新的外观",
+    "org.adopt": "采用",
+    "org.keep": "保留我的",
+    "org.adopted": "已采用管理员的外观",
+    "site.theme": "组织外观",
+    "site.themeHint": "把当前这套外观（主题、主色、背景、积木、缩放、密度）发布给全体成员",
+    "site.publish": "发布当前外观",
+    "site.revoke": "撤销",
+    "site.published": "已发布给全体成员",
+    "site.revoked": "已撤销组织外观",
     "blk.colName": "模块",
     "blk.colOrder": "顺序",
     "blk.colBg": "背景",
@@ -420,6 +430,16 @@ const I18N = {
     "modal.title": "标题",
   },
   hant: {
+    "org.text": "管理員發布了新的外觀",
+    "org.adopt": "採用",
+    "org.keep": "保留我的",
+    "org.adopted": "已採用管理員的外觀",
+    "site.theme": "組織外觀",
+    "site.themeHint": "把目前這套外觀（主題、主色、背景、積木、縮放、密度）發布給全體成員",
+    "site.publish": "發布目前外觀",
+    "site.revoke": "撤銷",
+    "site.published": "已發布給全體成員",
+    "site.revoked": "已撤銷組織外觀",
     "blk.colName": "模組",
     "blk.colOrder": "順序",
     "blk.colBg": "背景",
@@ -826,6 +846,16 @@ const I18N = {
   },
 
   en: {
+    "org.text": "An administrator published a new look",
+    "org.adopt": "Use it",
+    "org.keep": "Keep mine",
+    "org.adopted": "Applied the admin's look",
+    "site.theme": "Organisation look",
+    "site.themeHint": "Publish your current look (theme, accent, background, blocks, scale, density) to every member",
+    "site.publish": "Publish current look",
+    "site.revoke": "Revoke",
+    "site.published": "Published to all members",
+    "site.revoked": "Organisation look revoked",
     "blk.colName": "Block",
     "blk.colOrder": "Order",
     "blk.colBg": "BG",
@@ -1748,6 +1778,7 @@ async function enterDrive() {
     show("view-admin");
     loadAdmin();
   }
+  loadOrgTheme();
 }
 
 /* ---------------- 共享文件夹 / 公共区域 ---------------- */
@@ -3528,6 +3559,55 @@ async function loadUsers() {
     tb.appendChild(tr);
   }
 }
+/* ---------------- 组织外观（M4） ---------------- */
+const ORG_SEEN_KEY = "subdrive_org_seen";
+let orgPayload = null;
+
+async function loadOrgTheme() {
+  try {
+    const d = await api("/api/theme/org");
+    if (!d || !d.theme) return;
+    orgPayload = d.theme;
+    const seen = localStorage.getItem(ORG_SEEN_KEY);
+    if (d.updated_at && seen !== d.updated_at) $("#org-banner").classList.remove("hidden");
+  } catch { /* 没有组织外观时接口也可能 404，静默 */ }
+}
+function orgMarkSeen() {
+  const d = orgPayload && orgPayload.__at ? orgPayload.__at : null;
+  localStorage.setItem(ORG_SEEN_KEY, d || String(Date.now()));
+  $("#org-banner").classList.add("hidden");
+}
+$("#org-adopt").addEventListener("click", () => {
+  if (!orgPayload) return;
+  const l = orgPayload.look || {};
+  saveLook({
+    bg: typeof l.bg === "string" ? l.bg : "",
+    image: typeof l.image === "string" ? l.image : "",
+    scale: Math.min(1.15, Math.max(0.9, Number(l.scale) || 1)),
+    density: l.density === "compact" ? "compact" : "comfortable",
+    blocks: l.blocks && typeof l.blocks === "object" ? l.blocks : {},
+  });
+  if (orgPayload.theme) setTheme(orgPayload.theme);
+  if (typeof orgPayload.accent === "string") setAccent(orgPayload.accent);
+  buildBlockEditor();
+  orgMarkSeen();
+  toast(t("org.adopted"));
+});
+$("#org-keep").addEventListener("click", () => { orgMarkSeen(); });
+$("#as-theme-publish").addEventListener("click", async () => {
+  try {
+    const l = lookState();
+    await api("/api/admin/theme", { method: "PUT", body: { look: l, theme: currentTheme(), accent: currentAccent() } });
+    toast(t("site.published"));
+  } catch (e) { toast(e.message, true); }
+});
+$("#as-theme-revoke").addEventListener("click", async () => {
+  try {
+    await api("/api/admin/theme", { method: "DELETE" });
+    toast(t("site.revoked"));
+  } catch (e) { toast(e.message, true); }
+});
+
 /* ---------------- 站点设置（D48，管理员） ---------------- */
 const GB = 1024 ** 3;
 

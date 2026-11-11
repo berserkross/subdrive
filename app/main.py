@@ -10,6 +10,7 @@
 sessions 表管登录态、原生 JS 前端由后端同源托管。
 """
 import hashlib
+import json
 import os
 import re
 import secrets
@@ -94,6 +95,12 @@ def init_db() -> None:
                 folder_created INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL,
                 last_login_at TEXT
+            );
+            CREATE TABLE IF NOT EXISTS org_theme (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                payload TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                updated_by INTEGER
             );
             CREATE TABLE IF NOT EXISTS site_settings (
                 key TEXT PRIMARY KEY,
@@ -1667,6 +1674,45 @@ async def admin_site_put(request: Request):
               ",".join(sorted(k for k in (body or {}) if k in SITE_DEFAULTS)))
         site = site_settings_of(db)
     return {"ok": True, "settings": site}
+
+
+@app.get("/api/theme/org")
+def org_theme_get(request: Request):
+    """成员侧：读管理员发布过的组织外观。没有就是 null。"""
+    require_user(request)
+    with _db_lock, get_db() as db:
+        row = db.execute("SELECT payload, updated_at FROM org_theme WHERE id = 1").fetchone()
+    if not row:
+        return {"theme": None}
+    try:
+        payload = json.loads(row["payload"])
+    except (TypeError, ValueError):
+        return {"theme": None}
+    return {"theme": payload, "updated_at": row["updated_at"]}
+
+
+@app.put("/api/admin/theme")
+async def org_theme_put(request: Request):
+    admin = require_admin(request)
+    body = await request.json()
+    payload = {"look": body.get("look") or {}, "theme": body.get("theme") or "auto",
+               "accent": body.get("accent") or ""}
+    with _db_lock, get_db() as db:
+        db.execute("INSERT INTO org_theme (id, payload, updated_at, updated_by) VALUES (1,?,?,?)"
+                   " ON CONFLICT(id) DO UPDATE SET payload = excluded.payload,"
+                   " updated_at = excluded.updated_at, updated_by = excluded.updated_by",
+                   (json.dumps(payload, ensure_ascii=False), now_iso(), admin["id"]))
+        audit(db, admin["id"], "admin_theme_publish", "", None, client_ip(request), "ok")
+    return {"ok": True, "theme": payload}
+
+
+@app.delete("/api/admin/theme")
+def org_theme_delete(request: Request):
+    admin = require_admin(request)
+    with _db_lock, get_db() as db:
+        db.execute("DELETE FROM org_theme WHERE id = 1")
+        audit(db, admin["id"], "admin_theme_revoke", "", None, client_ip(request), "ok")
+    return {"ok": True}
 
 
 @app.get("/api/admin/audit")

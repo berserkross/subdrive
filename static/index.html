@@ -93,7 +93,14 @@
         </div>
       </div>
       <button class="lang-btn theme-toggle" type="button" title="切换主题">⚙</button>
-      <button id="lang-toggle" class="lang-btn" type="button">中</button>
+      <div class="lang-wrap">
+        <select id="lang-select" class="lang-select" data-i18n-title="lang.switch">
+          <option value="zh">简体</option>
+          <option value="hant">繁體</option>
+          <option value="en">English</option>
+        </select>
+        <svg class="lang-caret" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
       <button id="btn-chpw" class="btn-ghost" type="button" data-i18n="top.chpw">改密码</button>
       <button id="btn-logout" class="btn-ghost" type="button" data-i18n="top.logout">退出</button>
     </div>

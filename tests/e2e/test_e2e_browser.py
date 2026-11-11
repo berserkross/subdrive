@@ -463,18 +463,18 @@ def run() -> int:
             en_page = i18n_ctx.new_page()
             en_page.on("pageerror", lambda e: errors.append(str(e)))
             register(en_page, base, "emma", "Emma", "emmapass123", invite=inv2["code"])
-            need("语言按钮默认显示「中」且页面是中文",
-                 en_page.inner_text("#lang-toggle").strip() == "中" and "新建" in en_page.inner_text("#btn-mkdir"),
-                 en_page.inner_text("#lang-toggle") + " | " + en_page.inner_text("#btn-mkdir"))
-            # 三语：中 → 繁 → EN。繁体先验「没有简体残留」，再进英文。
-            en_page.click("#lang-toggle")
+            need("语言下拉默认是简体且页面是中文",
+                 en_page.input_value("#lang-select") == "zh" and "新建" in en_page.inner_text("#btn-mkdir"),
+                 en_page.input_value("#lang-select") + " | " + en_page.inner_text("#btn-mkdir"))
+            # 三语：下拉直接选「繁體」→「English」。繁体先验「没有简体残留」，再进英文。
+            en_page.select_option("#lang-select", "hant")
             en_page.wait_for_function("() => document.documentElement.lang === 'zh-Hant'", timeout=5000)
             hant_text = en_page.inner_text("body")
             hant_hits = [c for c in "网说设这会个们时后点开关现实应该发" if c in hant_text]
-            need("繁中模式：<html lang> 与按钮正确，且无简体残留",
-                 en_page.inner_text("#lang-toggle").strip() == "繁" and not hant_hits,
-                 "leftover=" + "".join(hant_hits) + " btn=" + en_page.inner_text("#lang-toggle"))
-            en_page.click("#lang-toggle")
+            need("繁中模式：<html lang> 与下拉选中值正确，且无简体残留",
+                 en_page.input_value("#lang-select") == "hant" and not hant_hits,
+                 "leftover=" + "".join(hant_hits) + " sel=" + en_page.input_value("#lang-select"))
+            en_page.select_option("#lang-select", "en")
             en_page.wait_for_function("() => document.documentElement.lang === 'en'", timeout=5000)
             en_btn = en_page.inner_text("#btn-mkdir")
             en_col = en_page.inner_text(".col-name").strip()
@@ -483,9 +483,14 @@ def run() -> int:
             en_page.click('#nav-scope [data-scope="public"]')
             en_page.wait_for_selector("#public-panel:not(.hidden)", timeout=10000)
             # 配额、共享列表这些是切换后异步重画的：轮询到整页零 CJK 为止（切换前的旧 toast 已由 setLang 收回）
+            # 语言下拉里的选项写的是各语言的自称（简体 / 繁體 / English），不随界面语言翻译，
+            # 扫「零 CJK」时按白名单剔除，别把语言名当成漏翻的文案。
             zero_cjk = """() => {
                 const cjk = /[\\u4e00-\\u9fff]/;
-                if (cjk.test(document.body.innerText)) return false;
+                const allow = ["简体", "繁體"];
+                let txt = document.body.innerText;
+                allow.forEach((w) => { txt = txt.split(w).join(""); });
+                if (cjk.test(txt)) return false;
                 return ![...document.querySelectorAll("[placeholder],[title]")].some((el) =>
                     cjk.test(el.getAttribute("placeholder") || "") || cjk.test(el.getAttribute("title") || ""));
             }"""
@@ -498,7 +503,9 @@ def run() -> int:
             scan = en_page.evaluate("""() => {
                 const cjk = /[\\u4e00-\\u9fff]/;
                 const hits = [];
-                const body = document.body.innerText;
+                const allow = ["简体", "繁體"];
+                let body = document.body.innerText;
+                allow.forEach((w) => { body = body.split(w).join(""); });
                 if (cjk.test(body)) {
                     document.querySelectorAll("#view-drive *").forEach((el) => {
                         if (el.children.length) return;
@@ -524,7 +531,7 @@ def run() -> int:
             need("EN 模式 body.innerText 与全部 placeholder/title 零 CJK", settled and not scan["hits"],
                  "等待超时（异步区域仍是旧语言）; " + "; ".join(scan["hits"][:6]))
             en_page.click('#nav-scope [data-scope="mine"]')
-            en_page.click("#lang-toggle")
+            en_page.select_option("#lang-select", "zh")
             en_page.wait_for_function("() => document.documentElement.lang === 'zh-CN'", timeout=5000)
             check("切回中文后按钮与表头恢复",
                   "新建" in en_page.inner_text("#btn-mkdir") and en_page.inner_text(".col-name").strip() == "名称",

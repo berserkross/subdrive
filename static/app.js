@@ -7,7 +7,6 @@ const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 // 语言存在 localStorage，刷新后保持；任何非法值（含旧数据）都回落中文。
 // 三语：zh（简体）/ hant（繁體）/ en。旧值 "zh"/"en" 继续有效；非法值回落简体。
 const LANG_ORDER = ["zh", "hant", "en"];
-const LANG_LABEL = { zh: "中", hant: "繁", en: "EN" };
 const HTML_LANG = { zh: "zh-CN", hant: "zh-Hant", en: "en" };
 let lang = (function () {
   const saved = localStorage.getItem("subdrive_lang");
@@ -1136,12 +1135,11 @@ function applyLang() {
   $$("[data-i18n-title]").forEach((el) => {
     el.title = t(el.getAttribute("data-i18n-title"));
   });
-  const btn = $("#lang-toggle");
-  if (btn) {
-    // 按钮显示「当前语言」（中 / 繁 / EN），不显示「下一种」，避免误读
-    btn.textContent = LANG_LABEL[lang] || "中";
-    btn.title = t("lang.switch");
-    btn.setAttribute("aria-label", t("lang.switch"));
+  const sel = $("#lang-select");
+  if (sel) {
+    sel.value = lang;
+    sel.title = t("lang.switch");
+    sel.setAttribute("aria-label", t("lang.switch"));
   }
   // 主题按钮的 title/aria-label 也是文案：换语言要一起刷，否则 EN 下会残留中文
   applyTheme();
@@ -3219,7 +3217,13 @@ async function loadAdmin() {
  * 只需覆盖 --accent 一族与 --bg-image，或在设置里写 localStorage 的 subdrive_accent。 */
 const THEME_KEY = "subdrive_theme";
 const ACCENT_KEY = "subdrive_accent";
-const THEME_ICON = { light: "☀", dark: "☾", auto: "⚙" };
+// 主题图标用内联 SVG：字形（☀/☾/⚙）在部分 Windows 字体里会缺字或显示成一格空白，
+// SVG 不依赖字体，任何机器都长一样。
+const THEME_ICON = {
+  light: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4.1"/><path d="M12 2.6v2.3M12 19.1v2.3M2.6 12h2.3M19.1 12h2.3M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>',
+  dark: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M20.2 14.6A8.6 8.6 0 0 1 9.4 3.8 8.6 8.6 0 1 0 20.2 14.6Z"/></svg>',
+  auto: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.2"/><path d="M12 3.8a8.2 8.2 0 0 1 0 16.4Z" fill="currentColor" stroke="none"/></svg>',
+};
 // 主色预设的色值：与 style.css 里的 [data-accent] 段落保持一致（改配色时两处一起改）
 const ACCENT_SWATCH = { "": "#5b5bd6", ocean: "#0f6fbf", forest: "#1f8a5b", sunset: "#d9534f" };
 const HEX_RE = /^#[0-9a-f]{6}$/i;
@@ -3254,7 +3258,7 @@ function applyTheme() {
 
   const label = t(mode === "auto" ? "theme.auto" : (mode === "light" ? "theme.light" : "theme.dark"));
   $$(".theme-toggle").forEach((b) => {
-    b.textContent = THEME_ICON[mode];
+    b.innerHTML = THEME_ICON[mode];
     b.title = t("theme.switch") + " · " + label;
     b.setAttribute("aria-label", b.title);
     b.setAttribute("aria-expanded", "false");
@@ -3279,11 +3283,11 @@ function cycleTheme() {
 function themePanelHTML() {
   const mode = currentTheme();
   const accent = currentAccent();
-  const modes = [["light", "☀", "theme.light"], ["dark", "☾", "theme.dark"], ["auto", "⚙", "theme.auto"]];
+  const modes = [["light", "theme.light"], ["dark", "theme.dark"], ["auto", "theme.auto"]];
   let html = '<div class="tp-title">' + esc(t("theme.switch")) + '</div><div class="tp-modes">';
   modes.forEach(function (m) {
     html += '<button type="button" class="tp-mode' + (mode === m[0] ? " on" : "") + '" data-mode="' + m[0] + '">'
-      + '<span class="tp-ico">' + m[1] + "</span>" + esc(t(m[2])) + "</button>";
+      + '<span class="tp-ico">' + THEME_ICON[m[0]] + "</span>" + esc(t(m[1])) + "</button>";
   });
   html += "</div>";
   html += '<div class="tp-title">' + esc(t("theme.accent")) + '</div><div class="tp-swatches">';
@@ -3344,8 +3348,8 @@ window.SubDriveTheme = { set: setTheme, cycle: cycleTheme, accent: setAccent, cu
 
 /* ---------------- 启动 ---------------- */
 // 语言胶囊显示当前语言，点一下即切换；setLang 会同步 localStorage 与静态属性
-$("#lang-toggle").addEventListener("click", () => {
-  setLang(LANG_ORDER[(LANG_ORDER.indexOf(lang) + 1) % LANG_ORDER.length]);
+$("#lang-select").addEventListener("change", (ev) => {
+  setLang(ev.target.value);
 });
 
 (async function boot() {

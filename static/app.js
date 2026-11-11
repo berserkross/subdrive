@@ -15,14 +15,33 @@ let lang = (function () {
 // 字典按「屏」分组，key 用点分命名；zh 是基准，en 必须与之等长（tests/e2e 会校验）。
 const I18N = {
   zh: {
+    "set.back": "← 返回网盘",
+    "set.title": "设置",
+    "set.navAppearance": "外观与个性化",
+    "set.navAccount": "账号与安全",
+    "set.navUpload": "上传与性能",
+    "set.navStorage": "存储与配额",
+    "set.navAbout": "关于",
+    "set.appearanceTitle": "外观与个性化",
+    "set.appearanceHint": "改完立即生效，刷新后保持",
+    "set.accentHint": "选一个预设，或用最右边的取色器自定义",
+    "set.langHint": "界面语言，立即生效",
+    "set.nickname": "昵称",
+    "set.changeNickname": "修改",
+    "set.password": "密码",
+    "set.passwordHint": "修改后其他设备需要重新登录",
+    "set.changePassword": "修改密码",
+    "set.concurrency": "同时上传数",
+    "set.concurrencyHint": "1 = 一个一个传；3 是默认；数值越大越吃带宽",
+    "set.version": "版本",
+    "set.license": "许可证",
+    "set.storageMode": "存储模式",
     "theme.switch": "切换主题",
     "theme.light": "浅色",
     "theme.dark": "深色",
     "theme.auto": "跟随系统",
     "theme.accent": "主题色",
     "theme.accentDefault": "默认",
-    "theme.customColor": "自選顏色",
-    "theme.customColor": "Custom colour",
     "theme.customColor": "自选颜色",
     "app.title": "SubDrive · 子用户网盘",
     "req.failed": "请求失败 ({status})",
@@ -334,12 +353,34 @@ const I18N = {
     "modal.title": "标题",
   },
   hant: {
+    "set.back": "← 返回網盤",
+    "set.title": "設定",
+    "set.navAppearance": "外觀與個人化",
+    "set.navAccount": "帳號與安全",
+    "set.navUpload": "上傳與效能",
+    "set.navStorage": "儲存與配額",
+    "set.navAbout": "關於",
+    "set.appearanceTitle": "外觀與個人化",
+    "set.appearanceHint": "改完立即生效，重新整理後保留",
+    "set.accentHint": "選一個預設，或用最右邊的取色器自訂",
+    "set.langHint": "介面語言，立即生效",
+    "set.nickname": "暱稱",
+    "set.changeNickname": "修改",
+    "set.password": "密碼",
+    "set.passwordHint": "修改後其他裝置需要重新登入",
+    "set.changePassword": "修改密碼",
+    "set.concurrency": "同時上傳數",
+    "set.concurrencyHint": "1 = 一個一個傳；3 是預設；數值越大越吃頻寬",
+    "set.version": "版本",
+    "set.license": "授權條款",
+    "set.storageMode": "儲存模式",
     "theme.switch": "切換主題",
     "theme.light": "淺色",
     "theme.dark": "深色",
     "theme.auto": "跟隨系統",
     "theme.accent": "主題色",
     "theme.accentDefault": "預設",
+    "theme.customColor": "自選顏色",
     "app.title": "SubDrive · 子使用者網盤",
     "req.failed": "請求失敗 ({status})",
     "lang.switch": "切換語言",
@@ -651,12 +692,34 @@ const I18N = {
   },
 
   en: {
+    "set.back": "← Back to drive",
+    "set.title": "Settings",
+    "set.navAppearance": "Appearance",
+    "set.navAccount": "Account & security",
+    "set.navUpload": "Uploads",
+    "set.navStorage": "Storage",
+    "set.navAbout": "About",
+    "set.appearanceTitle": "Appearance",
+    "set.appearanceHint": "Applies immediately and survives a reload",
+    "set.accentHint": "Pick a preset, or use the colour picker on the right",
+    "set.langHint": "Interface language, applies immediately",
+    "set.nickname": "Display name",
+    "set.changeNickname": "Change",
+    "set.password": "Password",
+    "set.passwordHint": "Other devices will need to sign in again",
+    "set.changePassword": "Change password",
+    "set.concurrency": "Concurrent uploads",
+    "set.concurrencyHint": "1 = one at a time; 3 is the default; higher uses more bandwidth",
+    "set.version": "Version",
+    "set.license": "Licence",
+    "set.storageMode": "Storage mode",
     "theme.switch": "Switch theme",
     "theme.light": "Light",
     "theme.dark": "Dark",
     "theme.auto": "Follow system",
     "theme.accent": "Accent",
     "theme.accentDefault": "Default",
+    "theme.customColor": "Custom colour",
     "app.title": "SubDrive · Personal drive",
     "req.failed": "Request failed ({status})",
     "lang.switch": "Switch language",
@@ -1135,6 +1198,9 @@ function applyLang() {
   $$("[data-i18n-title]").forEach((el) => {
     el.title = t(el.getAttribute("data-i18n-title"));
   });
+  $$("[data-i18n-aria-label]").forEach((el) => {
+    el.setAttribute("aria-label", t(el.getAttribute("data-i18n-aria-label")));
+  });
   const sel = $("#lang-select");
   if (sel) {
     sel.value = lang;
@@ -1307,7 +1373,7 @@ function iconFor(entry) {
 
 /* ---------------- 视图切换 ---------------- */
 function show(view) {
-  for (const id of ["view-auth", "view-drive", "view-admin"]) {
+  for (const id of ["view-auth", "view-drive", "view-admin", "view-settings"]) {
     $("#" + id).classList.toggle("hidden", id !== view);
   }
   window.scrollTo(0, 0);
@@ -3346,6 +3412,110 @@ function initThemeUI() {
 // 对外入口：脚本或未来的设置页都能用；accent 接受预设名或 #rrggbb
 window.SubDriveTheme = { set: setTheme, cycle: cycleTheme, accent: setAccent, current: currentTheme };
 
+/* ---------------- 设置页（M1） ----------------
+ * 一期只做「把散落的开关收进来」：外观（主题/主色/语言）、账号（昵称/密码）、上传并发、
+ * 存储概况、关于。积木编辑器与组织推送留到 M3/M4。 */
+const UPLOAD_CONC_KEY = "subdrive_upload_conc";
+const SETTINGS_PANELS = ["appearance", "account", "upload", "storage", "about"];
+let storageMode = "";
+const APP_VERSION = "3.2.0-m1";
+
+function selectSettingsPanel(name) {
+  const panel = SETTINGS_PANELS.indexOf(name) >= 0 ? name : "appearance";
+  $$("#set-nav .set-nav-item").forEach((b) => b.classList.toggle("active", b.dataset.panel === panel));
+  $$(".set-main .set-panel").forEach((p) => p.classList.toggle("hidden", p.dataset.panel !== panel));
+}
+
+function refreshSettingsUI() {
+  const mode = currentTheme();
+  $$("#set-theme-mode [data-theme-set]").forEach((b) => b.classList.toggle("selected", b.dataset.themeSet === mode));
+  const acc = currentAccent();
+  $$("#set-accent [data-accent-set]").forEach((b) => {
+    const on = b.dataset.accentSet === acc || (!acc && b.dataset.accentSet === "");
+    b.classList.toggle("on", on);
+  });
+  const colorEl = $("#set-accent-color");
+  if (colorEl) colorEl.value = HEX_RE.test(acc) ? acc : (ACCENT_SWATCH[acc] || ACCENT_SWATCH[""]);
+  const ls = $("#lang-select-settings");
+  if (ls) ls.value = lang;
+  const nv = $("#set-nickname-value");
+  if (nv) nv.textContent = me ? (me.nickname || me.username) : "—";
+  const cc = $("#set-concurrency"), cv = $("#set-concurrency-value");
+  const n = Math.min(5, Math.max(1, Number(localStorage.getItem(UPLOAD_CONC_KEY) || 3)));
+  if (cc) cc.value = String(n);
+  if (cv) cv.textContent = String(n);
+  const qt = $("#set-quota");
+  if (qt) qt.textContent = $("#quota-text") ? $("#quota-text").textContent : "—";
+  const qb = $("#set-quota-bar");
+  if (qb) qb.style.width = $("#quota-fill") ? $("#quota-fill").style.width : "0%";
+  const v = $("#set-version");
+  if (v) v.textContent = APP_VERSION;
+  const sm = $("#set-storage-mode");
+  if (sm) sm.textContent = storageMode || "—";
+}
+
+function openSettings(panel) {
+  if (!token) { show("view-auth"); return; }
+  closeThemePanels();
+  show("view-settings");
+  selectSettingsPanel(panel || "appearance");
+  refreshSettingsUI();
+  if (location.hash.indexOf("#/settings") !== 0) location.hash = "#/settings";
+}
+function backToDrive() {
+  show("view-drive");
+  if (location.hash === "#/settings") history.replaceState(null, "", location.pathname);
+  refreshList();
+}
+
+$("#btn-settings").addEventListener("click", () => openSettings("appearance"));
+$("#set-back").addEventListener("click", backToDrive);
+$("#set-nav").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-panel]");
+  if (b) selectSettingsPanel(b.dataset.panel);
+});
+$("#set-theme-mode").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-theme-set]");
+  if (!b) return;
+  setTheme(b.dataset.themeSet);
+  refreshSettingsUI();
+});
+$("#set-accent").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-accent-set]");
+  if (!b) return;
+  setAccent(b.dataset.accentSet);
+  refreshSettingsUI();
+});
+$("#set-accent").addEventListener("input", (ev) => {
+  if (ev.target && ev.target.id === "set-accent-color") { setAccent(ev.target.value); refreshSettingsUI(); }
+});
+$("#lang-select-settings").addEventListener("change", (ev) => {
+  setLang(ev.target.value);
+  refreshSettingsUI();
+});
+$("#set-nickname").addEventListener("click", () => $("#user-chip").click());
+$("#set-password").addEventListener("click", () => $("#btn-chpw").click());
+$("#set-concurrency").addEventListener("input", (ev) => {
+  const n = Math.min(5, Math.max(1, Number(ev.target.value) || 3));
+  localStorage.setItem(UPLOAD_CONC_KEY, String(n));
+  window.SubDriveUploadTuning = { maxConcurrent: n };
+  $("#set-concurrency-value").textContent = String(n);
+});
+// 启动时把本地并发设置接进上传调度
+(function applySavedUploadConcurrency() {
+  const n = Math.min(5, Math.max(1, Number(localStorage.getItem(UPLOAD_CONC_KEY) || 3)));
+  window.SubDriveUploadTuning = { maxConcurrent: n };
+})();
+// 关于页的存储模式：问一次后端，拿不到就不显示
+(async function loadMeta() {
+  try {
+    const d = await api("/api/meta");
+    storageMode = d && d.storage ? d.storage : "";
+    const sm = $("#set-storage-mode");
+    if (sm) sm.textContent = storageMode || "—";
+  } catch { /* 老后端没有这个端点就不显示 */ }
+})();
+
 /* ---------------- 启动 ---------------- */
 // 语言胶囊显示当前语言，点一下即切换；setLang 会同步 localStorage 与静态属性
 // 少了这个元素也不许炸：旧缓存的 JS 配新 HTML 时，顶层异常会让整页停在空白
@@ -3360,7 +3530,10 @@ if (langSelect) {
     initThemeUI();
     applyTheme();
     if (token) {
-      try { await enterDrive(); return; } catch { /* 落到登录页 */ }
+      try {
+        if (location.hash.indexOf("#/settings") === 0) { await enterDrive(); openSettings("appearance"); return; }
+        await enterDrive(); return;
+      } catch { /* 落到登录页 */ }
     }
     show("view-auth");
   } catch (e) {

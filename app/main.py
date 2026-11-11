@@ -938,6 +938,12 @@ def files_mkdir(data: MkdirIn, request: Request, owner: str = Query("")):
     return {"ok": True, "name": name, "owner": owner_name, "path": rel_new}
 
 
+@app.get("/api/meta")
+async def meta(request: Request):
+    """给「关于」页用：版本与存储模式。不需要登录，内容不含敏感信息。"""
+    return {"version": "3.2.0-m1", "storage": STORAGE_MODE}
+
+
 @app.post("/api/files/upload")
 async def files_upload(request: Request, path: str = Query(""), owner: str = Query(""),
                        on_conflict: str = Query("overwrite"),

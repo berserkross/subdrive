@@ -487,7 +487,7 @@ def run() -> int:
             # 扫「零 CJK」时按白名单剔除，别把语言名当成漏翻的文案。
             zero_cjk = """() => {
                 const cjk = /[\\u4e00-\\u9fff]/;
-                const allow = ["简体", "繁體"];
+                const allow = ["简体中文", "繁体中文"];
                 let txt = document.body.innerText;
                 allow.forEach((w) => { txt = txt.split(w).join(""); });
                 if (cjk.test(txt)) return false;
@@ -503,7 +503,7 @@ def run() -> int:
             scan = en_page.evaluate("""() => {
                 const cjk = /[\\u4e00-\\u9fff]/;
                 const hits = [];
-                const allow = ["简体", "繁體"];
+                const allow = ["简体中文", "繁体中文"];
                 let body = document.body.innerText;
                 allow.forEach((w) => { body = body.split(w).join(""); });
                 if (cjk.test(body)) {
@@ -536,74 +536,78 @@ def run() -> int:
             check("切回中文后按钮与表头恢复",
                   "新建" in en_page.inner_text("#btn-mkdir") and en_page.inner_text(".col-name").strip() == "名称",
                   en_page.inner_text("#btn-mkdir") + " | " + en_page.inner_text(".col-name"))
-            # ---- 11b. 主题面板：明暗三选一 + 主色色板（D42）----
-            theme_btn = ".topbar .theme-toggle"
-            pop = ".topbar .theme-pop"
+            # ---- 11b. 设置页：外观（主题 / 主色 / 语言）----
             theme_attr = "() => document.documentElement.getAttribute('data-theme')"
             bg = "() => getComputedStyle(document.body).backgroundColor"
             accent_var = "() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()"
 
-            def open_panel():
-                if not en_page.is_visible(pop):
-                    en_page.click(theme_btn)
+            en_page.click("#btn-settings")
+            en_page.wait_for_selector("#view-settings:not(.hidden)", timeout=10000)
+            need("齿轮打开设置页，地址栏落在 #/settings，默认外观分组",
+                 en_page.evaluate("() => location.hash") == "#/settings"
+                 and en_page.evaluate("() => document.querySelector('.set-main .set-panel:not(.hidden)').dataset.panel") == "appearance")
+            need("关于页读得到版本与存储模式",
+                 en_page.inner_text("#set-version").strip() != ""
+                 and en_page.inner_text("#set-storage-mode").strip() != "",
+                 en_page.inner_text("#set-version") + " | " + en_page.inner_text("#set-storage-mode"))
 
-            need("主题按钮默认跟随系统（不写 data-theme）",
+            need("设置页默认跟随系统（不写 data-theme）",
                  en_page.evaluate(theme_attr) is None, str(en_page.evaluate(theme_attr)))
-            en_page.click(theme_btn)
-            need("主题面板打开后有三档明暗与四个主色色板",
-                 en_page.is_visible(pop)
-                 and en_page.locator(pop + " [data-mode]").count() == 3
-                 and en_page.locator(pop + " [data-accent]").count() == 4)
-            en_page.click(pop + ' [data-mode="light"]')
+            en_page.click('#set-theme-mode [data-theme-set="light"]')
             en_page.wait_for_timeout(250)
             light_bg = en_page.evaluate(bg)
-            need("选浅色：data-theme=light 且背景随之变化",
+            need("设置页选浅色：data-theme=light 且背景随之变化",
                  en_page.evaluate(theme_attr) == "light" and light_bg != "rgba(0, 0, 0, 0)", light_bg)
-
-            open_panel()
-            en_page.click(pop + ' [data-mode="dark"]')
+            en_page.click('#set-theme-mode [data-theme-set="dark"]')
             en_page.wait_for_timeout(250)
             dark_bg = en_page.evaluate(bg)
-            need("选深色：data-theme=dark 且背景比浅色深",
-                 en_page.evaluate(theme_attr) == "dark" and dark_bg != light_bg,
-                 light_bg + " -> " + dark_bg)
+            need("设置页选深色：data-theme=dark 且背景比浅色深",
+                 en_page.evaluate(theme_attr) == "dark" and dark_bg != light_bg, light_bg + " -> " + dark_bg)
 
-            open_panel()
-            en_page.click(pop + ' [data-accent="ocean"]')
-            need("选主色预设 ocean：data-accent 与 --accent 同步",
+            en_page.click('#set-accent [data-accent-set="ocean"]')
+            need("设置页选主色 ocean：data-accent 与 --accent 同步",
                  en_page.evaluate("() => document.documentElement.getAttribute('data-accent')") == "ocean"
-                 and en_page.evaluate(accent_var) == "#0f6fbf",
-                 str(en_page.evaluate(accent_var)))
-
-            en_page.click(theme_btn)
+                 and en_page.evaluate(accent_var) == "#0f6fbf", str(en_page.evaluate(accent_var)))
             en_page.evaluate("""() => {
-                const el = document.querySelector('.topbar .theme-pop #tp-color');
+                const el = document.querySelector('#set-accent-color');
                 el.value = '#00aa88';
                 el.dispatchEvent(new Event('input', { bubbles: true }));
             }""")
             en_page.wait_for_timeout(150)
-            need("自选主色（#00aa88）通过 inline 变量生效",
+            need("设置页自选主色（#00aa88）通过 inline 变量生效",
                  en_page.evaluate("() => document.documentElement.getAttribute('data-accent')") == "custom"
-                 and en_page.evaluate(accent_var) == "#00aa88",
-                 str(en_page.evaluate(accent_var)))
+                 and en_page.evaluate(accent_var) == "#00aa88", str(en_page.evaluate(accent_var)))
 
             en_page.reload(wait_until="networkidle")
-            en_page.wait_for_selector("#view-drive:not(.hidden)", timeout=15000)
+            en_page.wait_for_selector("#view-settings:not(.hidden)", timeout=15000)
             en_page.wait_for_timeout(300)
-            need("刷新后深色与自选主色都保持",
-                 en_page.evaluate(theme_attr) == "dark" and en_page.evaluate(accent_var) == "#00aa88",
-                 str(en_page.evaluate(accent_var)))
+            need("刷新后仍在设置页，且深色与自选主色都保持",
+                 en_page.evaluate("() => location.hash") == "#/settings"
+                 and en_page.evaluate(theme_attr) == "dark"
+                 and en_page.evaluate(accent_var) == "#00aa88", str(en_page.evaluate(accent_var)))
 
-            open_panel()
-            en_page.click(pop + ' [data-mode="auto"]')
-            open_panel()
-            en_page.click(pop + ' [data-accent=""]')
-            en_page.wait_for_timeout(200)
-            need("切回跟随系统与默认主色：不再写 data-theme/data-accent",
+            # 上传并发：滑杆改 5，写进 localStorage 与调度钩子
+            en_page.click('#set-nav [data-panel="upload"]')
+            en_page.fill("#set-concurrency", "5")
+            en_page.dispatch_event("#set-concurrency", "input")
+            need("上传并发滑杆写进 localStorage 与 SubDriveUploadTuning",
+                 en_page.evaluate("() => localStorage.getItem('subdrive_upload_conc')") == "5"
+                 and en_page.evaluate("() => window.SubDriveUploadTuning.maxConcurrent") == 5)
+
+            en_page.click('#set-nav [data-panel="about"]')
+            need("关于分组可切换",
+                 en_page.evaluate("() => document.querySelector('.set-main .set-panel:not(.hidden)').dataset.panel") == "about")
+
+            # 复位：回默认主色 + 跟随系统，再回网盘（先切回外观面板，否则控件是隐藏的）
+            en_page.click('#set-nav [data-panel="appearance"]')
+            en_page.click('#set-accent [data-accent-set=""]')
+            en_page.click('#set-theme-mode [data-theme-set="auto"]')
+            en_page.click('#set-back')
+            en_page.wait_for_selector("#view-drive:not(.hidden)", timeout=10000)
+            need("返回网盘后不再写 data-theme/data-accent",
                  en_page.evaluate(theme_attr) is None
                  and en_page.evaluate("() => document.documentElement.getAttribute('data-accent')") is None
-                 and en_page.evaluate(accent_var) == "#5b5bd6",
-                 str(en_page.evaluate(accent_var)))
+                 and en_page.evaluate(accent_var) == "#5b5bd6", str(en_page.evaluate(accent_var)))
 
             i18n_ctx.close()
 

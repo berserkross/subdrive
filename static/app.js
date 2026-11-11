@@ -2293,7 +2293,21 @@ $("#btn-chpw").addEventListener("click", () => {
  * （相对路径 → 先建哪些目录、每个文件落到哪个目录）是纯逻辑，见
  * static/uploadplan.js（Node 测试：tests/test_uploadplan.mjs）。 */
 const uploadQueue = [];
-let uploading = false;
+/* 上传并发（D43 后半）：按「在飞字节」而不是「任务数」限流。
+ * 大文件单槽就够（它自己会占满带宽），小文件可以多槽并行，避免每传一个都等一次 RTT。
+ * 冲突弹窗必须串行（见 askConflictSerial），否则两个弹窗会互相盖住。 */
+const UPLOAD_MAX_CONCURRENT = 3;                 // 同时最多 3 个请求
+const UPLOAD_MAX_INFLIGHT_BYTES = 64 * 1024 * 1024; // 在飞字节上限 64 MiB
+// 允许运行时覆盖（压测用；将来做「上传并发」设置项也接这里，不必改常量）
+function uploadLimits() {
+  const tune = window.SubDriveUploadTuning || {};
+  return {
+    n: Math.max(1, tune.maxConcurrent || UPLOAD_MAX_CONCURRENT),
+    bytes: Math.max(1, tune.maxInflightBytes || UPLOAD_MAX_INFLIGHT_BYTES),
+  };
+}
+let uploadInflight = 0;
+let uploadInflightBytes = 0;
 let uploadsPendingRefresh = false; // 一批上传收尾后统一刷新列表 + 配额
 const joinRel = (a, b) => (a && b ? a + "/" + b : a || b || "");
 
@@ -2469,17 +2483,42 @@ async function enqueuePlanned(entries, extraDirs = []) {
   }
   pumpUploads();
 }
+function uploadSlotFree(item) {
+  const lim = uploadLimits();
+  if (uploadInflight >= lim.n) return false;
+  // 第一个请求永远放行（哪怕单个文件就超过预算），否则超大文件会永远排在队首
+  if (uploadInflight > 0 && uploadInflightBytes + item.file.size > lim.bytes) return false;
+  return true;
+}
+function drainUploadRefresh() {
+  if (!uploadsPendingRefresh) return;
+  if (uploadInflight > 0 || uploadQueue.length) return; // 还有活儿，等全静下来再刷一次
+  uploadsPendingRefresh = false;
+  refreshList();
+  refreshQuota();
+}
 function pumpUploads() {
-  if (uploading) return;
-  const next = uploadQueue.shift();
-  if (!next) { // 队列排空：一批结束，统一刷新一次列表与配额
-    if (uploadsPendingRefresh) { uploadsPendingRefresh = false; refreshList(); refreshQuota(); }
-    return;
+  while (uploadQueue.length && uploadSlotFree(uploadQueue[0])) {
+    const next = uploadQueue.shift();
+    uploadInflight += 1;
+    uploadInflightBytes += next.file.size;
+    uploadOne(next).finally(() => {
+      uploadInflight -= 1;
+      uploadInflightBytes -= next.file.size;
+      pumpUploads();
+      drainUploadRefresh();
+    });
   }
-  uploading = true;
-  uploadOne(next).finally(() => { uploading = false; pumpUploads(); });
+  drainUploadRefresh();
 }
 /* 同名文件先问一声（Win11 式三选一）：替换 / 两者都保留 / 跳过 */
+// 串行化：同一时刻只允许一个同名冲突弹窗，后到的排队等前一个选完
+let conflictChain = Promise.resolve();
+function askConflictSerial(name, old) {
+  const run = conflictChain.then(() => askConflict(name, old));
+  conflictChain = run.catch(() => "skip");
+  return run;
+}
 function askConflict(name, old) {
   return new Promise((resolve) => {
     const pick = (v) => { $("#modal-overlay").classList.add("hidden"); resolve(v); };
@@ -2510,7 +2549,7 @@ async function uploadOne({ file, item, targetDir, owner }) {
       const old = await api("/api/files/detail?path="
         + encodeURIComponent("/" + ((targetDir ? targetDir + "/" : "") + file.name)));
       if (old && old.type === "file") {
-        const choice = await askConflict(file.name, old);
+        const choice = await askConflictSerial(file.name, old);
         if (choice === "skip") {
           state.textContent = t("upload.skipped");
           uploadsPendingRefresh = true;

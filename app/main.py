@@ -24,6 +24,7 @@ from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFi
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 
 from app.paths import (USERNAME_RE, PathRejected, full_path, normalize_rel_path,
                        set_current_user, set_granted_prefixes, validate_name,
@@ -35,6 +36,10 @@ DATA_DIR = Path(os.environ.get("DATA_DIR", BASE_DIR / "data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH = Path(os.environ.get("DB_PATH", DATA_DIR / "subdrive.db"))
 STATIC_DIR = BASE_DIR / "static"
+# 上传临时文件放在 DATA_DIR 内：与存储同卷，收尾时可以直接 os.replace（D43）
+UPLOAD_TMP_DIR = Path(os.environ.get("UPLOAD_TMP_DIR", DATA_DIR / ".upload-tmp"))
+UPLOAD_TMP_DIR.mkdir(parents=True, exist_ok=True)
+UPLOAD_TIMING = os.environ.get("SUBDRIVE_UPLOAD_TIMING", "") == "1"
 
 PBKDF2_ITERATIONS = 200_000
 DEFAULT_QUOTA_BYTES = int(os.environ.get("DEFAULT_QUOTA_BYTES", 20 * 1024 ** 3))
@@ -952,7 +957,8 @@ async def files_upload(request: Request, path: str = Query(""), owner: str = Que
     target_display = "/" + (f"{rel}/{filename}" if rel else filename)
 
     # 先落临时文件（分块流式，内存恒定），同时计大小、查上限
-    tmp = tempfile.NamedTemporaryFile(delete=False, prefix="subdrive-up-")
+    tmp = tempfile.NamedTemporaryFile(delete=False, prefix="subdrive-up-", dir=UPLOAD_TMP_DIR)
+    t_recv = time.perf_counter()
     size = 0
     try:
         while True:
@@ -966,6 +972,7 @@ async def files_upload(request: Request, path: str = Query(""), owner: str = Que
                 raise err(413, "file_too_large", f"单文件上限 {MAX_FILE_BYTES} 字节")
             tmp.write(chunk)
         tmp.close()
+        t_stored_recv = time.perf_counter()
 
         with _db_lock, get_db() as db:
             used = usage_of(db, user["id"])["used_bytes"]
@@ -974,7 +981,7 @@ async def files_upload(request: Request, path: str = Query(""), owner: str = Que
         # 否则每覆盖一次配额就多算一份
         prior = 0
         try:
-            old = storage.stat(f"{full}/{filename}")
+            old = await run_in_threadpool(storage.stat, f"{full}/{filename}")
             if old["type"] == "file":
                 prior = old["size"]
         except StorageNotFound:
@@ -1016,10 +1023,18 @@ async def files_upload(request: Request, path: str = Query(""), owner: str = Que
 
         if dest_owner != user["username"]:
             try:
-                storage.mkdir(full)
+                await run_in_threadpool(storage.mkdir, full)
             except StorageConflict:
                 pass
-        stored = storage.upload(full, filename, Path(tmp.name))
+        # 阻塞型落盘必须离开事件循环：否则一次大文件收尾会冻住所有并发请求（D43）
+        stored = await run_in_threadpool(storage.accept_temp, full, filename, Path(tmp.name))
+        if UPLOAD_TIMING:
+            t_done = time.perf_counter()
+            print("[upload-timing] %s %.0f MB recv=%.0fms store=%.0fms total=%.0fms"
+                  % ("/" + (f"{rel}/{filename}" if rel else filename), size / 1048576,
+                     (t_stored_recv - t_recv) * 1000, (t_done - t_stored_recv) * 1000,
+                     (t_done - t_recv) * 1000), flush=True)
+
     finally:
         Path(tmp.name).unlink(missing_ok=True)
 

@@ -5,10 +5,23 @@ const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 
 /* ---------------- 国际化 ---------------- */
 // 语言存在 localStorage，刷新后保持；任何非法值（含旧数据）都回落中文。
-let lang = localStorage.getItem("subdrive_lang") === "en" ? "en" : "zh";
+// 三语：zh（简体）/ hant（繁體）/ en。旧值 "zh"/"en" 继续有效；非法值回落简体。
+const LANG_ORDER = ["zh", "hant", "en"];
+const LANG_LABEL = { zh: "中", hant: "繁", en: "EN" };
+const HTML_LANG = { zh: "zh-CN", hant: "zh-Hant", en: "en" };
+let lang = (function () {
+  const saved = localStorage.getItem("subdrive_lang");
+  return LANG_ORDER.indexOf(saved) >= 0 ? saved : "zh";
+})();
 // 字典按「屏」分组，key 用点分命名；zh 是基准，en 必须与之等长（tests/e2e 会校验）。
 const I18N = {
   zh: {
+    "theme.switch": "切换主题",
+    "theme.light": "浅色",
+    "theme.dark": "深色",
+    "theme.auto": "跟随系统",
+    "theme.accent": "主题色",
+    "theme.accentDefault": "默认",
     "app.title": "SubDrive · 子用户网盘",
     "req.failed": "请求失败 ({status})",
     "lang.switch": "切换语言",
@@ -318,7 +331,330 @@ const I18N = {
     "user.enabledToast": "已启用",
     "modal.title": "标题",
   },
+  hant: {
+    "theme.switch": "切換主題",
+    "theme.light": "淺色",
+    "theme.dark": "深色",
+    "theme.auto": "跟隨系統",
+    "theme.accent": "主題色",
+    "theme.accentDefault": "預設",
+    "app.title": "SubDrive · 子使用者網盤",
+    "req.failed": "請求失敗 ({status})",
+    "lang.switch": "切換語言",
+
+    "auth.brand": "子使用者網盤",
+    "auth.tag1": "你的私人檔案空間",
+    "auth.tag2": "簡單、安全、隨時取用",
+    "auth.tabLogin": "登入",
+    "auth.tabRegister": "註冊",
+    "auth.username": "使用者名稱",
+    "auth.password": "密碼",
+    "auth.phUsername": "你的使用者名稱",
+    "auth.login": "登 錄",
+    "auth.loginHint": "還沒有賬號？用邀請碼在「註冊」頁開通。",
+    "auth.invite": "邀請碼",
+    "auth.phInvite": "SD-XXXX-XXXX-…（首個使用者免填）",
+    "auth.phRegUsername": "3–24 位，小寫字母開頭",
+    "auth.regUsernameNote": "僅小寫字母、數字、下劃線、連字元；註冊後不可修改",
+    "auth.nickname": "暱稱（可選）",
+    "auth.phNickname": "展示用的名字",
+    "auth.phPassword": "至少 8 位",
+    "auth.register": "註冊並開通網盤",
+    "auth.foot": "Ourmetaverse · 自託管服務",
+    "auth.regDone": "註冊成功，你的網盤已開通 🎉",
+
+    "top.admin": "管理後臺",
+    "top.chipTitle": "點這裡改名字",
+    "top.chpw": "改密碼",
+    "top.logout": "退出",
+
+    "quota.label": "儲存空間",
+    "quota.used": "已用 {used} / {total}",
+
+    "scope.mine": "我的網盤",
+    "scope.public": "公共區域",
+    "crumbs.sharedOf": "{owner} 的共享",
+
+    "toolbar.mkdir": "＋ 新建",
+    "toolbar.upload": "⬆ 上傳",
+    "toolbar.uploadFiles": "上傳檔案",
+    "toolbar.uploadFolder": "上傳資料夾",
+    "toolbar.speed": "⚡ 測速",
+
+    "foreign.before": "你正在瀏覽",
+    "foreign.after": "的共享資料夾；你上傳或新建的內容會存進以你使用者名稱命名的子資料夾。",
+    "foreign.mine": "只看我的",
+
+    "list.dropHint": "鬆開，把檔案或資料夾放進來",
+    "list.selectAll": "全選",
+    "list.colName": "名稱",
+    "list.colSize": "大小",
+    "list.colTime": "修改時間",
+    "list.loading": "載入中…",
+    "list.emptyTitle": "這裡空空如也",
+    "list.emptyHint": "點「上傳檔案 / 上傳資料夾」，或把檔案、資料夾直接拖到這裡",
+    "list.foot": "檔案儲存在你的專屬空間裡，只有你能訪問。",
+    "list.folder": "資料夾",
+    "list.selectHint": "勾選後可批次操作",
+    "list.vaultBadge": "🔒 加密",
+    "list.vaultRowSub": "加密資料夾 · 需密碼開啟",
+    "list.sharedBadge": "🔗 共享",
+    "list.preview": "預覽",
+    "list.manageShare": "管理共享",
+    "list.shareFolder": "共享此資料夾",
+
+    "public.countOne": "1 個共享資料夾",
+    "public.count": "{n} 個共享資料夾",
+    "public.emptyTitle": "還沒有你能進的共享資料夾",
+    "public.emptyHint": "管理員可以在「＋ 新建」裡勾「公開共享」建一個。",
+    "public.hint": "點進去就是那個共享目錄，可檢視、下載、上傳；配額算上傳者自己",
+
+    "shared.title": "共享資料夾",
+    "shared.hint": "被授權的共享資料夾可檢視、下載、上傳；配額算上傳者自己",
+    "shared.unlimited": "不限",
+    "shared.capMembers": "上限 {n} 人",
+    "shared.noCap": "不限成員",
+    "shared.memberCount": "{n} 人",
+    "shared.allMembers": "全員",
+    "shared.mineBadge": "我建立",
+    "shared.itemTitleMine": "點進入；在目錄裡點「管理共享」改名單",
+    "shared.itemTitleOther": "{owner} 分享給你",
+    "shared.stop": "取消共享",
+    "shared.stopBody": "「{path}」將退回私有資料夾：成員立刻失去訪問許可權，目錄裡的內容全部保留。",
+    "shared.stopped": "已取消共享",
+    "shared.dialogEdit": "「{path}」已共享。成員可檢視、下載、上傳（各自配額）；改名單立即生效。",
+    "shared.dialogCreate": "把「{path}」變成共享資料夾：名單內成員可檢視、下載、上傳，上傳內容存進各自使用者名稱子資料夾；配額算上傳者自己。建立後即公開，可隨時改名單或取消共享。",
+    "shared.membersUpdated": "成員名單已更新",
+    "shared.create": "建立共享",
+    "shared.created": "已建立共享資料夾",
+
+    "picker.who": "誰能看到",
+    "picker.limits": "上限",
+    "picker.modeAll": "全部成員",
+    "picker.modeSome": "僅指定成員",
+    "picker.noteAll": "所有註冊成員都能看到、下載、上傳（各自配額）。",
+    "picker.noteSome": "只有勾選的成員看得到；一個都不勾不會被當成「全員」。",
+    "picker.searchPh": "搜尋暱稱或使用者名稱…",
+    "picker.count": "已選 {n} 人",
+    "picker.clear": "清空勾選",
+    "picker.empty": "沒有匹配的成員",
+    "picker.ownerSelf": "建立者本人，不用勾",
+    "picker.disabled": "已禁用",
+    "picker.errNone": "選了「僅指定成員」卻一個都沒勾：請勾選成員，或改選「全部成員」",
+    "picker.loadFailed": "成員名單載入失敗：{msg}",
+
+    "limits.emptyEdit": "留空＝保持當前值",
+    "limits.emptyDefault": "留空＝預設 {bytes}",
+    "limits.capacity": "容量上限",
+    "limits.members": "成員上限",
+    "limits.capacityNote": "{empty}；這是整個共享目錄的總量（所有人的檔案加起來）",
+    "limits.membersNote": "{empty}；預設 {def} 人，最多 {hard} 人",
+    "limits.errCapacity": "容量上限必須大於 0",
+    "limits.errMembers": "成員上限必須大於 0",
+
+    "common.save": "儲存",
+    "common.cancel": "取消",
+    "common.delete": "刪除",
+    "common.move": "移動",
+    "common.download": "下載",
+    "common.rename": "重新命名",
+    "common.ok": "確定",
+    "common.close": "✕ 關閉",
+    "common.root": "我的網盤（根目錄）",
+
+    "rename.title": "重新命名",
+    "rename.label": "新名稱",
+    "rename.done": "已重新命名",
+    "delete.title": "刪除",
+    "delete.body": "確定刪除「{name}」嗎？刪除後檔案會進入回收站，此操作無法在本頁面撤銷。",
+    "delete.done": "已刪除",
+    "move.title": "移動到",
+    "move.body": "把「{name}」移動到：",
+    "move.done": "已移動",
+
+    "batch.none": "已選 0 項",
+    "batch.count": "已選 {n} 項",
+    "batch.dlTitle": "下載選中的 {n} 個檔案（資料夾會跳過）",
+    "batch.dlNoFiles": "選中項裡沒有檔案",
+    "batch.deleteTitle": "批次刪除",
+    "batch.deleteBody": "刪除選中的 {n} 項？資料夾會連同裡面的內容一起刪掉。",
+    "batch.moveTitle": "批次移動",
+    "batch.moveBody": "把選中的 {n} 項移動到：",
+    "batch.deleted": "已刪除 {ok} 項",
+    "batch.deletedSome": "已刪除 {ok} 項，{fail} 項失敗：{msg}",
+    "batch.moved": "已移動 {ok} 項",
+    "batch.movedSome": "已移動 {ok} 項，{fail} 項失敗：{msg}",
+    "batch.downloaded": "已下載 {n} 個檔案，跳過 {skipped} 個資料夾",
+
+    "download.failed": "下載失敗",
+    "read.failed": "讀取失敗",
+
+    "mkdir.title": "新建資料夾",
+    "mkdir.name": "資料夾名稱",
+    "mkdir.namePh": "例如：照片",
+    "mkdir.type": "型別",
+    "mkdir.plain": "普通資料夾",
+    "mkdir.vault": "🔒 加密資料夾",
+    "mkdir.vaultPw": "資料夾密碼（至少 8 位，與登入密碼相互獨立）",
+    "mkdir.vaultPw2": "再次輸入密碼",
+    "mkdir.warn1": "⚠️ 檔名與內容在你的瀏覽器里加密後才上傳，伺服器只看得到密文的大小與數量。",
+    "mkdir.warn2": "資料夾密碼一旦丟失將無法恢復",
+    "mkdir.warn3": "，任何人都幫不了你，請存進密碼管理器。",
+    "mkdir.vis": "可見性",
+    "mkdir.private": "私密（僅自己）",
+    "mkdir.public": "公開共享",
+    "mkdir.create": "建立",
+    "mkdir.errName": "請輸入名稱",
+    "mkdir.errPwLen": "資料夾密碼至少 8 位",
+    "mkdir.errPwDiff": "兩次輸入的密碼不一致",
+    "mkdir.vaultDone": "加密資料夾已建立並解鎖",
+    "mkdir.done": "資料夾已建立",
+    "mkdir.sharedDone": "已建立公開共享資料夾",
+    "mkdir.sharedFailed": "資料夾已建，但設為共享失敗：{msg}",
+
+    "chpw.title": "修改密碼",
+    "chpw.old": "當前密碼",
+    "chpw.new": "新密碼（至少 8 位）",
+    "chpw.done": "密碼已修改，其他裝置的登入已失效",
+    "nick.title": "改名字",
+    "nick.label": "顯示名（暱稱）",
+    "nick.note": "登入名 @{user} 不變（它是路徑與授權的錨點）；留空就回落到登入名。",
+    "nick.done": "名字已更新",
+
+    "upload.title": "上傳進度",
+    "upload.queued": "排隊中…",
+    "upload.mkdirFailShort": "建立資料夾失敗",
+    "upload.mkdirFail": "建立資料夾失敗：{msg}",
+    "upload.folderCreated": "資料夾已建立",
+    "upload.uploading": "上傳中…",
+    "upload.skipped": "已跳過",
+    "upload.progress": "上傳中 {pct}% · {size}",
+    "upload.done": "完成 ✓",
+    "upload.failed": "上傳失敗",
+    "upload.netError": "網路錯誤",
+    "upload.failedStatus": "上傳失敗 ({status})",
+    "upload.vaultNoFolders": "加密資料夾暫不支援整資料夾上傳，已跳過資料夾內容",
+    "upload.vaultLocked": "加密資料夾已鎖定，請先解鎖再上傳",
+
+    "conflict.title": "已經有同名檔案",
+    "conflict.body": "「{name}」在這個目錄裡已存在（{size}，{time}）。",
+    "conflict.overwrite": "替換",
+    "conflict.keep": "兩者都保留",
+    "conflict.skip": "跳過",
+
+    "vault.title": "加密資料夾",
+    "vault.barNote": " · 檔名與內容只在你的瀏覽器裡解密；伺服器只看得到密文的大小與數量。",
+    "vault.lock": "鎖定",
+    "vault.lockedTitle": "這是一個加密資料夾",
+    "vault.lockedBody1": "檔名與內容都經過加密，伺服器上只存有密文。",
+    "vault.lockedBody2": "輸入這個資料夾的密碼才能檢視——密碼只在你的瀏覽器裡使用，不會傳送給伺服器。",
+    "vault.unlockBtn": "輸入密碼解鎖",
+    "vault.unlocked": "加密資料夾已解鎖",
+    "vault.unlockTitle": "解鎖加密資料夾",
+    "vault.pwLabel": "資料夾密碼",
+    "vault.pwPh": "建立時設定的資料夾密碼",
+    "vault.pwNote": "密碼只在你的瀏覽器裡用於解密，不會傳送到伺服器；密碼錯誤將無法開啟。",
+    "vault.unlock": "解鎖",
+    "vault.errNoPw": "請輸入資料夾密碼",
+    "vault.errWrong": "資料夾密碼錯誤，請重試",
+    "vault.lockedToast": "已鎖定，金鑰已從記憶體清除",
+    "vault.preview": "預覽（本地解密）",
+    "vault.download": "下載並解密",
+    "vault.encrypting": "本地加密中…",
+    "vault.uploading": "上傳密文中…",
+    "vault.manifest": "寫入清單…",
+    "vault.done": "完成 ✓（已加密）",
+    "vault.dlFailed": "下載/解密失敗：{msg}",
+    "vault.renameTitle": "重新命名（僅修改顯示名）",
+    "vault.renameNote": "顯示名只存在於加密清單中，改名不觸碰伺服器上的密文。",
+    "vault.deleteTitle": "刪除加密檔案",
+    "vault.deleteBody": "確定刪除「{name}」嗎？其密文將被刪除，無法恢復。",
+
+    "preview.title": "預覽",
+    "preview.tooBig": "文字檔案過大，不適合線上預覽。",
+    "preview.cannot": "該檔案無法線上預覽。",
+    "preview.fallbackSub": "可以點右上角「下載」儲存到本地檢視。",
+    "preview.loadFailed": "預覽載入失敗",
+    "preview.decrypting": "本地解密中…",
+    "preview.decryptFailed": "預覽解密失敗：{msg}",
+
+    "speed.head": "⚡ 上下行測速",
+    "speed.size": "資料量",
+    "speed.run": "開始測速",
+    "speed.down": "下載",
+    "speed.up": "上傳",
+    "speed.noteLive": "經後端流式轉發實測，與實際上傳/下載走同一條鏈路；測速流量不佔配額、不存檔案。",
+    "speed.noteStub": "⚠️ 當前為本地測試鏈路（stub 假儲存）：測的是這臺機器到後端的速度，不代表真實 Seafile / e2 的速度。測速流量不佔配額。",
+    "speed.running": "測速中…",
+    "speed.waitDown": "等待下載完成…",
+    "speed.failDown": "下載測速失敗 ({status})",
+    "speed.failUp": "上傳測速失敗 ({status})",
+    "speed.errUp": "上傳測速網路錯誤",
+    "speed.resDown": "下載 {speed}（{size}）",
+    "speed.resUp": "上傳 {speed}（伺服器確認收到 {size}，未存檔）",
+
+    "admin.back": "← 返回網盤",
+    "admin.sub": "邀請碼 · 使用者 · 用量",
+    "admin.invites": "邀請碼",
+    "admin.notePh": "備註（發給誰）",
+    "admin.validity": "有效期",
+    "admin.days": "天",
+    "admin.uses": "可用次數",
+    "admin.issue": "簽發新碼",
+    "admin.newCode": "新邀請碼（請複製後發給對方）：",
+    "admin.copy": "複製",
+    "admin.thCode": "邀請碼",
+    "admin.thNote": "備註",
+    "admin.thStatus": "狀態",
+    "admin.thUses": "使用",
+    "admin.thExpires": "到期",
+    "admin.users": "使用者",
+    "admin.thUser": "使用者",
+    "admin.thQuota": "用量 / 配額",
+    "admin.thLastLogin": "最後登入",
+    "admin.thActions": "操作",
+    "admin.total": "全員總用量 {bytes}",
+    "invite.ok": "可用",
+    "invite.usedUp": "已用完",
+    "invite.revoked": "已撤銷",
+    "invite.expired": "已過期",
+    "invite.never": "永久",
+    "invite.revoke": "撤銷",
+    "invite.revokedToast": "邀請碼已撤銷",
+    "invite.copied": "已複製",
+    "invite.copyFailed": "複製失敗，請手動複製",
+    "user.admin": "管理員",
+    "user.active": "正常",
+    "user.disabledPill": "已禁用",
+    "user.never": "從未",
+    "user.setQuota": "設配額",
+    "user.recalc": "校準",
+    "user.makeAdmin": "設為管理員",
+    "user.unmakeAdmin": "取消管理員",
+    "user.disable": "禁用",
+    "user.enable": "啟用",
+    "user.quotaTitle": "設定配額 · {user}",
+    "user.quotaLabel": "配額（GB，留空 = 系統預設）",
+    "user.quotaSaved": "配額已更新",
+    "user.recalcDone": "校準完成：{bytes}",
+    "user.makeAdminBody": "將「{user}」設為管理員後，對方將能訪問管理後臺、管理使用者與邀請碼。確定嗎？",
+    "user.makeAdminDone": "已設為管理員",
+    "user.unmakeAdminBody": "取消「{user}」的管理員許可權後，對方將無法訪問管理後臺。確定嗎？",
+    "user.unmakeAdminDone": "已取消管理員",
+    "user.disableTitle": "禁用使用者",
+    "user.disableBody": "禁用「{user}」後，其所有登入立即失效，但檔案會保留。確定禁用嗎？",
+    "user.disabledToast": "已禁用",
+    "user.enabledToast": "已啟用",
+    "modal.title": "標題",
+  },
+
   en: {
+    "theme.switch": "Switch theme",
+    "theme.light": "Light",
+    "theme.dark": "Dark",
+    "theme.auto": "Follow system",
+    "theme.accent": "Accent",
+    "theme.accentDefault": "Default",
     "app.title": "SubDrive · Personal drive",
     "req.failed": "Request failed ({status})",
     "lang.switch": "Switch language",
@@ -676,6 +1012,100 @@ const ERROR_I18N = {
   seafile_auth_failed: "Storage backend authentication failed",
 };
 
+// 错误码的中文文案。三语同权：en 在上面的 ERROR_I18N，简繁在这里。
+const ERROR_ZH = {
+  unauthorized: "请先登录",
+  account_disabled: "账号已停用",
+  admin_required: "需要管理员权限",
+  not_found: "没找到",
+  path_rejected: "该路径不允许",
+  range_not_satisfiable: "请求的字节范围不可用",
+  bad_invite: "邀请码无效或已过期",
+  bad_limit: "上限值不合法",
+  bad_member: "成员不合法",
+  bad_on_conflict: "冲突策略不合法",
+  bad_path: "路径不合法",
+  bad_username: "用户名不合法",
+  cell_move: "该项不能移动",
+  cell_rename: "该项不能重命名",
+  last_admin: "不能移除最后一个管理员",
+  not_a_dir: "不是文件夹",
+  not_a_file: "不是文件",
+  owner_protected: "不能修改所有者",
+  shared_delete: "共享文件夹不能删除",
+  shared_move: "共享文件夹不能移动",
+  shared_rename: "共享文件夹不能重命名",
+  too_many_members: "成员太多",
+  username_taken: "用户名已被占用",
+  weak_password: "密码太弱",
+  bad_credentials: "用户名或密码错误",
+  forbidden: "没有权限这样做",
+  owner_required: "只有所有者可以这样做",
+  already_shared: "已经是共享状态",
+  conflict: "与已有数据冲突",
+  speedtest_busy: "已有测速在进行",
+  file_too_large: "文件太大",
+  quota_exceeded: "配额不足",
+  shared_full: "共享文件夹已满",
+  speedtest_too_large: "测试体积太大",
+  login_locked: "失败次数过多，请稍后再试",
+  rate_limited: "请求过多，请稍后再试",
+  storage_error: "存储层错误",
+  range_error: "字节范围不合法",
+  invalid_move: "不能把文件夹移进它自己",
+  seafile_unreachable: "存储后端不可达",
+  seafile_auth_failed: "存储后端认证失败",
+};
+
+const ERROR_HANT = {
+  unauthorized: "請先登入",
+  account_disabled: "賬號已停用",
+  admin_required: "需要管理員許可權",
+  not_found: "沒找到",
+  path_rejected: "該路徑不允許",
+  range_not_satisfiable: "請求的位元組範圍不可用",
+  bad_invite: "邀請碼無效或已過期",
+  bad_limit: "上限值不合法",
+  bad_member: "成員不合法",
+  bad_on_conflict: "衝突策略不合法",
+  bad_path: "路徑不合法",
+  bad_username: "使用者名稱不合法",
+  cell_move: "該項不能移動",
+  cell_rename: "該項不能重新命名",
+  last_admin: "不能移除最後一個管理員",
+  not_a_dir: "不是資料夾",
+  not_a_file: "不是檔案",
+  owner_protected: "不能修改所有者",
+  shared_delete: "共享資料夾不能刪除",
+  shared_move: "共享資料夾不能移動",
+  shared_rename: "共享資料夾不能重新命名",
+  too_many_members: "成員太多",
+  username_taken: "使用者名稱已被佔用",
+  weak_password: "密碼太弱",
+  bad_credentials: "使用者名稱或密碼錯誤",
+  forbidden: "沒有許可權這樣做",
+  owner_required: "只有所有者可以這樣做",
+  already_shared: "已經是共享狀態",
+  conflict: "與已有資料衝突",
+  speedtest_busy: "已有測速在進行",
+  file_too_large: "檔案太大",
+  quota_exceeded: "配額不足",
+  shared_full: "共享資料夾已滿",
+  speedtest_too_large: "測試體積太大",
+  login_locked: "失敗次數過多，請稍後再試",
+  rate_limited: "請求過多，請稍後再試",
+  storage_error: "儲存層錯誤",
+  range_error: "位元組範圍不合法",
+  invalid_move: "不能把資料夾移進它自己",
+  seafile_unreachable: "儲存後端不可達",
+  seafile_auth_failed: "儲存後端認證失敗",
+};
+
+function errText(code, fallback) {
+  const pack = lang === "en" ? ERROR_I18N : (lang === "hant" ? ERROR_HANT : ERROR_ZH);
+  return (code && pack[code]) || fallback;
+}
+
 // 插值用 split/join：这个项目不用模板字符串拼界面文案。
 function t(key, vars) {
   const table = I18N[lang] || I18N.zh;
@@ -694,7 +1124,7 @@ function t(key, vars) {
 
 // 静态文案靠 data-i18n / data-i18n-placeholder / data-i18n-title 标注，这里统一刷。
 function applyLang() {
-  document.documentElement.lang = lang === "en" ? "en" : "zh-CN";
+  document.documentElement.lang = HTML_LANG[lang] || "zh-CN";
   document.title = t("app.title");
   $$("[data-i18n]").forEach((el) => { el.textContent = t(el.getAttribute("data-i18n")); });
   $$("[data-i18n-placeholder]").forEach((el) => {
@@ -705,11 +1135,13 @@ function applyLang() {
   });
   const btn = $("#lang-toggle");
   if (btn) {
-    // 按钮显示「当前语言」：en 下是 EN，这样它自己不会污染「零中文」那类检查
-    btn.textContent = lang === "en" ? "EN" : "中";
+    // 按钮显示「当前语言」（中 / 繁 / EN），不显示「下一种」，避免误读
+    btn.textContent = LANG_LABEL[lang] || "中";
     btn.title = t("lang.switch");
     btn.setAttribute("aria-label", t("lang.switch"));
   }
+  // 主题按钮的 title/aria-label 也是文案：换语言要一起刷，否则 EN 下会残留中文
+  applyTheme();
 }
 
 /* 切语言后把 JS 拼出来的区域重画一遍（applyLang 只认 data-i18n 属性） */
@@ -725,7 +1157,7 @@ function rerenderI18n() {
 }
 
 function setLang(next) {
-  lang = next === "en" ? "en" : "zh";
+  lang = LANG_ORDER.indexOf(next) >= 0 ? next : "zh";
   localStorage.setItem("subdrive_lang", lang);
   // 切换前写下的 toast 是旧语言原文，切完立刻收回，别让页面上留着另一种语言的字
   $("#toast").className = "toast hidden";
@@ -820,10 +1252,9 @@ async function api(path, opts = {}) {
   if (!resp.ok) {
     const detail = data && data.detail ? data.detail : data;
     const code = detail && detail.error;
-    // en 下先按 error code 查英文；查不到就显示服务端原文（后端消息保持中文，不改）
-    const msg = (lang === "en" && code && ERROR_I18N[code])
-      || (detail && detail.message) || (data && data.message)
-      || t("req.failed", { status: resp.status });
+    // 先按 error code 查当前语言的文案；查不到才退回服务端原文（后端消息保持中文，不改）
+    const msg = errText(code, (detail && detail.message) || (data && data.message)
+      || t("req.failed", { status: resp.status }));
     const e = new Error(msg);
     e.status = resp.status;
     e.code = code;
@@ -2095,14 +2526,24 @@ async function uploadOne({ file, item, targetDir, owner }) {
       + "&on_conflict=" + onConflict
       + (expected >= 0 ? "&expected_old_size=" + expected : ""));
     xhr.setRequestHeader("Authorization", "Bearer " + token);
+    // 进度按帧合并：progress 事件可能每秒几十次，逐次写 DOM 会让滚动和按钮都跟着抖（D43）
+    let pendingPct = -1, lastPct = -1, rafId = 0;
+    const flushProgress = () => {
+      rafId = 0;
+      if (pendingPct === lastPct) return;
+      lastPct = pendingPct;
+      fill.style.width = lastPct + "%";
+      state.textContent = t("upload.progress", { pct: lastPct, size: fmtBytes(file.size) });
+    };
     xhr.upload.addEventListener("progress", (e) => {
-      if (e.lengthComputable) {
-        const pct = Math.round((e.loaded / e.total) * 100);
-        fill.style.width = pct + "%";
-        state.textContent = t("upload.progress", { pct: pct, size: fmtBytes(file.size) });
-      }
+      if (!e.lengthComputable) return;
+      const pct = Math.round((e.loaded / e.total) * 100);
+      if (pct === pendingPct) return;
+      pendingPct = pct;
+      if (!rafId) rafId = requestAnimationFrame(flushProgress);
     });
     xhr.addEventListener("load", () => {
+      if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
       if (xhr.status >= 200 && xhr.status < 300) {
         fill.style.width = "100%";
         item.classList.add("done");
@@ -2730,14 +3171,60 @@ async function loadAdmin() {
   catch (e) { toast(e.message, true); }
 }
 
+/* ---------------- 主题（D42） ----------------
+ * 状态只有两枚 html 属性：data-theme（light/dark，缺省=跟随系统）与 data-accent。
+ * 所有颜色都在 style.css 的 token 层，组件不认识主题；以后加自定义主色或贴图，
+ * 只需覆盖 --accent 一族与 --bg-image，或在设置里写 localStorage 的 subdrive_accent。 */
+const THEME_KEY = "subdrive_theme";
+const ACCENT_KEY = "subdrive_accent";
+const THEME_ICON = { light: "☀", dark: "☾", auto: "⚙" };
+function currentTheme() {
+  const v = localStorage.getItem(THEME_KEY);
+  return v === "light" || v === "dark" ? v : "auto";
+}
+function applyTheme() {
+  const mode = currentTheme();
+  // 跟随系统时不写属性，交给 CSS 的 prefers-color-scheme 分支
+  if (mode === "auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", mode);
+  const accent = localStorage.getItem(ACCENT_KEY);
+  if (accent) document.documentElement.setAttribute("data-accent", accent);
+  else document.documentElement.removeAttribute("data-accent");
+  const label = t(mode === "auto" ? "theme.auto" : (mode === "light" ? "theme.light" : "theme.dark"));
+  $$(".theme-toggle").forEach((b) => {
+    b.textContent = THEME_ICON[mode];
+    b.title = t("theme.switch") + " · " + label;
+    b.setAttribute("aria-label", b.title);
+  });
+}
+function setTheme(mode) {
+  localStorage.setItem(THEME_KEY, mode);
+  applyTheme();
+}
+function cycleTheme() {
+  setTheme({ light: "dark", dark: "auto", auto: "light" }[currentTheme()]);
+}
+$$(".theme-toggle").forEach((b) => b.addEventListener("click", cycleTheme));
+// 给下一步「自定义主题色 / 主题贴图」留的入口：setAccent("ocean")，或传 #hex 亦可
+window.SubDriveTheme = {
+  set: setTheme,
+  cycle: cycleTheme,
+  accent: function (v) {
+    if (v) localStorage.setItem(ACCENT_KEY, v);
+    else localStorage.removeItem(ACCENT_KEY);
+    applyTheme();
+  },
+};
+
 /* ---------------- 启动 ---------------- */
 // 语言胶囊显示当前语言，点一下即切换；setLang 会同步 localStorage 与静态属性
 $("#lang-toggle").addEventListener("click", () => {
-  setLang(lang === "en" ? "zh" : "en");
+  setLang(LANG_ORDER[(LANG_ORDER.indexOf(lang) + 1) % LANG_ORDER.length]);
 });
 
 (async function boot() {
   applyLang();
+  applyTheme();
   if (token) {
     try { await enterDrive(); return; } catch { /* 落到登录页 */ }
   }

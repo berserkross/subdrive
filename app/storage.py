@@ -96,6 +96,11 @@ class BaseStorage:
         """把本地临时文件 src_path 以 filename 存入 dir_full，返回字节数。"""
         raise NotImplementedError
 
+    def accept_temp(self, dir_full: str, filename: str, src_path: Path) -> int:
+        """收下一个已经完整落盘的临时文件。默认拷贝；本地实现可以在同卷内原地改名。
+        D43：上传完成后那次整文件拷贝会把单 worker 的事件循环按住数秒，是「上传时整站卡住」的真凶。"""
+        return self.upload(dir_full, filename, src_path)
+
     def download_iter(self, full: str, start: int = 0, length: int | None = None):
         """返回 (chunk_iterator, size_bytes)；start/length 给定时只读该字节区间（Range）。"""
         raise NotImplementedError
@@ -188,6 +193,23 @@ class StubStorage(BaseStorage):
         if not p.parent.is_dir():
             raise StorageNotFound("父目录不存在")
         p.mkdir()
+
+    def accept_temp(self, dir_full: str, filename: str, src_path: Path) -> int:
+        """同卷 os.replace 是 O(1)：不读不写，只改目录项，事件循环占用从秒级降到微秒级。
+        跨卷（用户把 DATA_DIR 指到别的盘）时退回拷贝，行为不变。"""
+        d = self._resolve(dir_full)
+        if not d.is_dir():
+            raise StorageNotFound("目标目录不存在")
+        dst = d / filename
+        if dst.is_dir():
+            raise StorageConflict("同名文件夹已存在")
+        try:
+            if os.stat(src_path).st_dev == os.stat(d).st_dev:
+                os.replace(src_path, dst)
+                return dst.stat().st_size
+        except OSError:
+            pass
+        return self.upload(dir_full, filename, src_path)
 
     def upload(self, dir_full: str, filename: str, src_path: Path) -> int:
         d = self._resolve(dir_full)

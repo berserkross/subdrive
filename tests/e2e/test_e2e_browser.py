@@ -463,6 +463,14 @@ def run() -> int:
             need("语言按钮默认显示「中」且页面是中文",
                  en_page.inner_text("#lang-toggle").strip() == "中" and "新建" in en_page.inner_text("#btn-mkdir"),
                  en_page.inner_text("#lang-toggle") + " | " + en_page.inner_text("#btn-mkdir"))
+            # 三语：中 → 繁 → EN。繁体先验「没有简体残留」，再进英文。
+            en_page.click("#lang-toggle")
+            en_page.wait_for_function("() => document.documentElement.lang === 'zh-Hant'", timeout=5000)
+            hant_text = en_page.inner_text("body")
+            hant_hits = [c for c in "网说设这会个们时后点开关现实应该发" if c in hant_text]
+            need("繁中模式：<html lang> 与按钮正确，且无简体残留",
+                 en_page.inner_text("#lang-toggle").strip() == "繁" and not hant_hits,
+                 "leftover=" + "".join(hant_hits) + " btn=" + en_page.inner_text("#lang-toggle"))
             en_page.click("#lang-toggle")
             en_page.wait_for_function("() => document.documentElement.lang === 'en'", timeout=5000)
             en_btn = en_page.inner_text("#btn-mkdir")
@@ -518,6 +526,38 @@ def run() -> int:
             check("切回中文后按钮与表头恢复",
                   "新建" in en_page.inner_text("#btn-mkdir") and en_page.inner_text(".col-name").strip() == "名称",
                   en_page.inner_text("#btn-mkdir") + " | " + en_page.inner_text(".col-name"))
+            # ---- 11b. 主题：浅色 / 深色 / 跟随系统（D42）----
+            theme_btn = ".topbar .theme-toggle"
+            theme_attr = "() => document.documentElement.getAttribute('data-theme')"
+            bg = "() => getComputedStyle(document.body).backgroundColor"
+            need("主题按钮默认跟随系统（不写 data-theme）",
+                 en_page.evaluate(theme_attr) is None, str(en_page.evaluate(theme_attr)))
+            en_page.click(theme_btn)
+            en_page.wait_for_timeout(250)
+            light_bg = en_page.evaluate(bg)
+            need("切到浅色：data-theme=light 且背景随之变化",
+                 en_page.evaluate(theme_attr) == "light" and light_bg != "rgba(0, 0, 0, 0)", light_bg)
+            en_page.click(theme_btn)
+            en_page.wait_for_timeout(250)
+            dark_bg = en_page.evaluate(bg)
+            need("切到深色：data-theme=dark 且背景比浅色深",
+                 en_page.evaluate(theme_attr) == "dark" and dark_bg != light_bg,
+                 light_bg + " -> " + dark_bg)
+            en_page.reload(wait_until="networkidle")
+            en_page.wait_for_selector("#view-drive:not(.hidden)", timeout=15000)
+            en_page.wait_for_timeout(300)
+            need("刷新后主题保持深色",
+                 en_page.evaluate(theme_attr) == "dark", str(en_page.evaluate(theme_attr)))
+            en_page.evaluate("() => window.SubDriveTheme.accent('ocean')")
+            need("主色扩展点可用：data-accent 与 --accent 同步",
+                 en_page.evaluate("() => document.documentElement.getAttribute('data-accent')") == "ocean"
+                 and en_page.evaluate("() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()") == "#0f6fbf")
+            en_page.evaluate("() => { window.SubDriveTheme.accent(''); localStorage.setItem('subdrive_theme','auto'); }")
+            en_page.reload(wait_until="networkidle")
+            en_page.wait_for_selector("#view-drive:not(.hidden)", timeout=15000)
+            need("切回跟随系统后不再写 data-theme",
+                 en_page.evaluate(theme_attr) is None, str(en_page.evaluate(theme_attr)))
+
             i18n_ctx.close()
 
             need("页面没有未捕获的 JS 异常", not errors, "; ".join(errors[:3]))

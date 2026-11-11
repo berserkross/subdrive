@@ -1,7 +1,19 @@
-/* ============ SubDrive · 设计系统（沿用 private-chat v4 视觉语言） ============ */
+/* ============ SubDrive · 设计系统（沿用 private-chat v4 视觉语言） ============
+ * 主题机制（D42）：<html data-theme="light|dark" data-accent="..."> 两枚属性驱动全部颜色。
+ * 没有 data-theme 时跟随系统。组件样式只引用 token，不认识「浅色」「深色」这两个词。
+ * 将来做自定义主色 / 主题贴图，只改 --accent 一族与 --bg-image，不必碰任何组件规则。
+ */
 :root {
   color-scheme: light dark;
   --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --bg-image: none;          /* 主题贴图入口：data-theme 里覆盖成 url(...) 即可 */
+}
+
+/* —— 浅色：_poster/images 里那套，也是历史默认 —— */
+:root, :root[data-theme="light"] {
+  color-scheme: light;
   --accent: #5b5bd6;
   --accent-2: #8b5cf6;
   --accent-grad: linear-gradient(135deg, #5b5bd6, #8b5cf6);
@@ -23,12 +35,34 @@
   --ok-soft: rgba(48, 164, 108, .12);
   --warn: #e8930c;
   --warn-soft: rgba(232, 147, 12, .14);
-  --radius: 16px;
-  --radius-sm: 10px;
   --topbar-bg: rgba(255, 255, 255, .78);
 }
+
+/* —— 深色：旧版配色，语义色一起换 —— */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --accent-soft: rgba(139, 124, 246, .16);
+  --bg: #0d0f13;
+  --surface: #15181e;
+  --surface-2: #1c2029;
+  --surface-3: #262c38;
+  --text: #eef1f4;
+  --text-2: #9aa1ab;
+  --text-3: #5f666f;
+  --border: #232933;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, .45);
+  --shadow-lg: 0 20px 56px rgba(0, 0, 0, .55);
+  --danger-soft: rgba(229, 72, 77, .16);
+  --ok-soft: rgba(48, 164, 108, .18);
+  --warn-soft: rgba(232, 147, 12, .18);
+  --topbar-bg: rgba(13, 15, 19, .78);
+}
+
+/* —— 跟随系统：没有显式选择时才走这里 —— */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
+    color-scheme: dark;
     --accent-soft: rgba(139, 124, 246, .16);
     --bg: #0d0f13;
     --surface: #15181e;
@@ -48,11 +82,21 @@
   }
 }
 
+/* —— 主色预设：JS 只改 data-accent，两个主题各自有对应 soft —— */
+:root[data-accent="ocean"] { --accent: #0f6fbf; --accent-2: #2aa8f2; --accent-grad: linear-gradient(135deg, #0f6fbf, #2aa8f2); --accent-soft: rgba(15, 111, 191, .12); }
+:root[data-theme="dark"][data-accent="ocean"] { --accent-soft: rgba(42, 168, 242, .18); }
+:root[data-accent="forest"] { --accent: #1f8a5b; --accent-2: #34c184; --accent-grad: linear-gradient(135deg, #1f8a5b, #34c184); --accent-soft: rgba(31, 138, 91, .12); }
+:root[data-theme="dark"][data-accent="forest"] { --accent-soft: rgba(52, 193, 132, .18); }
+:root[data-accent="sunset"] { --accent: #d9534f; --accent-2: #f08a5d; --accent-grad: linear-gradient(135deg, #d9534f, #f08a5d); --accent-soft: rgba(217, 83, 79, .12); }
+:root[data-theme="dark"][data-accent="sunset"] { --accent-soft: rgba(240, 138, 93, .18); }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
 body {
   font-family: var(--font);
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image: var(--bg-image);   /* 主题贴图入口（D42），默认 none */
+  background-attachment: fixed;
   color: var(--text);
   -webkit-font-smoothing: antialiased;
 }
@@ -172,6 +216,9 @@ input { font-family: inherit; font-size: 15px; color: var(--text); }
   transition: color .15s, border-color .15s, background .15s;
 }
 .lang-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.theme-toggle { font-size: 13px; line-height: 1; }
+/* 登录页右上角：没登录也能切主题，否则深色用户一进来就被闪一下 */
+.auth-theme { position: fixed; top: 16px; right: 18px; z-index: 20; background: var(--surface); }
 
 /* ================= 网盘主体 ================= */
 .drive-main { max-width: 1060px; margin: 0 auto; padding: 22px 22px 40px; }

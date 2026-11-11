@@ -76,36 +76,20 @@
 <!-- ================= 网盘 ================= -->
 <section id="view-drive" class="drive-wrap hidden">
   <header class="topbar">
-    <div class="topbar-left">
+    <a id="top-brand" class="top-brand" href="#" data-i18n-title="brand.home">
       <img class="top-logo" src="/static/logo.png" alt="">
-      <div class="top-title">
+      <span class="top-title">
         <strong>SubDrive</strong>
         <span data-i18n="auth.brand">子用户网盘</span>
-      </div>
-    </div>
-    <div class="topbar-right">
-      <button id="btn-admin" class="btn-ghost hidden" type="button" data-i18n="top.admin">管理后台</button>
-      <div class="user-chip" id="user-chip" title="点这里改名字" data-i18n-title="top.chipTitle">
-        <div class="avatar" id="user-avatar">?</div>
-        <div class="user-meta">
-          <strong id="user-name">—</strong>
-          <span id="user-sub">—</span>
-        </div>
-      </div>
-      <button id="btn-settings" class="lang-btn settings-btn" type="button" data-i18n-title="set.title" data-i18n-aria-label="set.title">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.2 14.2l1.5 1.1-1.7 3-1.8-.8a7 7 0 0 1-1.6.9l-.3 2h-3.5l-.3-2a7 7 0 0 1-1.6-.9l-1.8.8-1.7-3 1.5-1.1a7.2 7.2 0 0 1 0-1.9L4.4 11l1.7-3 1.8.8a7 7 0 0 1 1.6-.9l.3-2h3.5l.3 2a7 7 0 0 1 1.6.9l1.8-.8 1.7 3-1.5 1.1a7.2 7.2 0 0 1 0 1.9z"/></svg>
-      </button>
-      <div class="lang-wrap">
-        <select id="lang-select" class="lang-select" data-i18n-title="lang.switch">
-          <option value="zh">简体中文</option>
-          <option value="hant">繁体中文</option>
-          <option value="en">English</option>
-        </select>
-        <svg class="lang-caret" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-      </div>
-      <button id="btn-chpw" class="btn-ghost" type="button" data-i18n="top.chpw">改密码</button>
-      <button id="btn-logout" class="btn-ghost" type="button" data-i18n="top.logout">退出</button>
-    </div>
+      </span>
+    </a>
+    <button class="user-chip" id="user-chip" type="button" aria-haspopup="dialog" aria-expanded="false" data-i18n-title="menu.open">
+      <span class="avatar" id="user-avatar">?</span>
+      <span class="user-meta">
+        <strong id="user-name">—</strong>
+        <span id="user-sub">—</span>
+      </span>
+    </button>
   </header>
 
   <main class="drive-main">
@@ -352,6 +336,48 @@
 </section>
 
 <!-- ================= 弹窗 / 提示 ================= -->
+<!-- 侧边栏：头像/昵称点开，常用设置都在这里（D47） -->
+<div id="side-overlay" class="side-overlay hidden"></div>
+<aside id="side-panel" class="side-panel" aria-hidden="true">
+  <div class="side-head">
+    <span class="avatar" id="side-avatar">?</span>
+    <span class="side-meta"><strong id="side-name">—</strong><span id="side-sub">—</span></span>
+    <button id="side-close" class="icon-btn side-close" type="button" data-i18n-title="menu.close" data-i18n-aria-label="menu.close">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <div class="side-links">
+    <button id="btn-settings" class="side-link" type="button">
+      <span data-i18n="set.title">设置</span>
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
+    <button id="btn-admin" class="side-link hidden" type="button"><span data-i18n="top.admin">管理后台</span></button>
+    <button id="btn-chpw" class="side-link" type="button"><span data-i18n="top.chpw">改密码</span></button>
+  </div>
+  <div class="side-section">
+    <div class="side-label" data-i18n="theme.switch">切换主题</div>
+    <div class="seg seg-block" id="side-theme">
+      <button class="seg-btn" type="button" data-theme-set="light" data-i18n="theme.light">浅色</button>
+      <button class="seg-btn" type="button" data-theme-set="dark" data-i18n="theme.dark">深色</button>
+      <button class="seg-btn" type="button" data-theme-set="auto" data-i18n="theme.auto">跟随系统</button>
+    </div>
+  </div>
+  <div class="side-section">
+    <div class="side-label" data-i18n="lang.switch">切换语言</div>
+    <div class="lang-wrap lang-block">
+      <select id="lang-select" class="lang-select" data-i18n-title="lang.switch">
+        <option value="zh">简体中文</option>
+        <option value="hant">繁体中文</option>
+        <option value="en">English</option>
+      </select>
+      <svg class="lang-caret" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+  </div>
+  <div class="side-session">
+    <button id="btn-logout" class="side-link danger" type="button"><span data-i18n="top.logout">退出</span></button>
+  </div>
+</aside>
+
 <div id="modal-overlay" class="overlay hidden">
   <div class="modal" role="dialog" aria-modal="true">
     <h3 id="modal-title" data-i18n="modal.title">标题</h3>

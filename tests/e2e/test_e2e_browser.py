@@ -132,6 +132,27 @@ def wait_row_gone(page, name: str, timeout: int = 20000) -> None:
     page.wait_for_selector(f'.row:has(.row-name:text-is("{name}"))', state="detached", timeout=timeout)
 
 
+def open_side(page):
+    """顶栏只剩品牌 + 用户：次级入口都先点开头像侧边栏。"""
+    page.click("#user-chip")
+    page.wait_for_selector("#side-panel.open", timeout=5000)
+
+
+def open_nickname(page):
+    """改昵称现在住在设置页的「账号与安全」里。"""
+    open_side(page)
+    page.click("#btn-settings")
+    page.wait_for_selector("#view-settings:not(.hidden)", timeout=10000)
+    page.click('#set-nav [data-panel="account"]')
+    page.click("#set-nickname")
+    page.wait_for_selector("#nick-input", timeout=10000)
+
+
+def back_to_drive(page):
+    page.click("#set-back")
+    page.wait_for_selector("#view-drive:not(.hidden)", timeout=10000)
+
+
 def run() -> int:
     port = free_port()
     base = f"http://127.0.0.1:{port}"
@@ -157,27 +178,29 @@ def run() -> int:
             need("注册后进入网盘视图", boss.is_visible("#view-drive"))
             need("用户名显示为昵称", "老板" in boss.inner_text("#user-name"),
                  boss.inner_text("#user-name"))
-            need("首个用户拿到管理员入口", boss.is_visible("#btn-admin"))
+            open_side(boss)
+            need("首个用户拿到管理员入口（侧边栏内）", boss.is_visible("#btn-admin"))
+            boss.click("#side-close")
 
             boss_token = boss.evaluate("() => localStorage.getItem('subdrive_token')")
             auth = {"Authorization": f"Bearer {boss_token}"}
 
             # ---- 1b. 改名字（点头像/用户名处那个 chip）----
-            boss.click("#user-chip")
-            boss.wait_for_selector("#nick-input", timeout=10000)
+            open_nickname(boss)
             boss.fill("#nick-input", "新老板")
             boss.click("#modal-ok")
             boss.wait_for_selector("#modal-overlay", state="hidden", timeout=10000)
             check("改名字后顶栏立刻更新", "新老板" in boss.inner_text("#user-name"),
                   boss.inner_text("#user-name"))
+            back_to_drive(boss)
             me_now = httpx.get(base + "/api/auth/me", headers=auth, timeout=10).json()
             check("后端也记下了新昵称", me_now.get("nickname") == "新老板", str(me_now))
             check("登录名没跟着变", me_now.get("username") == "boss", str(me_now))
-            boss.click("#user-chip")
-            boss.wait_for_selector("#nick-input", timeout=10000)
+            open_nickname(boss)
             boss.fill("#nick-input", "老板")
             boss.click("#modal-ok")
             boss.wait_for_selector("#modal-overlay", state="hidden", timeout=10000)
+            back_to_drive(boss)
             check("改回原昵称（后面几步依赖「老板」）",
                   "老板" in boss.inner_text("#user-name"), boss.inner_text("#user-name"))
 
@@ -449,6 +472,7 @@ def run() -> int:
             check("删除后文件从列表消失", True)
 
             # ---- 10. 退出登录 ----
+            open_side(bob)
             bob.click("#btn-logout")
             bob.wait_for_selector("#view-auth:not(.hidden)", timeout=10000)
             check("退出后回到登录页", bob.is_visible("#view-auth"))
@@ -467,6 +491,7 @@ def run() -> int:
                  en_page.input_value("#lang-select") == "zh" and "新建" in en_page.inner_text("#btn-mkdir"),
                  en_page.input_value("#lang-select") + " | " + en_page.inner_text("#btn-mkdir"))
             # 三语：下拉直接选「繁體」→「English」。繁体先验「没有简体残留」，再进英文。
+            open_side(en_page)
             en_page.select_option("#lang-select", "hant")
             en_page.wait_for_function("() => document.documentElement.lang === 'zh-Hant'", timeout=5000)
             hant_text = en_page.inner_text("body")
@@ -475,6 +500,7 @@ def run() -> int:
                  en_page.input_value("#lang-select") == "hant" and not hant_hits,
                  "leftover=" + "".join(hant_hits) + " sel=" + en_page.input_value("#lang-select"))
             en_page.select_option("#lang-select", "en")
+            en_page.click("#side-close")
             en_page.wait_for_function("() => document.documentElement.lang === 'en'", timeout=5000)
             en_btn = en_page.inner_text("#btn-mkdir")
             en_col = en_page.inner_text(".col-name").strip()
@@ -531,7 +557,9 @@ def run() -> int:
             need("EN 模式 body.innerText 与全部 placeholder/title 零 CJK", settled and not scan["hits"],
                  "等待超时（异步区域仍是旧语言）; " + "; ".join(scan["hits"][:6]))
             en_page.click('#nav-scope [data-scope="mine"]')
+            open_side(en_page)
             en_page.select_option("#lang-select", "zh")
+            en_page.click("#side-close")
             en_page.wait_for_function("() => document.documentElement.lang === 'zh-CN'", timeout=5000)
             check("切回中文后按钮与表头恢复",
                   "新建" in en_page.inner_text("#btn-mkdir") and en_page.inner_text(".col-name").strip() == "名称",
@@ -541,6 +569,7 @@ def run() -> int:
             bg = "() => getComputedStyle(document.body).backgroundColor"
             accent_var = "() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()"
 
+            open_side(en_page)
             en_page.click("#btn-settings")
             en_page.wait_for_selector("#view-settings:not(.hidden)", timeout=10000)
             need("齿轮打开设置页，地址栏落在 #/settings，默认外观分组",

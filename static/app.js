@@ -36,6 +36,9 @@ const I18N = {
     "set.version": "版本",
     "set.license": "许可证",
     "set.storageMode": "存储模式",
+    "brand.home": "回到网盘首页",
+    "menu.open": "打开菜单",
+    "menu.close": "关闭菜单",
     "theme.switch": "切换主题",
     "theme.light": "浅色",
     "theme.dark": "深色",
@@ -374,6 +377,9 @@ const I18N = {
     "set.version": "版本",
     "set.license": "授權條款",
     "set.storageMode": "儲存模式",
+    "brand.home": "回到網盤首頁",
+    "menu.open": "開啟選單",
+    "menu.close": "關閉選單",
     "theme.switch": "切換主題",
     "theme.light": "淺色",
     "theme.dark": "深色",
@@ -713,6 +719,9 @@ const I18N = {
     "set.version": "Version",
     "set.license": "Licence",
     "set.storageMode": "Storage mode",
+    "brand.home": "Back to drive home",
+    "menu.open": "Open menu",
+    "menu.close": "Close menu",
     "theme.switch": "Switch theme",
     "theme.light": "Light",
     "theme.dark": "Dark",
@@ -1444,8 +1453,61 @@ function logout(callApi = true) {
   localStorage.removeItem("subdrive_token");
   show("view-auth");
 }
-$("#btn-logout").addEventListener("click", () => logout(true));
-$("#user-chip").addEventListener("click", () => {
+/* ---------------- 侧边栏（D47） ----------------
+ * 顶栏只留「品牌 + 用户」，其余入口全收进这里：主题、语言、设置、管理后台、改密码、退出。
+ * 面板本身是 fixed + translateX，遮罩接管点外关闭，Esc 也能关。 */
+function refreshSideUI() {
+  const mode = currentTheme();
+  $$("#side-theme [data-theme-set]").forEach((b) => b.classList.toggle("selected", b.dataset.themeSet === mode));
+  const sel = $("#lang-select");
+  if (sel) sel.value = lang;
+}
+function openSide() {
+  if (!me) return;
+  const nameEl = $("#side-name"), subEl = $("#side-sub"), avEl = $("#side-avatar");
+  if (nameEl) nameEl.textContent = me.nickname || me.username;
+  if (subEl) subEl.textContent = "@" + me.username;
+  if (avEl) avEl.textContent = (me.nickname || me.username).slice(0, 1);
+  const adminBtn = $("#btn-admin");
+  if (adminBtn) adminBtn.classList.toggle("hidden", !me.is_admin);
+  refreshSideUI();
+  $("#side-overlay").classList.remove("hidden");
+  $("#side-panel").classList.add("open");
+  $("#side-panel").setAttribute("aria-hidden", "false");
+  $("#user-chip").setAttribute("aria-expanded", "true");
+}
+function closeSide() {
+  const panel = $("#side-panel");
+  if (!panel || !panel.classList.contains("open")) return;
+  panel.classList.remove("open");
+  panel.setAttribute("aria-hidden", "true");
+  $("#side-overlay").classList.add("hidden");
+  $("#user-chip").setAttribute("aria-expanded", "false");
+}
+$("#user-chip").addEventListener("click", openSide);
+$("#side-close").addEventListener("click", closeSide);
+$("#side-overlay").addEventListener("click", closeSide);
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") closeSide(); });
+$("#side-theme").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-theme-set]");
+  if (!b) return;
+  setTheme(b.dataset.themeSet);
+  refreshSideUI();
+  if (typeof refreshSettingsUI === "function") refreshSettingsUI();
+});
+
+/* 品牌块：回到网盘首页（根目录 + 我的网盘） */
+function goHome() {
+  closeSide();
+  show("view-drive");
+  curPath = ""; curOwner = ""; scope = "mine"; fromPublic = false;
+  applyScope();
+  refreshList();
+}
+$("#top-brand").addEventListener("click", (ev) => { ev.preventDefault(); goHome(); });
+
+$("#btn-logout").addEventListener("click", () => { closeSide(); logout(true); });
+function openNicknameModal() {
   if (!me) return;
   openModal(t("nick.title"),
     '<label class="field"><span>' + t("nick.label") + '</span>'
@@ -1461,7 +1523,7 @@ $("#user-chip").addEventListener("click", () => {
       $("#user-sub").textContent = "@" + u.username;
       toast(t("nick.done"));
     });
-});
+}
 $("#btn-my-cell").addEventListener("click", () => {
   if (!curOwner || !me) return;
   // 共享根是路径第一段；我那一格固定叫我的用户名
@@ -2339,6 +2401,7 @@ $("#btn-mkdir").addEventListener("click", async () => {
 });
 
 $("#btn-chpw").addEventListener("click", () => {
+  closeSide();
   openModal(t("chpw.title"), `
     <label class="field"><span>${t("chpw.old")}</span><input id="m-old" type="password" autocomplete="current-password"></label>
     <label class="field"><span>${t("chpw.new")}</span><input id="m-new" type="password" autocomplete="new-password"></label>`,
@@ -3133,7 +3196,7 @@ $("#speed-run").addEventListener("click", async () => {
 });
 
 /* ---------------- 管理后台 ---------------- */
-$("#btn-admin").addEventListener("click", () => { show("view-admin"); loadAdmin(); });
+$("#btn-admin").addEventListener("click", () => { closeSide(); show("view-admin"); loadAdmin(); });
 $("#btn-back-drive").addEventListener("click", () => { show("view-drive"); refreshList(); refreshQuota(); });
 
 $("#form-invite").addEventListener("submit", async (e) => {
@@ -3468,7 +3531,7 @@ function backToDrive() {
   refreshList();
 }
 
-$("#btn-settings").addEventListener("click", () => openSettings("appearance"));
+$("#btn-settings").addEventListener("click", () => { closeSide(); openSettings("appearance"); });
 $("#set-back").addEventListener("click", backToDrive);
 $("#set-nav").addEventListener("click", (ev) => {
   const b = ev.target.closest("[data-panel]");
@@ -3493,7 +3556,7 @@ $("#lang-select-settings").addEventListener("change", (ev) => {
   setLang(ev.target.value);
   refreshSettingsUI();
 });
-$("#set-nickname").addEventListener("click", () => $("#user-chip").click());
+$("#set-nickname").addEventListener("click", openNicknameModal);
 $("#set-password").addEventListener("click", () => $("#btn-chpw").click());
 $("#set-concurrency").addEventListener("input", (ev) => {
   const n = Math.min(5, Math.max(1, Number(ev.target.value) || 3));

@@ -253,7 +253,13 @@ input { font-family: inherit; font-size: 15px; color: var(--text); }
 .as-unit { display: inline-flex; align-items: center; gap: 6px; }
 .as-unit input { flex: 1; }
 .as-unit em { font-style: normal; color: var(--text-3); font-size: 12px; }
-.as-check { flex-direction: row; align-items: center; gap: 8px; }
+.as-check { flex-direction: row; align-items: center; gap: 8px; min-height: 50px; margin-top: 22px; }
+/* 审计表：时间不换行、详情可换行（否则长字段整列溢出，Codex 评审第 1/2 条） */
+#audit-table { table-layout: fixed; width: 100%; }
+#audit-table th:nth-child(1), #audit-table td:nth-child(1) { width: 168px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+#audit-table th:nth-child(2), #audit-table td:nth-child(2) { width: 118px; }
+#audit-table th:nth-child(3), #audit-table td:nth-child(3) { width: 186px; }
+#audit-table td:nth-child(4) { white-space: normal; overflow-wrap: anywhere; }
 .as-check input { width: 16px; height: 16px; accent-color: var(--accent); }
 
 /* 侧边栏（D47） */

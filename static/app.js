@@ -1433,6 +1433,7 @@ function setLang(next) {
   $("#modal-body").innerHTML = "";
   $("#preview-body").innerHTML = "";
   applyLang();
+  buildBlockEditor();   // 行是 JS 生成的，换语言必须重建，否则 title 还是旧语言
   rerenderI18n();
 }
 

@@ -15,6 +15,8 @@ let lang = (function () {
 // 字典按「屏」分组，key 用点分命名；zh 是基准，en 必须与之等长（tests/e2e 会校验）。
 const I18N = {
   zh: {
+    "menu.groupAccount": "账户",
+    "menu.groupPrefs": "偏好",
     "org.text": "管理员发布了新的外观",
     "org.adopt": "采用",
     "org.keep": "保留我的",
@@ -465,6 +467,8 @@ const I18N = {
     "modal.title": "标题",
   },
   hant: {
+    "menu.groupPrefs": "偏好",
+    "menu.groupAccount": "帳戶",
     "org.text": "管理員發布了新的外觀",
     "org.adopt": "採用",
     "org.keep": "保留我的",
@@ -916,6 +920,8 @@ const I18N = {
   },
 
   en: {
+    "menu.groupPrefs": "Preferences",
+    "menu.groupAccount": "Account",
     "org.text": "An administrator published a new look",
     "org.adopt": "Use it",
     "org.keep": "Keep mine",

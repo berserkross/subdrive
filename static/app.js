@@ -173,6 +173,41 @@ const I18N = {
     "list.colSize": "大小",
     "list.colTime": "修改时间",
     "list.loading": "加载中…",
+    "ux.search": "搜索当前文件夹",
+    "ux.kind": "类型",
+    "ux.kindAll": "全部类型",
+    "ux.kindFile": "文件",
+    "ux.kindFolder": "文件夹",
+    "ux.sort": "排序",
+    "ux.sortDefault": "默认顺序",
+    "ux.sortName": "名称 A–Z",
+    "ux.sortDate": "最近修改",
+    "ux.sortSize": "大小从大到小",
+    "ux.noMatches": "没有符合条件的文件",
+    "ux.clearFilters": "清除筛选",
+    "ux.listError": "无法加载当前文件夹",
+    "ux.sharedError": "无法加载共享文件夹",
+    "ux.retry": "重试",
+    "ux.closeNotice": "关闭通知",
+    "ux.undo": "撤销",
+    "ux.undone": "已撤销",
+    "ux.undoChanged": "文件已变化，无法安全撤销。",
+    "ux.moreActions": "更多操作：{name}",
+    "ux.selectFile": "选择 {name}",
+    "ux.modalRetry": "{message} 请检查后再试。",
+    "ux.noMoveTargets": "没有可移动到的文件夹。请先创建目标文件夹。",
+    "ux.uploadQueue": "上传队列",
+    "ux.uploadClear": "清除已结束",
+    "ux.uploadCancel": "取消上传",
+    "ux.uploadCancelled": "已取消上传",
+    "ux.uploadSession": "登录状态已变化，请重新选择文件。",
+    "ux.uploadEta": "{rate}/秒 · 约 {time} 后完成",
+    "ux.uploadSeconds": "{n} 秒",
+    "ux.uploadMinutes": "{n} 分钟",
+    "ux.uploadProcessing": "已发送，正在保存…",
+    "ux.deleteFinal": "确定删除「{name}」吗？SubDrive 无法恢复这项删除。",
+    "ux.batchDeleteFinal": "确定删除选中的 {n} 项吗？SubDrive 无法恢复这些删除。",
+    "ux.shareRetry": "暂时无法打开共享设置。请关闭后重试。",
     "list.emptyTitle": "这里空空如也",
     "list.emptyHint": "点「上传文件 / 上传文件夹」，或把文件、文件夹直接拖到这里",
     "list.foot": "文件保存在你的专属空间里，只有你能访问。",
@@ -588,6 +623,41 @@ const I18N = {
     "list.colSize": "大小",
     "list.colTime": "修改時間",
     "list.loading": "載入中…",
+    "ux.search": "搜尋目前資料夾",
+    "ux.kind": "類型",
+    "ux.kindAll": "全部類型",
+    "ux.kindFile": "檔案",
+    "ux.kindFolder": "資料夾",
+    "ux.sort": "排序",
+    "ux.sortDefault": "預設順序",
+    "ux.sortName": "名稱 A–Z",
+    "ux.sortDate": "最近修改",
+    "ux.sortSize": "大小由大到小",
+    "ux.noMatches": "沒有符合條件的檔案",
+    "ux.clearFilters": "清除篩選",
+    "ux.listError": "無法載入目前資料夾",
+    "ux.sharedError": "無法載入共享資料夾",
+    "ux.retry": "重試",
+    "ux.closeNotice": "關閉通知",
+    "ux.undo": "復原",
+    "ux.undone": "已復原",
+    "ux.undoChanged": "檔案已變更，無法安全復原。",
+    "ux.moreActions": "更多操作：{name}",
+    "ux.selectFile": "選取 {name}",
+    "ux.modalRetry": "{message} 請檢查後再試。",
+    "ux.noMoveTargets": "沒有可移動到的資料夾。請先建立目標資料夾。",
+    "ux.uploadQueue": "上傳佇列",
+    "ux.uploadClear": "清除已結束",
+    "ux.uploadCancel": "取消上傳",
+    "ux.uploadCancelled": "已取消上傳",
+    "ux.uploadSession": "登入狀態已變更，請重新選取檔案。",
+    "ux.uploadEta": "{rate}/秒 · 約 {time} 後完成",
+    "ux.uploadSeconds": "{n} 秒",
+    "ux.uploadMinutes": "{n} 分鐘",
+    "ux.uploadProcessing": "已送出，正在儲存…",
+    "ux.deleteFinal": "確定刪除「{name}」嗎？SubDrive 無法復原這項刪除。",
+    "ux.batchDeleteFinal": "確定刪除選取的 {n} 項嗎？SubDrive 無法復原這些刪除。",
+    "ux.shareRetry": "暫時無法開啟共享設定。請關閉後重試。",
     "list.emptyTitle": "這裡空空如也",
     "list.emptyHint": "點「上傳檔案 / 上傳資料夾」，或把檔案、資料夾直接拖到這裡",
     "list.foot": "檔案儲存在你的專屬空間裡，只有你能訪問。",
@@ -1004,6 +1074,41 @@ const I18N = {
     "list.colSize": "Size",
     "list.colTime": "Modified",
     "list.loading": "Loading…",
+    "ux.search": "Search this folder",
+    "ux.kind": "Type",
+    "ux.kindAll": "All types",
+    "ux.kindFile": "Files",
+    "ux.kindFolder": "Folders",
+    "ux.sort": "Sort",
+    "ux.sortDefault": "Default order",
+    "ux.sortName": "Name A–Z",
+    "ux.sortDate": "Recently modified",
+    "ux.sortSize": "Largest first",
+    "ux.noMatches": "No matching files",
+    "ux.clearFilters": "Clear filters",
+    "ux.listError": "Could not load this folder",
+    "ux.sharedError": "Could not load shared folders",
+    "ux.retry": "Retry",
+    "ux.closeNotice": "Dismiss notification",
+    "ux.undo": "Undo",
+    "ux.undone": "Undone",
+    "ux.undoChanged": "This item changed and can no longer be undone safely.",
+    "ux.moreActions": "More actions for {name}",
+    "ux.selectFile": "Select {name}",
+    "ux.modalRetry": "{message} Review the details and try again.",
+    "ux.noMoveTargets": "No destination is available. Create a destination folder first.",
+    "ux.uploadQueue": "Upload queue",
+    "ux.uploadClear": "Clear finished",
+    "ux.uploadCancel": "Cancel upload",
+    "ux.uploadCancelled": "Upload cancelled",
+    "ux.uploadSession": "Your session changed. Select the file again.",
+    "ux.uploadEta": "{rate}/s · about {time} left",
+    "ux.uploadSeconds": "{n} s",
+    "ux.uploadMinutes": "{n} min",
+    "ux.uploadProcessing": "Sent, saving…",
+    "ux.deleteFinal": "Delete “{name}”? SubDrive cannot restore this item.",
+    "ux.batchDeleteFinal": "Delete {n} selected items? SubDrive cannot restore them.",
+    "ux.shareRetry": "Could not open sharing settings. Close and try again.",
     "list.emptyTitle": "Nothing here yet",
     "list.emptyHint": "Use “Upload files / Upload folder”, or drag files and folders here",
     "list.foot": "Your files live in your own space; only you can reach them.",
@@ -1458,11 +1563,13 @@ function setLang(next) {
   lang = LANG_ORDER.indexOf(next) >= 0 ? next : "zh";
   localStorage.setItem("subdrive_lang", lang);
   // 切换前写下的 toast 是旧语言原文，切完立刻收回，别让页面上留着另一种语言的字
-  $("#toast").className = "toast hidden";
+  hideToast();
   // 关着的弹窗/预览层里还留着上一次渲染的旧语言 DOM（含 placeholder、title），清掉免得残留
   $("#modal-body").innerHTML = "";
+  $("#modal-error").textContent = "";
   $("#preview-body").innerHTML = "";
   applyLang();
+  refreshUploadLanguage();
   buildBlockEditor();   // 行是 JS 生成的，换语言必须重建，否则 title 还是旧语言
   rerenderI18n();
 }
@@ -1530,13 +1637,45 @@ function fmtDate(s) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 let toastTimer = null;
-function toast(msg, isError = false) {
-  const el = $("#toast");
-  el.textContent = msg;
-  el.className = "toast show" + (isError ? " error" : "");
+let toastDuration = 0;
+let toastAction = null;
+
+function hideToast() {
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.className = "toast hidden"; }, 2600);
+  $("#toast").className = "toast hidden";
+  toastAction = null;
 }
+function armToast() {
+  clearTimeout(toastTimer);
+  if ($("#toast").classList.contains("show")) toastTimer = setTimeout(hideToast, toastDuration);
+}
+function toast(message, isError = false, action = null) {
+  const el = $("#toast");
+  const text = $("#toast-text");
+  text.setAttribute("aria-live", isError ? "assertive" : "polite");
+  text.textContent = message;
+  toastAction = action;
+  $("#toast-action").classList.toggle("hidden", !action);
+  $("#toast-action").textContent = action ? t("ux.undo") : "";
+  el.className = "toast show" + (isError ? " error" : "");
+  toastDuration = action ? 10000 : isError ? 7000 : 4000;
+  armToast();
+}
+$("#toast-close").addEventListener("click", hideToast);
+$("#toast-action").addEventListener("click", async () => {
+  const action = toastAction;
+  hideToast();
+  if (!action) return;
+  try { await action(); toast(t("ux.undone")); }
+  catch (error) { toast(error.message, true); }
+});
+$("#toast").addEventListener("pointerenter", () => clearTimeout(toastTimer));
+$("#toast").addEventListener("pointerleave", armToast);
+$("#toast").addEventListener("focusin", () => clearTimeout(toastTimer));
+$("#toast").addEventListener("focusout", event => {
+  if (!$("#toast").contains(event.relatedTarget)) armToast();
+});
+
 async function api(path, opts = {}) {
   const headers = { ...(opts.headers || {}) };
   if (token) headers["Authorization"] = "Bearer " + token;
@@ -1812,17 +1951,44 @@ function sharedItemEl(f) {
     + '</div>'
     + '<span class="si-go">›</span>';
   el.title = f.is_mine ? t("shared.itemTitleMine") : t("shared.itemTitleOther", { owner: f.owner });
+  el.tabIndex = 0;
+  el.setAttribute("role", "button");
+  el.addEventListener("keydown", event => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    enterShared(f);
+  });
   el.addEventListener("click", () => enterShared(f));
   return el;
 }
 
 async function refreshShared() {
+  const version = ++sharedListVersion;
+  $("#public-list").setAttribute("aria-busy", "true");
+  $("#public-loading").classList.remove("hidden");
+  $("#public-error").classList.add("hidden");
+  $("#public-empty").classList.add("hidden");
+  $("#public-empty .public-empty-icon").innerHTML = FOLDER_SVG;
   let folders = [];
   try {
     const res = await api("/api/shared/list");
+    if (version !== sharedListVersion) return;
     folders = res.folders || [];
     if (res.defaults) sharedDefaults = res.defaults;
-  } catch { folders = []; }
+  } catch (error) {
+    if (version !== sharedListVersion) return;
+    $("#public-list").replaceChildren();
+    $("#public-count").textContent = "";
+    $("#public-hint").textContent = "";
+    $("#public-error-detail").textContent = error.message;
+    $("#public-error").classList.remove("hidden");
+    return;
+  } finally {
+    if (version === sharedListVersion) {
+      $("#public-list").setAttribute("aria-busy", "false");
+      $("#public-loading").classList.add("hidden");
+    }
+  }
   sharedMine = folders.filter((f) => f.is_mine);
   const card = $("#shared-card");
   const list = $("#shared-list");
@@ -1912,7 +2078,7 @@ async function openShareDialog(path, grant) {
     const res = await api("/api/shared/list");
     folders = res.folders || [];
     if (res.defaults) sharedDefaults = res.defaults;
-  } catch (e) { toast(e.message, true); return; }
+  } catch { toast(t("ux.shareRetry"), true); return; }
   const mineOne = folders.find((f) => f.is_mine && f.path === path) || null;
   const isMine = !!(grant && grant.is_mine) || !!mineOne;
   const memberNames = (mineOne || grant || {}).members || [];
@@ -1922,7 +2088,8 @@ async function openShareDialog(path, grant) {
       + '<label class="field-label">' + t("picker.who") + '</label>' + memberPickerHTML("s")
       + '<label class="field-label">' + t("picker.limits") + '</label>' + limitsHTML("s", mineOne, "edit")
     : '<p class="modal-hint">' + t("shared.dialogCreate", { path: esc(path) }) + '</p>'
-      + '<label class="field-label">' + t("picker.who") + '</label>' + memberPickerHTML("s");
+      + '<label class="field-label">' + t("picker.who") + '</label>' + memberPickerHTML("s")
+      + '<label class="field-label">' + t("picker.limits") + '</label>' + limitsHTML("s", null, "create");
   openModal(t("shared.title"), body, isMine ? t("common.save") : t("shared.create"), async () => {
     const members = readMemberPicker("s");
     if (isMine) {
@@ -1934,7 +2101,7 @@ async function openShareDialog(path, grant) {
       }
       toast(t("shared.membersUpdated"));
     } else {
-      await api("/api/shared/create", { method: "POST", body: { path: "/" + path, members } });
+      await api("/api/shared/create", { method: "POST", body: { path: "/" + path, members, ...readShareLimits("s") } });
       toast(t("shared.created"));
     }
     await refreshShared();
@@ -2014,9 +2181,101 @@ function renderCrumbs() {
 }
 
 let lastEntries = [];
+/* 当前目录的显示条件。文件数据仍由原列表接口提供。 */
+let listVersion = 0;
+let listDirectory = null;
+let listReady = false;
+let sharedListVersion = 0;
+
+function fileFiltersActive() {
+  return $("#file-search").value.trim() !== "" || $("#file-kind").value !== "";
+}
+
+function resetFileFilters() {
+  $("#file-search").value = "";
+  $("#file-kind").value = "";
+}
+
+function viewFileEntries(entries) {
+  const query = $("#file-search").value.trim().toLocaleLowerCase();
+  const kind = $("#file-kind").value;
+  const sort = $("#file-sort").value;
+  const visible = entries.filter(entry =>
+    (!kind || entry.type === kind) && (!query || entry.name.toLocaleLowerCase().includes(query)));
+  if (!sort) return visible;
+  const language = lang === "hant" ? "zh-Hant" : lang;
+  const nameOrder = new Intl.Collator(language, { numeric: true, sensitivity: "base" });
+  return visible.sort((a, b) => {
+    if (a.type !== b.type) return a.type === "dir" ? -1 : 1;
+    const difference = sort === "size" ? (b.size || 0) - (a.size || 0)
+      : sort === "modified" ? (Date.parse(b.mtime) || 0) - (Date.parse(a.mtime) || 0) : 0;
+    return difference || nameOrder.compare(a.name, b.name);
+  });
+}
+
+function closeRowActions(except = null) {
+  $$(".row-action-list.is-open").forEach(actions => {
+    if (actions === except) return;
+    actions.classList.remove("is-open");
+    actions.previousElementSibling.setAttribute("aria-expanded", "false");
+  });
+}
+
+function enhanceRowActions(row, name) {
+  const cell = $(".col-act", row);
+  if (!cell.childElementCount) return;
+  const list = document.createElement("div");
+  list.className = "row-action-list";
+  list.append(...cell.children);
+  const more = actionBtn("⋯", t("ux.moreActions", { name }), () => {
+    const open = !list.classList.contains("is-open");
+    closeRowActions(list);
+    list.classList.toggle("is-open", open);
+    more.setAttribute("aria-expanded", String(open));
+    if (open) list.querySelector("button")?.focus();
+  });
+  more.classList.add("row-more");
+  more.setAttribute("aria-expanded", "false");
+  cell.append(more, list);
+  list.addEventListener("keydown", event => {
+    if (event.key === "Escape" && list.classList.contains("is-open")) {
+      event.stopPropagation();
+      closeRowActions();
+      more.focus();
+    }
+  });
+}
+
+for (const [selector, event] of [["#file-search", "input"], ["#file-kind", "change"], ["#file-sort", "change"]]) {
+  $(selector).addEventListener(event, () => { if (listReady) renderEntries(lastEntries); });
+}
+$("#file-clear-filters").addEventListener("click", () => {
+  resetFileFilters();
+  renderEntries(lastEntries);
+  $("#file-search").focus();
+});
+$("#list-retry").addEventListener("click", refreshList);
+$("#public-retry").addEventListener("click", refreshShared);
+document.addEventListener("click", event => {
+  if (!event.target.closest?.(".col-act")) closeRowActions();
+});
+
 async function refreshList() {
   // 导航离开加密文件夹 → 立即锁定（密钥只留在内存，离开即弃）
   if (vault && curPath !== vault.path) vault = null;
+  const version = ++listVersion;
+  const directory = JSON.stringify([curOwner, curPath]);
+  if (directory !== listDirectory) resetFileFilters();
+  listDirectory = directory;
+  listReady = false;
+  currentEntries = [];
+  $("#file-list").replaceChildren();
+  $("#file-list").setAttribute("aria-busy", "true");
+  $("#empty-state").classList.add("hidden");
+  $("#file-no-matches").classList.add("hidden");
+  $("#list-error").classList.add("hidden");
+  $("#list-error-detail").textContent = "";
+  $("#vault-lock").classList.add("hidden");
   renderCrumbs();
   selected.clear();
   updateBatchBar();
@@ -2026,6 +2285,7 @@ async function refreshList() {
   try {
     const data = await api("/api/files/list?path="
       + encodeURIComponent(curPath ? "/" + curPath : "") + ownerQS("&"));
+    if (version !== listVersion || directory !== JSON.stringify([curOwner, curPath])) return;
     const entries = data.entries || [];
     lastEntries = entries;
     const isVaultRoot = !curOwner
@@ -2037,16 +2297,21 @@ async function refreshList() {
       else { vault = null; renderVaultLocked(); }
     } else {
       vaultRootPath = null;
+      listReady = true;
       renderEntries(entries);
       probeVaultDirs(entries);
     }
     updateVaultChrome();
   } catch (e) {
-    toast(e.message, true);
-    renderEntries([]);
+    if (version !== listVersion || directory !== JSON.stringify([curOwner, curPath])) return;
+    $("#list-error-detail").textContent = e.message;
+    $("#list-error").classList.remove("hidden");
     updateVaultChrome();
   } finally {
-    $("#list-loading").classList.add("hidden");
+    if (version === listVersion) {
+      $("#file-list").setAttribute("aria-busy", "false");
+      $("#list-loading").classList.add("hidden");
+    }
   }
 }
 
@@ -2054,6 +2319,7 @@ async function refreshList() {
 function updateVaultChrome() {
   const atVault = vaultRootPath !== null && vaultRootPath === curPath;
   const unlocked = atVault && !!vault;
+  $("#file-tools").classList.toggle("hidden", atVault);
   $("#vault-bar").classList.toggle("hidden", !unlocked);
   $("#btn-mkdir").classList.toggle("hidden", atVault || !!curOwner);
   $("#btn-upload").classList.toggle("hidden", atVault && !unlocked);
@@ -2073,7 +2339,7 @@ async function probeVaultDirs(entries) {
       const data = await api("/api/files/list?path=" + encodeURIComponent("/" + rel));
       if ((data.entries || []).some((e) => e.type === "file" && e.name === ".sdvault.json")) {
         vaultDirMarks.add(rel);
-        if (curPath === (rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "")) {
+        if (listReady && curPath === (rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "")) {
           renderEntries(lastEntries); // 还在同一目录则刷新徽章
         }
       }
@@ -2084,22 +2350,26 @@ async function probeVaultDirs(entries) {
 function renderEntries(entries) {
   const box = $("#file-list");
   box.innerHTML = "";
-  currentEntries = entries;
-  $("#empty-state").classList.toggle("hidden", entries.length > 0);
-  for (const entry of entries) {
+  currentEntries = viewFileEntries(entries);
+  const visible = new Set(currentEntries.map(relOf));
+  for (const path of selected) if (!visible.has(path)) selected.delete(path);
+  const noMatches = currentEntries.length === 0 && fileFiltersActive();
+  $("#file-no-matches").classList.toggle("hidden", !noMatches);
+  $("#empty-state").classList.toggle("hidden", currentEntries.length > 0 || noMatches);
+  for (const entry of currentEntries) {
     const { cls, svg } = iconFor(entry);
     const row = document.createElement("div");
     row.className = "row";
     const sizeText = entry.type === "dir" ? "—" : fmtBytes(entry.size);
     const timeText = fmtTime(entry.mtime);
     row.innerHTML = `
-      <div class="row-main">
+      <button type="button" class="row-main row-open">
         <div class="file-icon ${cls}">${svg}</div>
         <div style="min-width:0">
           <div class="row-name">${esc(entry.name)}</div>
           <div class="row-sub">${entry.type === "dir" ? t("list.folder") : sizeText} · ${fmtDate(entry.mtime)}</div>
         </div>
-      </div>
+      </button>
       <span class="col-size">${sizeText}</span>
       <span class="col-time">${timeText}</span>
       <span class="col-act"></span>`;
@@ -2110,6 +2380,7 @@ function renderEntries(entries) {
     const cb = document.createElement("input");
     cb.type = "checkbox";
     cb.className = "row-sel";
+    cb.setAttribute("aria-label", t("ux.selectFile", { name: entry.name }));
     cb.checked = selected.has(rel);
     cb.addEventListener("click", (e) => e.stopPropagation());
     cb.addEventListener("change", () => {
@@ -2151,6 +2422,7 @@ function renderEntries(entries) {
       act.appendChild(actionBtn(ICONS.move, t("common.move"), () => moveItem(rel, entry.name)));
       act.appendChild(actionBtn(ICONS.trash, t("common.delete"), () => deleteItem(rel, entry.name), true));
     }
+    enhanceRowActions(row, entry.name);
     row.addEventListener("click", (ev) => {
       if (ev.target.closest(".col-act")) return;
       if (ev.target.closest(".sel-cell")) return;
@@ -2160,12 +2432,14 @@ function renderEntries(entries) {
     });
     box.appendChild(row);
   }
+  updateBatchBar();
 }
 function actionBtn(svg, title, fn, danger = false) {
   const b = document.createElement("button");
   b.type = "button";
   b.className = "icon-btn" + (danger ? " danger" : "");
   b.title = title;
+  b.setAttribute("aria-label", title);
   b.innerHTML = svg;
   b.addEventListener("click", (e) => { e.stopPropagation(); fn(); });
   return b;
@@ -2207,7 +2481,7 @@ async function runBatch(list, fn, okKey, failKey) {
 function batchDelete() {
   const list = [...selected];
   if (!list.length) return;
-  openModal(t("batch.deleteTitle"), '<p class="modal-text">' + t("batch.deleteBody", { n: list.length }) + '</p>',
+  openModal(t("batch.deleteTitle"), '<p class="modal-text">' + t("ux.batchDeleteFinal", { n: list.length }) + '</p>',
     t("common.delete"), async () => {
       await runBatch(list, (rel) =>
         api("/api/files/delete" + ownerQS("?"), { method: "POST", body: { path: "/" + rel } }), "batch.deleted", "batch.deletedSome");
@@ -2226,7 +2500,8 @@ async function batchMove() {
   try { dirs = await collectDirs(rootDir); } catch (e) { toast(e.message, true); return; }
   const srcDirs = new Set(list.map((rel) => (rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "")));
   dirs = dirs.filter((d) => !srcDirs.has(d) && !list.some((rel) => d === rel || d.startsWith(rel + "/")));
-  let chosen = rootDir;
+  if (!dirs.length) { toast(t("ux.noMoveTargets"), true); return; }
+  let chosen = dirs.includes(rootDir) ? rootDir : dirs[0];
   openModal(t("batch.moveTitle"), `
     <p class="modal-text">${t("batch.moveBody", { n: list.length })}</p>
     <div class="folder-pick">${dirs.map((d) =>
@@ -2292,7 +2567,13 @@ async function downloadFile(rel, name) {
 
 /* ---- 弹窗 ---- */
 let modalOkHandler = null;
-function openModal(title, bodyHTML, okText, onOk, danger = false) {
+let modalCancelHandler = null;
+let modalReturnFocus = null;
+function openModal(title, bodyHTML, okText, onOk, danger = false, onCancel = null) {
+  modalReturnFocus = document.activeElement;
+  modalCancelHandler = onCancel;
+  $("#modal-error").classList.add("hidden");
+  $("#modal-error").textContent = "";
   $("#modal-title").textContent = title;
   $("#modal-body").innerHTML = bodyHTML;
   const ok = $("#modal-ok");
@@ -2300,20 +2581,67 @@ function openModal(title, bodyHTML, okText, onOk, danger = false) {
   ok.className = "btn-primary" + (danger ? " danger-btn" : "");
   modalOkHandler = onOk;
   $("#modal-overlay").classList.remove("hidden");
-  const first = $("#modal-body input");
-  if (first) { first.focus(); first.select(); }
+  const first = $("#modal-body input:not([type=hidden])");
+  if (danger || !first) $("#modal-cancel").focus();
+  else { first.focus(); first.select?.(); }
 }
-function closeModal() { $("#modal-overlay").classList.add("hidden"); modalOkHandler = null; }
-$("#modal-cancel").addEventListener("click", closeModal);
-$("#modal-overlay").addEventListener("click", (e) => { if (e.target === e.currentTarget) closeModal(); });
+function closeModal() {
+  $("#modal-overlay").classList.add("hidden");
+  modalOkHandler = modalCancelHandler = null;
+  modalReturnFocus?.focus({ preventScroll: true });
+  modalReturnFocus = null;
+}
+function dismissModal() {
+  if ($("#modal-ok").disabled) return;
+  const cancel = modalCancelHandler;
+  closeModal();
+  cancel?.();
+}
+$("#modal-cancel").addEventListener("click", dismissModal);
+$("#modal-overlay").addEventListener("click", event => {
+  if (event.target === event.currentTarget) dismissModal();
+});
+$("#modal-overlay").addEventListener("keydown", event => {
+  if (event.key === "Escape") {
+    event.stopPropagation();
+    dismissModal();
+  }
+  if (event.key !== "Tab") return;
+  const controls = [...event.currentTarget.querySelectorAll("button,input,select,textarea,a[href]")]
+    .filter(node => !node.disabled && node.getClientRects().length && node.tabIndex >= 0);
+  const first = controls[0], last = controls.at(-1);
+  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+  if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+});
 $("#modal-ok").addEventListener("click", async () => {
   if (!modalOkHandler) return closeModal();
   const ok = $("#modal-ok");
   ok.disabled = true;
+  $("#modal-error").classList.add("hidden");
   try { await modalOkHandler(); closeModal(); }
-  catch (e) { toast(e.message, true); }
+  catch (e) {
+    $("#modal-error").textContent = t("ux.modalRetry", { message: e.message });
+    $("#modal-error").classList.remove("hidden");
+    toast(e.message, true);
+  }
   finally { ok.disabled = false; }
 });
+
+async function fileUndoAction(path, owner, run) {
+  const session = token;
+  const detail = "/api/files/detail?path=" + encodeURIComponent("/" + path) + owner;
+  const versionOf = item => JSON.stringify([item.type, item.size, item.mtime]);
+  let version;
+  try { version = versionOf(await api(detail)); }
+  catch { return null; }
+  return async () => {
+    if (session !== token || versionOf(await api(detail)) !== version) {
+      throw new Error(t("ux.undoChanged"));
+    }
+    await run();
+    await refreshList();
+  };
+}
 
 function renameItem(rel, name) {
   openModal(t("rename.title"), `
@@ -2322,14 +2650,19 @@ function renameItem(rel, name) {
     t("common.save"), async () => {
       const newName = $("#m-name").value.trim();
       if (!newName || newName === name) return;
-      await api("/api/files/rename" + ownerQS("?"),
+      const endpoint = "/api/files/rename" + ownerQS("?");
+      const owner = ownerQS("&");
+      const renamed = await api(endpoint,
         { method: "POST", body: { path: "/" + rel, new_name: newName } });
-      toast(t("rename.done"));
+      const renamedPath = rel.slice(0, rel.lastIndexOf("/") + 1) + renamed.name;
+      const undo = await fileUndoAction(renamedPath, owner, () =>
+        api(endpoint, { method: "POST", body: { path: "/" + renamedPath, new_name: name } }));
+      toast(t("rename.done"), false, undo);
       refreshList();
     });
 }
 function deleteItem(rel, name) {
-  openModal(t("delete.title"), '<p class="modal-text">' + t("delete.body", { name: esc(name) }) + '</p>',
+  openModal(t("delete.title"), '<p class="modal-text">' + t("ux.deleteFinal", { name: esc(name) }) + '</p>',
     t("common.delete"), async () => {
       await api("/api/files/delete" + ownerQS("?"), { method: "POST", body: { path: "/" + rel } });
       toast(t("delete.done"));
@@ -2361,15 +2694,20 @@ async function moveItem(rel, name) {
   try { dirs = await collectDirs(rootDir); } catch (e) { toast(e.message, true); return; }
   const srcDir = rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "";
   dirs = dirs.filter((d) => d !== rel && d !== srcDir && !d.startsWith(rel + "/"));
-  let chosen = rootDir;
+  if (!dirs.length) { toast(t("ux.noMoveTargets"), true); return; }
+  let chosen = dirs.includes(rootDir) ? rootDir : dirs[0];
   openModal(t("move.title"), `
     <p class="modal-text">${t("move.body", { name: esc(name) })}</p>
     <div class="folder-pick">${dirs.map((d) =>
       `<button type="button" data-dir="${esc(d)}">📁 ${d === "" ? t("common.root") : esc("/" + d)}</button>`).join("")}
     </div>`, t("common.move"), async () => {
-      await api("/api/files/move" + ownerQS("?"),
-        { method: "POST", body: { path: "/" + rel, dest_dir: chosen ? "/" + chosen : "" } });
-      toast(t("move.done"));
+      const endpoint = "/api/files/move" + ownerQS("?");
+      const owner = ownerQS("&");
+      await api(endpoint, { method: "POST", body: { path: "/" + rel, dest_dir: chosen ? "/" + chosen : "" } });
+      const movedPath = (chosen ? chosen + "/" : "") + name;
+      const undo = await fileUndoAction(movedPath, owner, () =>
+        api(endpoint, { method: "POST", body: { path: "/" + movedPath, dest_dir: srcDir ? "/" + srcDir : "" } }));
+      toast(t("move.done"), false, undo);
       refreshList();
     });
   $$("#modal-body .folder-pick button").forEach((b) => {
@@ -2784,6 +3122,7 @@ async function ensureDirOnce(parentRel, name) {
  * 其子树下的文件（逐个在面板里报错），不中断整批。 */
 async function enqueuePlanned(entries, extraDirs = []) {
   const baseDir = curPath; // 入队时的当前目录即基准目录，本批不再受导航影响
+  const owner = curOwner;
   const plan = SubDriveUpload.planFolderUpload(
     entries.map((en) => ({ relPath: en.relPath, ref: en.file })), extraDirs);
   if (!plan.files.length && !plan.dirs.length) return;
@@ -2830,7 +3169,7 @@ async function enqueuePlanned(entries, extraDirs = []) {
       uploadsPendingRefresh = true;
       continue;
     }
-    uploadQueue.push({ file: pf.ref, item, targetDir: joinRel(baseDir, pf.dirRel), owner: curOwner });
+    queueUploadTask({ file: pf.ref, item, targetDir: joinRel(baseDir, pf.dirRel), owner, session: token });
   }
   pumpUploads();
 }
@@ -2872,26 +3211,23 @@ function askConflictSerial(name, old) {
 }
 function askConflict(name, old) {
   return new Promise((resolve) => {
-    const pick = (v) => { $("#modal-overlay").classList.add("hidden"); resolve(v); };
+    const pick = (v) => { closeModal(); resolve(v); };
     openModal(t("conflict.title"), `
       <p class="modal-text">${t("conflict.body", { name: esc(name), size: fmtBytes(old.size), time: fmtDate(old.mtime) })}</p>
       <div class="conflict-actions">
         <button type="button" class="btn-primary" data-v="overwrite">${t("conflict.overwrite")}</button>
         <button type="button" data-v="rename">${t("conflict.keep")}</button>
         <button type="button" data-v="skip">${t("conflict.skip")}</button>
-      </div>`, t("conflict.overwrite"), async () => pick("overwrite"));
+      </div>`, t("conflict.overwrite"), async () => pick("overwrite"), false, () => resolve("skip"));
     $$("#modal-body .conflict-actions button").forEach((b) =>
       b.addEventListener("click", () => pick(b.dataset.v)));
-    // 点取消 / 点遮罩 也当「跳过」，否则上传队列会卡在这个 Promise 上
-    $("#modal-cancel").addEventListener("click", () => resolve("skip"), { once: true });
-    $("#modal-overlay").addEventListener("click",
-      (e) => { if (e.target === e.currentTarget) resolve("skip"); }, { once: true });
   });
 }
-async function uploadOne({ file, item, targetDir, owner }) {
+async function uploadOne(task) {
+  const { file, item, targetDir, owner } = task;
   const fill = $(".u-fill", item);
-  const state = $(".u-state", item);
-  state.textContent = t("upload.uploading");
+  setUploadState(task, "upload.uploading");
+  task.control.disabled = true;
   /* 同名先问。只在个人空间探：共享目录的服务端落点是 <目录>/<我>/，前端不复制那套规则（D34） */
   let onConflict = "overwrite";
   let expected = -1;
@@ -2902,7 +3238,7 @@ async function uploadOne({ file, item, targetDir, owner }) {
       if (old && old.type === "file") {
         const choice = await askConflictSerial(file.name, old);
         if (choice === "skip") {
-          state.textContent = t("upload.skipped");
+          finishUploadTask(task, "skipped", "upload.skipped");
           uploadsPendingRefresh = true;
           return;
         }
@@ -2920,40 +3256,61 @@ async function uploadOne({ file, item, targetDir, owner }) {
       + (expected >= 0 ? "&expected_old_size=" + expected : ""));
     xhr.setRequestHeader("Authorization", "Bearer " + token);
     // 进度按帧合并：progress 事件可能每秒几十次，逐次写 DOM 会让滚动和按钮都跟着抖（D43）
-    let pendingPct = -1, lastPct = -1, rafId = 0;
+    let pendingPct = -1, loaded = 0, total = 0, rafId = 0;
+    const started = performance.now();
+    task.abort = () => xhr.abort();
+    task.control.disabled = false;
     const flushProgress = () => {
       rafId = 0;
-      if (pendingPct === lastPct) return;
-      lastPct = pendingPct;
-      fill.style.width = lastPct + "%";
-      state.textContent = t("upload.progress", { pct: lastPct, size: fmtBytes(file.size) });
+      fill.style.width = pendingPct + "%";
+      const seconds = (performance.now() - started) / 1000;
+      const rate = loaded / seconds;
+      const eta = rate > 0 ? (total - loaded) / rate : 0;
+      task.stateInfo = seconds >= .35 && eta > 0 ? {
+        rate: fmtBytes(rate), time: eta < 60
+          ? t("ux.uploadSeconds", { n: Math.ceil(eta) }) : t("ux.uploadMinutes", { n: Math.ceil(eta / 60) })
+      } : null;
+      setUploadState(task, "upload.progress", { pct: pendingPct, size: fmtBytes(file.size) });
     };
-    xhr.upload.addEventListener("progress", (e) => {
-      if (!e.lengthComputable) return;
-      const pct = Math.round((e.loaded / e.total) * 100);
-      if (pct === pendingPct) return;
-      pendingPct = pct;
+    xhr.upload.addEventListener("progress", event => {
+      if (!event.lengthComputable) return;
+      loaded = event.loaded;
+      total = event.total;
+      pendingPct = Math.round(loaded / total * 100);
       if (!rafId) rafId = requestAnimationFrame(flushProgress);
+    });
+    xhr.upload.addEventListener("load", () => {
+      if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+      task.abort = null;
+      task.control.disabled = true;
+      task.stateInfo = null;
+      fill.style.width = "100%";
+      setUploadState(task, "ux.uploadProcessing");
     });
     xhr.addEventListener("load", () => {
       if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
       if (xhr.status >= 200 && xhr.status < 300) {
         fill.style.width = "100%";
-        item.classList.add("done");
-        state.textContent = t("upload.done");
+        finishUploadTask(task, "done", "upload.done");
       } else {
-        item.classList.add("failed");
-        let msg = t("upload.failed");
-        try { const d = JSON.parse(xhr.responseText); msg = (d.detail && d.detail.message) || d.message || msg; } catch { }
-        state.textContent = msg;
-        toast(`${file.name}：${msg}`, true);
+        let code;
+        try { const data = JSON.parse(xhr.responseText); code = data.detail?.error || data.error; } catch {}
+        const message = errText(code, t("upload.failed"));
+        finishUploadTask(task, "failed", "upload.failed", code);
+        toast(`${file.name} · ${message}`, true);
       }
       uploadsPendingRefresh = true;
       resolve();
     });
     xhr.addEventListener("error", () => {
-      item.classList.add("failed");
-      state.textContent = t("upload.netError");
+      if (rafId) cancelAnimationFrame(rafId);
+      finishUploadTask(task, "failed", "upload.netError");
+      uploadsPendingRefresh = true;
+      resolve();
+    });
+    xhr.addEventListener("abort", () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      finishUploadTask(task, "cancelled", "ux.uploadCancelled");
       uploadsPendingRefresh = true;
       resolve();
     });
@@ -2962,10 +3319,93 @@ async function uploadOne({ file, item, targetDir, owner }) {
     xhr.send(fd);
   });
 }
+/* 操作与反馈沿用同一队列、并发规则与请求，重试保留原落点。 */
+const uploadTasks = new WeakMap();
+function setUploadState(task, key, args = {}, code = null) {
+  task.state = { key, args, code };
+  const state = $(".u-state", task.item);
+  const message = errText(code, t(key, args));
+  state.textContent = message + (task.stateInfo ? " · " + t("ux.uploadEta", task.stateInfo) : "");
+}
+function queueUploadTask(task) {
+  if (!task.control) {
+    const actions = document.createElement("div");
+    actions.className = "u-actions";
+    task.control = document.createElement("button");
+    task.control.type = "button";
+    task.control.className = "btn-ghost";
+    task.control.addEventListener("click", () => {
+      if (task.item.classList.contains("failed")) {
+        if (task.session !== token) { toast(t("ux.uploadSession"), true); return; }
+        queueUploadTask(task);
+        pumpUploads();
+      } else if (task.abort) {
+        task.abort();
+      } else {
+        const index = uploadQueue.indexOf(task);
+        if (index < 0) return;
+        uploadQueue.splice(index, 1);
+        finishUploadTask(task, "cancelled", "ux.uploadCancelled");
+        pumpUploads();
+      }
+    });
+    actions.append(task.control);
+    task.item.append(actions);
+    uploadTasks.set(task.item, task);
+  }
+  task.item.classList.remove("failed");
+  $(".u-fill", task.item).style.width = "0%";
+  task.control.disabled = false;
+  task.control.dataset.i18n = "ux.uploadCancel";
+  task.control.textContent = t("ux.uploadCancel");
+  setUploadState(task, "upload.queued");
+  uploadQueue.push(task);
+}
+function finishUploadTask(task, status, key, code) {
+  task.abort = null;
+  task.stateInfo = null;
+  task.item.classList.add(status);
+  setUploadState(task, key, {}, code);
+  if (status === "failed") {
+    task.control.disabled = false;
+    task.control.dataset.i18n = "ux.retry";
+    task.control.textContent = t("ux.retry");
+  } else {
+    task.control.parentElement.remove();
+    task.control = null;
+    uploadTasks.set(task.item, { item: task.item, state: task.state });
+  }
+}
+function refreshUploadLanguage() {
+  $$("#upload-items .upload-item").forEach(item => {
+    const task = uploadTasks.get(item);
+    if (task?.state) {
+      task.stateInfo = null;
+      setUploadState(task, task.state.key, task.state.args, task.state.code);
+    }
+  });
+}
+const uploadPanel = $("#upload-panel");
+const uploadItems = $("#upload-items");
+const uploadToggle = $("#upload-queue-toggle");
+function syncUploadPanel() {
+  const hasItems = uploadItems.childElementCount > 0;
+  uploadToggle.classList.toggle("hidden", !hasItems);
+  uploadToggle.setAttribute("aria-expanded", String(!uploadPanel.classList.contains("hidden")));
+}
+const uploadPanelObserver = new MutationObserver(syncUploadPanel);
+uploadPanelObserver.observe(uploadPanel, { attributes: true, attributeFilter: ["class"] });
+uploadPanelObserver.observe(uploadItems, { childList: true });
+uploadToggle.addEventListener("click", () => uploadPanel.classList.toggle("hidden"));
 $("#upload-close").addEventListener("click", () => {
-  $("#upload-panel").classList.add("hidden");
-  $("#upload-items").innerHTML = "";
+  uploadPanel.classList.add("hidden");
+  uploadToggle.focus();
 });
+$("#upload-clear").addEventListener("click", () => {
+  $$("#upload-items :is(.done,.skipped,.cancelled)").forEach(item => item.remove());
+  if (!uploadItems.childElementCount) uploadPanel.classList.add("hidden");
+});
+
 
 /* ================= 加密文件夹（SDV1） =================
  * 浏览器内加解密（static/vault.js）；服务器只存密文 blob，
@@ -3013,13 +3453,13 @@ function renderVaultEntries() {
     const row = document.createElement("div");
     row.className = "row";
     row.innerHTML = `
-      <div class="row-main">
+      <button type="button" class="row-main row-open">
         <div class="file-icon ${cls}">${svg}</div>
         <div style="min-width:0">
           <div class="row-name">🔒 ${esc(f.name)}</div>
           <div class="row-sub">${fmtBytes(f.size)} · ${fmtDate(f.added_at)}</div>
         </div>
-      </div>
+      </button>
       <span class="col-size">${fmtBytes(f.size)}</span>
       <span class="col-time">${fmtTime(f.added_at)}</span>
       <span class="col-act"></span>`;
@@ -3030,6 +3470,7 @@ function renderVaultEntries() {
     act.appendChild(actionBtn(ICONS.download, t("vault.download"), () => vaultDownload(f)));
     act.appendChild(actionBtn(ICONS.rename, t("common.rename"), () => vaultRename(f)));
     act.appendChild(actionBtn(ICONS.trash, t("common.delete"), () => vaultDelete(f), true));
+    enhanceRowActions(row, f.name);
     row.addEventListener("click", (ev) => {
       if (ev.target.closest(".col-act")) return;
       if (previewKind(f.name)) openVaultPreview(f);
@@ -3567,7 +4008,7 @@ async function loadOrgTheme() {
   try {
     const d = await api("/api/theme/org");
     if (!d || !d.theme) return;
-    orgPayload = d.theme;
+    orgPayload = { ...d.theme, __at: d.updated_at };
     const seen = localStorage.getItem(ORG_SEEN_KEY);
     if (d.updated_at && seen !== d.updated_at) $("#org-banner").classList.remove("hidden");
   } catch { /* 没有组织外观时接口也可能 404，静默 */ }
@@ -3580,13 +4021,16 @@ function orgMarkSeen() {
 $("#org-adopt").addEventListener("click", () => {
   if (!orgPayload) return;
   const l = orgPayload.look || {};
-  saveLook({
-    bg: typeof l.bg === "string" ? l.bg : "",
-    image: typeof l.image === "string" ? l.image : "",
-    scale: Math.min(1.15, Math.max(0.9, Number(l.scale) || 1)),
-    density: l.density === "compact" ? "compact" : "comfortable",
-    blocks: l.blocks && typeof l.blocks === "object" ? l.blocks : {},
-  });
+  try {
+    SubDriveEditor.saveAppearance({
+      ...lookState(),
+      bg: typeof l.bg === "string" && /^#[0-9a-f]{6}$/i.test(l.bg) ? l.bg : "",
+      image: typeof l.image === "string" && /^data:image\/(png|jpeg|webp|gif);base64,/.test(l.image) ? l.image : "",
+      scale: Math.min(1.15, Math.max(0.9, Number(l.scale) || 1)),
+      density: l.density === "compact" ? "compact" : "comfortable",
+      blocks: SubDriveEditor.cleanBlocks(l.blocks)
+    }, orgPayload.canvas || null);
+  } catch (error) { toast(error.message, true); return; }
   if (orgPayload.theme) setTheme(orgPayload.theme);
   if (typeof orgPayload.accent === "string") setAccent(orgPayload.accent);
   buildBlockEditor();
@@ -3597,7 +4041,7 @@ $("#org-keep").addEventListener("click", () => { orgMarkSeen(); });
 $("#as-theme-publish").addEventListener("click", async () => {
   try {
     const l = lookState();
-    await api("/api/admin/theme", { method: "PUT", body: { look: l, theme: currentTheme(), accent: currentAccent() } });
+    await api("/api/admin/theme", { method: "PUT", body: { look: l, theme: currentTheme(), accent: currentAccent(), canvas: SubDriveCanvas.read() } });
     toast(t("site.published"));
   } catch (e) { toast(e.message, true); }
 });
@@ -3686,7 +4130,7 @@ const THEME_ICON = {
   auto: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.2"/><path d="M12 3.8a8.2 8.2 0 0 1 0 16.4Z" fill="currentColor" stroke="none"/></svg>',
 };
 // 主色预设的色值：与 style.css 里的 [data-accent] 段落保持一致（改配色时两处一起改）
-const ACCENT_SWATCH = { "": "#5b5bd6", ocean: "#0f6fbf", forest: "#1f8a5b", sunset: "#d9534f" };
+const ACCENT_SWATCH = { "": "#5038bd", ocean: "#0c63aa", forest: "#167246", sunset: "#ad3b35" };
 const HEX_RE = /^#[0-9a-f]{6}$/i;
 
 function currentTheme() {
@@ -3708,8 +4152,8 @@ function applyTheme() {
     // 用户自选色：不写 CSS，直接用 inline 变量覆盖 token；其余派生色交给 color-mix
     root.setAttribute("data-accent", "custom");
     root.style.setProperty("--accent", accent);
-    root.style.setProperty("--accent-2", "color-mix(in srgb, " + accent + " 72%, #ffffff)");
-    root.style.setProperty("--accent-grad", "linear-gradient(135deg, " + accent + ", color-mix(in srgb, " + accent + " 72%, #ffffff))");
+    root.style.setProperty("--accent-2", accent);
+    root.style.setProperty("--accent-grad", accent);
     root.style.setProperty("--accent-soft", "color-mix(in srgb, " + accent + " 14%, transparent)");
   } else {
     ["--accent", "--accent-2", "--accent-grad", "--accent-soft"].forEach((k) => root.style.removeProperty(k));
@@ -3829,6 +4273,7 @@ function applyLook() {
   if (l.image) document.body.style.setProperty("--bg-image", "url(" + l.image + ")");
   else document.body.style.removeProperty("--bg-image");
   applyBlocks(l.blocks || {});
+  window.SubDriveCanvas?.apply();
 }
 
 /* 模块（积木）：6 个可排序模块 + 顶栏（只配色，不可隐藏/排序，否则连入口都没了） */
@@ -3856,7 +4301,7 @@ function applyBlocks(blocks) {
     }
     el.style.background = st.bg || "";
     if (st.fg) el.style.color = st.fg; else el.style.removeProperty("color");
-    if (st.radius) el.style.borderRadius = Number(st.radius) + "px"; else el.style.removeProperty("border-radius");
+    if (st.radius !== null && st.radius !== undefined) el.style.borderRadius = Number(st.radius) + "px"; else el.style.removeProperty("border-radius");
     if (st.image) {
       el.style.backgroundImage = "url(" + st.image + ")";
       el.style.backgroundSize = "cover";
@@ -3865,92 +4310,21 @@ function applyBlocks(blocks) {
     }
   });
 }
-function blockRowHTML(b) {
-  const st = (lookState().blocks || {})[b.id] || {};
-  const vis = st.visible !== false;
-  return '<div class="blk-row" data-block="' + b.id + '">'
-    + '<label class="blk-name"><input type="checkbox" data-act="vis"' + (vis ? " checked" : "")
-    + (b.hideable === false ? " disabled" : "") + ">" + esc(t(b.key)) + "</label>"
-    + '<div class="blk-order">'
-    + '<button type="button" data-act="up"' + (b.orderable ? "" : " disabled") + ">↑</button>"
-    + '<button type="button" data-act="down"' + (b.orderable ? "" : " disabled") + ">↓</button>"
-    + "</div>"
-    + '<input type="color" data-act="bg" value="' + (st.bg || "#ffffff") + '" title="' + esc(t("blk.bg")) + '">'
-    + '<input type="color" data-act="fg" value="' + (st.fg || "#16181d") + '" title="' + esc(t("blk.fg")) + '">'
-    + '<span class="blk-radius"><input type="range" min="0" max="28" step="2" data-act="radius" value="' + (Number(st.radius) || 0) + '" title="' + esc(t("blk.radius")) + '"><em>' + (Number(st.radius) || 0) + '</em></span>'
-    + '<span class="blk-img"><button type="button" class="mini" data-act="img">' + esc(t("blk.image")) + "</button>"
-    + '<button type="button" class="mini" data-act="imgclear">×</button></span>'
-    + '<input type="file" accept="image/*" data-act="file" hidden>'
-    + "</div>";
-}
 function buildBlockEditor() {
   const box = $("#block-editor");
   if (!box) return;
-  box.innerHTML = '<div class="blk-head"><span>' + esc(t("blk.colName")) + '</span><span>'
-    + esc(t("blk.colOrder")) + '</span><span>' + esc(t("blk.colBg")) + '</span><span>'
-    + esc(t("blk.colFg")) + '</span><span>' + esc(t("blk.colRadius")) + '</span><span>'
-    + esc(t("blk.colImage")) + "</span></div>"
-    + BLOCK_DEFS.map(blockRowHTML).join("");
+  box.replaceChildren();
+  const button = document.createElement("button");
+  button.id = "open-block-editor";
+  button.type = "button";
+  button.className = "btn-primary";
+  const names = { zh: "打开全屏编辑器", hant: "開啟全螢幕編輯器", en: "Open full-screen editor" };
+  button.textContent = names[lang] || names.zh;
+  button.addEventListener("click", () => window.SubDriveEditor.open());
+  box.append(button);
 }
-function patchBlock(id, patch) {
-  const l = lookState();
-  const blocks = Object.assign({}, l.blocks || {});
-  blocks[id] = Object.assign({}, blocks[id] || {}, patch);
-  saveLook({ blocks });
-}
-function moveBlock(id, dir) {
-  const l = lookState();
-  const list = BLOCK_DEFS.filter((b) => b.orderable).map((b, i) => ({ id: b.id, order: blockOrder(l.blocks || {}, b.id, i) }));
-  list.sort((a, b) => a.order - b.order);
-  const idx = list.findIndex((x) => x.id === id);
-  const j = idx + dir;
-  if (idx < 0 || j < 0 || j >= list.length) return;
-  const t = list[idx]; list[idx] = list[j]; list[j] = t;
-  const blocks = Object.assign({}, l.blocks || {});
-  list.forEach((x, i) => { blocks[x.id] = Object.assign({}, blocks[x.id], { order: i }); });
-  saveLook({ blocks });
-  buildBlockEditor();
-}
-$("#block-editor").addEventListener("change", async (ev) => {
-  const row = ev.target.closest("[data-block]");
-  if (!row) return;
-  const id = row.dataset.block;
-  const act = ev.target.dataset.act;
-  if (act === "vis") patchBlock(id, { visible: !!ev.target.checked });
-  if (act === "bg") patchBlock(id, { bg: ev.target.value });
-  if (act === "fg") patchBlock(id, { fg: ev.target.value });
-  if (act === "radius") patchBlock(id, { radius: Number(ev.target.value) || 0 });
-  if (act === "file") {
-    const f = ev.target.files && ev.target.files[0];
-    if (f) {
-      try { patchBlock(id, { image: await shrinkImage(f) }); }
-      catch { toast(t("set.badPackage"), true); }
-    }
-    ev.target.value = "";
-  }
-});
-$("#block-editor").addEventListener("input", (ev) => {
-  const row = ev.target.closest("[data-block]");
-  if (!row) return;
-  const act = ev.target.dataset.act;
-  if (act === "radius") {
-    patchBlock(row.dataset.block, { radius: Number(ev.target.value) || 0 });
-    const em = row.querySelector(".blk-radius em");
-    if (em) em.textContent = String(Number(ev.target.value) || 0);
-  }
-});
-$("#block-editor").addEventListener("click", (ev) => {
-  const btn = ev.target.closest("[data-act]");
-  const row = ev.target.closest("[data-block]");
-  if (!btn || !row || btn.tagName !== "BUTTON") return;
-  const id = row.dataset.block;
-  const act = btn.dataset.act;
-  if (act === "up") moveBlock(id, -1);
-  if (act === "down") moveBlock(id, 1);
-  if (act === "img") { const f = row.querySelector('[data-act="file"]'); if (f) f.click(); }
-  if (act === "imgclear") patchBlock(id, { image: "" });
-});
 $("#set-blocks-reset").addEventListener("click", () => {
+  SubDriveCanvas.write(null);
   saveLook({ blocks: {} });
   buildBlockEditor();
   toast(t("set.resetDone"));
@@ -4008,7 +4382,7 @@ $("#set-density").addEventListener("click", (ev) => {
   if (b) saveLook({ density: b.dataset.density });
 });
 $("#set-pkg-export").addEventListener("click", () => {
-  const pkg = { v: 1, kind: "subdrive-look", theme: currentTheme(), accent: currentAccent(), look: lookState() };
+  const pkg = { v: 1, kind: "subdrive-look", theme: currentTheme(), accent: currentAccent(), look: lookState(), canvas: SubDriveCanvas.read() };
   const blob = new Blob([JSON.stringify(pkg, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -4024,12 +4398,15 @@ $("#set-pkg-import").addEventListener("change", async (ev) => {
     const d = JSON.parse(await f.text());
     if (!d || d.kind !== "subdrive-look" || !d.look) throw new Error(t("set.badPackage"));
     const l = d.look;
-    saveLook({
+    SubDriveEditor.saveAppearance({
+      ...lookState(),
       bg: typeof l.bg === "string" && /^#[0-9a-f]{6}$/i.test(l.bg) ? l.bg : "",
-      image: typeof l.image === "string" && l.image.indexOf("data:image/") === 0 ? l.image : "",
+      image: typeof l.image === "string" && /^data:image\/(png|jpeg|webp|gif);base64,/.test(l.image) ? l.image : "",
       scale: Math.min(1.15, Math.max(0.9, Number(l.scale) || 1)),
       density: l.density === "compact" ? "compact" : "comfortable",
-    });
+      blocks: SubDriveEditor.cleanBlocks(l.blocks)
+    }, d.canvas || null);
+    buildBlockEditor();
     if (d.theme === "light" || d.theme === "dark" || d.theme === "auto") setTheme(d.theme);
     if (typeof d.accent === "string") setAccent(d.accent);
     toast(t("set.imported"));
@@ -4037,6 +4414,7 @@ $("#set-pkg-import").addEventListener("change", async (ev) => {
   ev.target.value = "";
 });
 $("#set-reset-look").addEventListener("click", () => {
+  SubDriveCanvas.write(null);
   localStorage.removeItem(LOOK_KEY);
   applyLook();
   refreshLookUI();

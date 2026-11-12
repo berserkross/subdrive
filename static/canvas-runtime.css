@@ -1,0 +1,50 @@
+/* 自由画布采用额外类及变量，撤销布局时可完整恢复原有外观。 */
+.drive-main.canvas-active {
+  position: relative;
+  isolation: isolate;
+}
+.drive-main.canvas-desktop {
+  min-height: var(--canvas-content-height, 0px);
+}
+.drive-main.canvas-desktop > .canvas-module {
+  position: absolute;
+  left: var(--canvas-x);
+  top: var(--canvas-y);
+  width: var(--canvas-width);
+  min-height: var(--canvas-height);
+  margin: 0;
+  box-sizing: border-box;
+  z-index: 1;
+}
+.canvas-stickers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  overflow: hidden;
+}
+.canvas-sticker {
+  position: absolute;
+  left: var(--canvas-x);
+  top: var(--canvas-y);
+  width: var(--canvas-width);
+  height: var(--canvas-height);
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+.drive-main.canvas-active #dropzone {
+  container-type: inline-size;
+}
+@container (max-width: 560px) {
+  .drive-main.canvas-active #dropzone .list-head { display: none; }
+  .drive-main.canvas-active #dropzone .row {
+    grid-template-columns: 20px minmax(0, 1fr) 24px;
+    gap: 8px;
+    padding-inline: 12px;
+  }
+  .drive-main.canvas-active #dropzone .row .col-size,
+  .drive-main.canvas-active #dropzone .row .col-time { display: none; }
+  .drive-main.canvas-active #dropzone .row .row-sub { display: block; }
+  .drive-main.canvas-active #dropzone .row .col-act { grid-column: 3; }
+}

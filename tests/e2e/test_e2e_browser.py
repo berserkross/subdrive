@@ -320,6 +320,92 @@ def run() -> int:
             wait_row(boss, "hi.txt")
             check("面包屑能回到根目录", boss.locator('.row:has(.row-name:text-is("docs"))').count() == 1)
 
+            # 目录搜索与筛选只作用于当前列表，失败状态保留重试入口。
+            boss.fill("#file-search", "hi (2)")
+            need("目录搜索只显示匹配文件", boss.locator("#file-list .row").count() == 1 and row(boss, "hi (2).txt").count() == 1)
+            boss.select_option("#file-kind", "dir")
+            need("类型筛选有独立无结果态", boss.is_visible("#file-no-matches") and not boss.is_visible("#empty-state"))
+            boss.click("#file-clear-filters")
+            boss.select_option("#file-sort", "size")
+            need("大小排序显示大文件在前",
+                 boss.locator('#file-list .row:has(.row-sel) .col-size').evaluate_all(
+                     "cells => cells.filter(c=>c.textContent.endsWith(' B')).map(c=>parseFloat(c.textContent)).every((v,i,a)=>!i||a[i-1]>=v)"))
+            boss.select_option("#file-sort", "")
+            boss.route("**/api/files/list?*", lambda request: request.fulfill(
+                status=503, json={"detail":{"error":"seafile_unreachable"}}))
+            boss.locator("#crumbs button").first.click()
+            boss.wait_for_selector("#list-error:not(.hidden)")
+            need("列表失败与空文件夹区分", not boss.is_visible("#empty-state") and boss.is_visible("#list-retry"))
+            boss.unroute("**/api/files/list?*")
+            boss.click("#list-retry")
+            wait_row(boss, "hi.txt")
+            need("重试恢复当前目录", not boss.is_visible("#list-error"))
+            boss.route("**/api/shared/list", lambda request: request.fulfill(
+                status=503, json={"detail":{"error":"seafile_unreachable"}}))
+            boss.click('#nav-scope [data-scope="public"]')
+            boss.wait_for_selector("#public-error:not(.hidden)")
+            need("共享加载失败可重试", boss.is_visible("#public-retry") and not boss.is_visible("#public-empty"))
+            boss.unroute("**/api/shared/list")
+            boss.click("#public-retry")
+            boss.wait_for_selector("#public-list .shared-item")
+            boss.click('#nav-scope [data-scope="mine"]')
+            wait_row(boss, "hi.txt")
+
+            # 真浏览器队列保留原落点，失败后手动重试。
+            held_upload = []
+            def hold_upload(request):
+                held_upload.append(request)
+            boss.route("**/api/files/upload?*", hold_upload)
+            boss.evaluate("window.SubDriveUploadTuning.maxConcurrent = 1")
+            upload_fixture = {"name":"ux-retry.txt","mimeType":"text/plain","buffer":b"retry example"}
+            cancelled_fixture = {"name":"ux-cancel.txt","mimeType":"text/plain","buffer":b"cancel"}
+            boss.set_input_files("#file-input", [upload_fixture, cancelled_fixture])
+            queued = boss.locator(".upload-item").filter(has_text="ux-cancel.txt")
+            queued.get_by_role("button", name="取消上传").click()
+            need("排队上传可取消", "已取消上传" in queued.inner_text())
+            boss.wait_for_function("uploadInflight === 1")
+            if not held_upload:
+                boss.locator(".upload-item").filter(has_text="ux-retry.txt").wait_for()
+                for _ in range(20):
+                    if held_upload: break
+                    boss.wait_for_timeout(50)
+            need("队列取消不会发出该文件请求", len(held_upload) == 1)
+            held_upload[0].fulfill(status=503, json={"detail":{"error":"seafile_unreachable"}})
+            failed = boss.locator(".upload-item.failed").filter(has_text="ux-retry.txt")
+            failed.wait_for()
+            boss.click("#upload-close")
+            boss.click("#upload-queue-toggle")
+            need("关闭再打开仍可看到失败条目", failed.is_visible())
+            boss.unroute("**/api/files/upload?*")
+            failed.get_by_role("button", name="重试").click()
+            wait_row(boss, "ux-retry.txt")
+            need("上传重试成功且取消项未落盘", row(boss, "ux-cancel.txt").count() == 0)
+            boss.click("#upload-close")
+
+            row(boss, "ux-retry.txt").locator('button[title="重命名"]').click()
+            boss.fill("#m-name", "ux-renamed.txt")
+            boss.click("#modal-ok")
+            wait_row(boss, "ux-renamed.txt")
+            boss.click("#toast-action")
+            wait_row(boss, "ux-retry.txt")
+            need("重命名通知支持撤销", row(boss, "ux-renamed.txt").count() == 0)
+            row(boss, "ux-retry.txt").locator('button[title="移动"]').click()
+            boss.click('#modal-body .folder-pick button[data-dir="docs"]')
+            boss.click("#modal-ok")
+            boss.wait_for_selector("#toast-action:not(.hidden)")
+            boss.click("#toast-action")
+            wait_row(boss, "ux-retry.txt")
+            need("移动通知支持撤销", "已撤销" in boss.inner_text("#toast"))
+            boss.click("#toast-close")
+            need("通知可主动关闭", not boss.is_visible("#toast"))
+            boss.set_viewport_size({"width":390,"height":844})
+            item = row(boss, "ux-retry.txt")
+            item.locator(".row-more").click()
+            need("390px 行菜单可访问", item.locator(".row-action-list.is-open").is_visible())
+            boss.keyboard.press("Escape")
+            need("移动行菜单 Escape 收起并还焦点", item.locator(".row-more").evaluate("e=>document.activeElement===e"))
+            boss.set_viewport_size({"width":1400,"height":950})
+
             # ---- 5. 创建共享文件夹（名单留空＝全员可见）----
             boss.wait_for_selector(
                 '#file-list .row:has(.row-name:text-is("docs")) button[title="共享此文件夹"]',
@@ -596,7 +682,7 @@ def run() -> int:
             en_page.click('#set-accent [data-accent-set="ocean"]')
             need("设置页选主色 ocean：data-accent 与 --accent 同步",
                  en_page.evaluate("() => document.documentElement.getAttribute('data-accent')") == "ocean"
-                 and en_page.evaluate(accent_var) == "#0f6fbf", str(en_page.evaluate(accent_var)))
+                 and en_page.evaluate(accent_var) == "#79beff", str(en_page.evaluate(accent_var)))
             en_page.evaluate("""() => {
                 const el = document.querySelector('#set-accent-color');
                 el.value = '#00aa88';
@@ -636,7 +722,47 @@ def run() -> int:
             need("返回网盘后不再写 data-theme/data-accent",
                  en_page.evaluate(theme_attr) is None
                  and en_page.evaluate("() => document.documentElement.getAttribute('data-accent')") is None
-                 and en_page.evaluate(accent_var) == "#5b5bd6", str(en_page.evaluate(accent_var)))
+                 and en_page.evaluate(accent_var) == "#5038bd", str(en_page.evaluate(accent_var)))
+
+
+            # Full-screen free canvas editor through its normal entry point.
+            open_side(en_page)
+            en_page.click("#btn-settings")
+            en_page.select_option("#lang-select-settings", "en")
+            en_page.click('#set-nav [data-panel="layout"]')
+            en_page.click("#open-block-editor")
+            editor = en_page.frame_locator("#full-block-editor")
+            editor.locator("#save-editor").wait_for()
+            editor.frame_locator("#drive").locator("#dropzone.module").wait_for()
+            need("free canvas editor opens", editor.locator("#snap-grid").is_visible())
+            need("free canvas snap defaults off", not editor.locator("#snap-grid").is_checked())
+            editor.locator("#snap-grid").check()
+            editor.locator("#snap-grid").uncheck()
+            editor.locator('#layers [data-id="scope"] .layer-name').click()
+            editor.locator("#prop-cx").fill("37")
+            editor.locator("#prop-cx").press("Tab")
+            editor_text = editor.locator("body").inner_text()
+            editor_attrs = editor.locator("[title],[placeholder],[aria-label]").evaluate_all(
+                "els => els.map(e => [e.title,e.getAttribute('placeholder'),e.getAttribute('aria-label')].join(' ')).join(' ')")
+            need("free canvas EN labels zero CJK", not any(0x3400 <= ord(c) <= 0x9fff for c in editor_text + editor_attrs))
+            editor.locator("#save-editor").click()
+            en_page.wait_for_selector("#full-block-editor", state="detached")
+            need("free canvas saves arbitrary coordinate",
+                 en_page.evaluate("JSON.parse(localStorage.getItem('subdrive_canvas')).blocks.scope.x") == 37)
+            need("free canvas preserves auto theme", en_page.evaluate(theme_attr) is None)
+            en_page.reload(wait_until="networkidle")
+            en_page.wait_for_selector("#view-settings:not(.hidden)")
+            en_page.click('#set-nav [data-panel="layout"]')
+            en_page.click("#open-block-editor")
+            editor = en_page.frame_locator("#full-block-editor")
+            editor.locator("#save-editor").wait_for()
+            editor.frame_locator("#drive").locator("#dropzone.module").wait_for()
+            editor.locator('#layers [data-id="scope"] .layer-name').click()
+            need("free canvas restores saved coordinate", editor.locator("#prop-cx").input_value() == "37")
+            editor.locator("#close-editor").click()
+            en_page.click("#set-blocks-reset")
+            need("free canvas reset clears supplemental storage",
+                 en_page.evaluate("localStorage.getItem('subdrive_canvas')") is None)
 
             i18n_ctx.close()
 

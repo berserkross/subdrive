@@ -1697,6 +1697,8 @@ async def org_theme_put(request: Request):
     body = await request.json()
     payload = {"look": body.get("look") or {}, "theme": body.get("theme") or "auto",
                "accent": body.get("accent") or ""}
+    if isinstance(body.get("canvas"), dict):
+        payload["canvas"] = body["canvas"]
     with _db_lock, get_db() as db:
         db.execute("INSERT INTO org_theme (id, payload, updated_at, updated_by) VALUES (1,?,?,?)"
                    " ON CONFLICT(id) DO UPDATE SET payload = excluded.payload,"

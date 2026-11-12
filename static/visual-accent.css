@@ -1,0 +1,52 @@
+/* Load after component and UX styles. */
+:root[data-accent="custom"] .btn-primary:not(.danger-btn),
+:root[data-accent="custom"] .avatar,
+:root[data-accent="custom"] #public-list .shared-item .si-icon {
+  background: var(--accent-button-background, var(--accent));
+  color: var(--accent-button-text, #000);
+}
+:root[data-accent="custom"] .btn-primary:not(.danger-btn):is(:hover,:active) {
+  filter: none;
+}
+:root[data-accent="custom"] .admin-badge,
+:root[data-accent="custom"] .lang-btn:hover,
+:root[data-accent="custom"] .top-brand:hover .top-title strong,
+:root[data-accent="custom"] .side-more:hover,
+:root[data-accent="custom"] .lang-select:hover,
+:root[data-accent="custom"] .tp-ico,
+:root[data-accent="custom"] .shared-item .si-icon,
+:root[data-accent="custom"] .shared-badge,
+:root[data-accent="custom"] .public-count,
+:root[data-accent="custom"] #public-list .shared-item.mine .si-owner,
+:root[data-accent="custom"] #public-list .shared-item:hover .si-go,
+:root[data-accent="custom"] .crumb:hover,
+:root[data-accent="custom"] .drop-hint-inner,
+:root[data-accent="custom"] .vault-bar strong,
+:root[data-accent="custom"] .vault-badge,
+:root[data-accent="custom"] .file-icon.vault-icon,
+:root[data-accent="custom"] .folder-pick button.selected,
+:root[data-accent="custom"] .md-body a,
+:root[data-accent="custom"] .pv-audio-icon,
+:root[data-accent="custom"] .user-chip:hover strong {
+  color: var(--accent-readable, var(--text));
+}
+/* The solid public-folder icon needs the button foreground, not link ink. */
+:root[data-accent="custom"] #public-list .shared-item .si-icon {
+  color: var(--accent-button-text, #000);
+}
+:root[data-accent="custom"] :where(button, input, select, textarea, a):focus-visible {
+  outline-color: var(--accent-readable, var(--text));
+}
+:root[data-accent="custom"] .field input:focus,
+:root[data-accent="custom"] .field-input:focus,
+:root[data-accent="custom"] .field select:focus,
+:root[data-accent="custom"] .as-field input:focus,
+:root[data-accent="custom"] .invite-form input:focus,
+:root[data-accent="custom"] .inv-field input:focus,
+:root[data-accent="custom"] .speed-controls select:focus {
+  border-color: var(--accent-readable, var(--text));
+}
+/* Existing fixed red action text becomes readable in both theme palettes. */
+#batch-bar button.danger, .icon-btn.danger {
+  color: var(--danger);
+}

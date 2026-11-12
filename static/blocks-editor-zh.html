@@ -1,0 +1,1112 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>积木编辑器 · SubDrive</title>
+<style>
+:root {
+  color-scheme: light;
+  --paper: #fff;
+  --canvas: #f1f0ed;
+  --line: #e5e3df;
+  --ink: #252421;
+  --muted: #66635e;
+  --soft: #f6f5f3;
+  --accent: #5038bd;
+  --tint: #efebff;
+  font: 14px/20px Inter, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  color: var(--ink);
+}
+* { box-sizing: border-box; }
+body { margin: 0; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+[hidden] { display: none !important; }
+h1, h2, h3, p { margin: 0; }
+button, input, select { font: inherit; color: inherit; }
+button, select, input[type=number], input[type=text] {
+  height: 36px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper);
+}
+button { padding: 0 12px; cursor: pointer; white-space: nowrap; }
+select, input[type=text], input[type=number] { padding: 0 8px; min-width: 0; }
+button:hover:not(:disabled) { background: var(--soft); }
+button:disabled { opacity: .42; cursor: default; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.primary { background: #292824; color: white; border-color: #292824; font-weight: 650; }
+.primary:hover:not(:disabled) { background: #46433f; }
+.quiet, .icon { border-color: transparent; background: transparent; }
+.icon { width: 36px; padding: 0; font-size: 20px; }
+.mast { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 68px; padding: 8px 20px; border-bottom: 1px solid var(--line); }
+.identity, .top-actions, .history, .canvas-tools { display: flex; align-items: center; gap: 8px; }
+.identity { gap: 12px; }
+.identity img { border-radius: 8px; }
+.product { color: var(--muted); font-size: 12px; line-height: 16px; display: block; }
+h1 { font-size: 18px; line-height: 24px; letter-spacing: -.025em; }
+h2 { font-size: 14px; line-height: 20px; }
+.history { gap: 0; padding: 0 8px; margin-right: 4px; border-right: 1px solid var(--line); }
+.workspace { display: grid; grid-template-columns: 216px minmax(0, 1fr) 284px; min-height: 0; flex: 1; }
+.rail { background: var(--paper); min-height: 0; overflow: auto; }
+.layers { border-right: 1px solid var(--line); }
+.inspector { border-left: 1px solid var(--line); }
+.panel-head { display: flex; justify-content: space-between; align-items: center; min-height: 56px; padding: 8px 20px; border-bottom: 1px solid var(--line); }
+#layers { padding: 12px; }
+.layer {
+  display: grid; align-items: center; grid-template-columns: 32px minmax(0, 1fr); gap: 4px;
+  border: 1px solid transparent; border-radius: 8px; margin-bottom: 4px;
+}
+.layer.is-selected { background: var(--tint); color: #392394; }
+.layer.is-target { border-top-color: var(--accent); }
+.layer button { border: 0; background: transparent; color: inherit; }
+.layer-handle { padding: 0; font-size: 18px; touch-action: none; cursor: grab; }
+.layer-name { padding: 0 8px 0 0; display: flex; align-items: center; justify-content: space-between; text-align: left; gap: 4px; }
+.layer-name > span:last-child { font-size: 11px; color: var(--muted); }
+.layer-tools { display: grid; gap: 8px; border-top: 1px solid var(--line); padding: 16px; }
+.layer-tools label { font-weight: 650; margin-bottom: 4px; }
+#sticker-layers { padding: 0 12px; }
+.snap-control { display:flex; align-items:center; gap:4px; white-space:nowrap; font-size:12px; }
+.snap-control input { accent-color:var(--accent); }
+.stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--canvas); }
+.stage-bar { min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 20px; border-bottom: 1px solid #e2dfda; }
+.stage-label { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+.stage-label span, .stage-foot { color: var(--muted); font-size: 12px; }
+.device { display: flex; padding: 4px; border-radius: 8px; background: #e7e5e0; }
+.device button { height: 32px; background: transparent; border: 0; }
+.device button[aria-pressed=true] { background: #fff; box-shadow: 0 1px 2px #211e151a; }
+.stage-scroll { flex: 1; min-height: 0; padding: 16px 20px; display: flex; justify-content: center; overflow: auto; }
+.preview-shell { width: min(calc((100% - 2px) * var(--zoom, 1) + 2px), calc(1078px * var(--zoom, 1) + 2px)); border: 1px solid #dedbd4; border-radius: 12px; overflow: hidden; background: #fff; box-shadow: 0 8px 32px #34302012; }
+iframe { border: 0; display: block; width: 100%; height: 100%; }
+.phone .preview-shell { max-width: calc(390px * var(--zoom, 1) + 2px); }
+.stage-foot { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 20px; border-top: 1px solid #e2dfda; }
+kbd { font: inherit; background: #fff; border: 1px solid var(--line); padding: 0 4px; border-radius: 4px; }
+.selected-head { padding: 16px 20px; }
+.selected-head h3 { font-size: 20px; line-height: 28px; }
+.selected-head p, .hint, .empty-inspector { color: var(--muted); font-size: 12px; line-height: 20px; }
+.empty-inspector { padding: 20px; }
+.group { padding: 12px 20px 16px; border-top: 1px solid var(--line); }
+.group h3 { font-size: 13px; margin-bottom: 8px; }
+.field { display: grid; grid-template-columns: minmax(0, 1fr) auto 32px; align-items: center; gap: 8px; min-height: 44px; }
+.field label, .field-name { font-size: 13px; }
+.field input[type=number] { width: 68px; }
+.field input[type=checkbox] { accent-color: var(--accent); width: 18px; height: 18px; margin: 0 4px; }
+.field .clear { width: 32px; height: 32px; font-size: 16px; }
+.color-control { display: flex; align-items: center; gap: 4px; }
+.color-control input[type=text] { width: 76px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.color-control input[type=color] { width: 28px; height: 32px; border: 0; padding: 0; background: transparent; cursor: pointer; }
+.field-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.field-buttons button { padding: 0 8px; font-size: 12px; }
+.hint { margin-top: 8px; }
+.sticker-preview { display: block; height: 64px; width: 100%; object-fit: contain; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }
+.sticker-target[aria-pressed=true] { color: var(--accent); background: var(--tint); }
+.status { pointer-events: none; position: fixed; bottom: 56px; left: 50%; translate: -50% 0; z-index: 10; max-width: calc(100vw - 24px); padding: 8px 12px; border-radius: 8px; background: #292824; color: white; }
+.status:empty { display: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }
+#layers-toggle, #inspector-toggle, .mobile-close { display: none; }
+.show-effect .workspace { grid-template-columns: minmax(0, 1fr); }
+.show-effect .rail, .show-effect .stage-foot { display: none; }
+dialog { width: min(380px, calc(100% - 32px)); border: 1px solid var(--line); border-radius: 12px; padding: 20px; color: var(--ink); }
+dialog::backdrop { background: #29282466; }
+dialog p { margin: 8px 0 16px; color: var(--muted); }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+@media (max-width: 899px) {
+  .workspace { grid-template-columns: minmax(0, 1fr); position: relative; --drawer-height: min(46dvh, 416px); }
+  .rail { display: none; position: absolute; z-index: 3; inset: auto 0 0; height: var(--drawer-height); border: 1px solid var(--line); border-radius: 16px 16px 0 0; box-shadow: 0 -8px 32px #34302024; }
+  .rail.is-open { display: block; }
+  .workspace:has(.rail.is-open) .stage-scroll { margin-bottom: calc(var(--drawer-height) - 44px); }
+  .panel-head { position: sticky; top: 0; z-index: 1; background: var(--paper); min-height: 48px; }
+  #layers-toggle, #inspector-toggle, .mobile-close { display: inline-block; }
+  .show-effect #layers-toggle { display: none; }
+  .stage-scroll { padding: 12px; }
+  .stage-bar, .stage-foot { padding-inline: 12px; }
+}
+@media (max-width: 560px) {
+  .mast { min-height: 60px; padding: 8px 12px; flex-wrap:wrap; }
+  .identity { gap: 8px; }
+  h1 { font-size: 16px; }
+  .history { padding: 0 4px 0 0; margin: 0; }
+  .history .icon { width: 32px; }
+  .stage-bar { min-height: 52px; }
+  .stage-bar { flex-wrap:wrap; }
+  .canvas-tools { flex-wrap:wrap; }
+  .top-actions { gap:4px; flex-wrap:wrap; }
+  .top-actions button { padding-inline:8px; }
+  .stage-label { display:none; }
+  .stage-label span, .stage-foot span:nth-child(2), .device { display: none; }
+  .stage-foot { min-height: 48px; }
+}
+
+</style>
+<body>
+<header class="mast">
+  <div class="identity">
+    <img src="/static/logo.png" width="32" height="32" alt="">
+    <div><span class="product">SubDrive</span><h1>积木编辑器</h1></div>
+  </div>
+  <div class="top-actions">
+    <button id="close-editor" hidden>关闭</button>
+    <div class="history" aria-label="编辑历史">
+      <button id="undo" class="icon" aria-label="撤销" title="撤销 (Ctrl+Z)" disabled>↶</button>
+      <button id="redo" class="icon" aria-label="重做" title="重做 (Ctrl+Shift+Z)" disabled>↷</button>
+    </div>
+    <button id="preview" class="primary" aria-pressed="false">查看效果</button>
+    <button id="save-editor" class="primary" hidden>保存外观</button>
+  </div>
+</header>
+<div class="workspace">
+  <aside class="layers rail" aria-label="模块与外观">
+    <div class="panel-head"><h2>模块</h2><button class="icon mobile-close" id="layers-close" aria-label="关闭模块">×</button></div>
+    <div id="layers"></div>
+    <div id="sticker-layers"></div>
+    <div class="layer-tools">
+      <label for="preset">外观预设</label>
+      <select id="preset">
+        <option value="">选择预设</option>
+        <option value="light">极简白</option>
+        <option value="dark">深色专注</option>
+        <option value="paper">纸张</option>
+      </select>
+      <button id="copy">复制这套外观</button>
+      <button id="reset" class="quiet">恢复默认</button>
+    </div>
+  </aside>
+  <main class="stage" aria-label="网盘画布">
+    <div class="stage-bar">
+      <div class="stage-label">
+        <h2>网盘画布</h2><span>实时预览</span>
+      </div>
+      <div class="canvas-tools">
+        <button id="add-sticker">添加贴图</button>
+        <label class="snap-control"><input id="snap-grid" type="checkbox">网格吸附</label>
+        <button id="layers-toggle" aria-expanded="false">模块</button>
+        <div class="device" role="group" aria-label="预览尺寸">
+          <button id="desktop" aria-pressed="true">桌面</button>
+          <button id="phone" aria-pressed="false">手机</button>
+        </div>
+        <label class="zoom"><span class="sr-only">画布缩放</span><select id="zoom">
+          <option value="1">100%</option><option value=".9">90%</option><option value=".8">80%</option><option value=".65">65%</option>
+        </select></label>
+      </div>
+    </div>
+    <div class="stage-scroll" id="stage-scroll">
+      <div class="preview-shell">
+        <iframe id="drive" title="SubDrive 实时预览"></iframe>
+      </div>
+    </div>
+    <div class="stage-foot">
+      <span>自由拖动与缩放 · 图片可拖到任意位置</span>
+      <span><kbd>Alt</kbd> <kbd>↑</kbd> <kbd>↓</kbd> 换序 · <kbd>Esc</kbd> 取消</span>
+      <button id="inspector-toggle" aria-expanded="false">属性</button>
+    </div>
+  </main>
+  <aside class="inspector rail" aria-label="模块属性">
+    <div class="panel-head"><h2>属性</h2><button class="icon mobile-close" id="inspector-close" aria-label="关闭属性">×</button></div>
+    <div id="inspector"></div>
+  </aside>
+</div>
+<div id="status" role="status" class="status"></div>
+<input type="file" id="image-file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" hidden>
+<dialog id="reset-dialog">
+  <form method="dialog">
+    <h2>恢复默认外观？</h2>
+    <p>这会还原全部模块的样式和顺序。恢复后仍可撤销。</p>
+    <div class="dialog-actions"><button value="cancel" autofocus>取消</button><button class="primary" value="reset">恢复默认</button></div>
+  </form>
+</dialog>
+<script>
+const previewDocument = "";
+const sampleSticker = "data:image/png;base64,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";
+const $ = selector => document.querySelector(selector);
+const iframe = $("#drive");
+const labels = {
+  topbar: "顶栏", quota: "配额", scope: "网盘范围", toolbar: "工具栏",
+  shared: "共享文件夹", files: "文件列表", foot: "页脚"
+};
+const selectors = {
+  topbar: ".topbar", quota: ".quota-card", scope: "#nav-scope",
+  toolbar: ".toolbar", shared: "#shared-card", files: "#dropzone", foot: ".drive-foot"
+};
+const defaultOrder = Object.keys(labels).slice(1);
+const defaults = { visible: true, bg: "", fg: "", radius: null, width: 100,
+  height: 0, image: "", fit: "cover", x: 50, y: 50 };
+const light = () => ({ preset: "light", order: [...defaultOrder], blocks: {} });
+const presets = {
+  light,
+  dark: () => ({ ...light(), preset: "dark", blocks: {
+    quota: { bg: "#232733" }, files: { bg: "#1c2029" }
+  }}),
+  paper: () => ({ ...light(), preset: "paper", blocks: {
+    quota: { bg: "#fff6e6", radius: 12 }, files: { bg: "#fffdf7", radius: 12 }
+  }})
+};
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const block = (id, source = state) => ({ ...defaults, ...source.blocks[id] });
+const withBlock = (id, patch) => ({
+  ...state, blocks: { ...state.blocks, [id]: { ...state.blocks[id], ...patch } }
+});
+let editorBoot;
+try { editorBoot = window.parent !== window ? window.parent.SUBDRIVE_EDITOR_BOOT : null; } catch {}
+let state = editorBoot?.state ? structuredClone(editorBoot.state) : light();
+let previewBackground = "";
+state.order ||= [...defaultOrder];
+state.blocks ||= {};
+const past = [];
+const future = [];
+let selected = "files";
+let editing = true;
+let positioning = false;
+let gesture;
+let drawer;
+let pendingImage;
+let noticeTimer;
+let drive;
+const modules = {};
+const handles = {};
+const stickerNodes = new Map();
+
+function ensureCanvas() {
+  if (state.canvas) return state.canvas;
+  const main = drive.querySelector(".drive-main");
+  const origin = main.getBoundingClientRect();
+  const blocks = {};
+  for (const id of defaultOrder) {
+    const rect = modules[id].getBoundingClientRect();
+    blocks[id] = { x: rect.left - origin.left, y: rect.top - origin.top,
+      w: rect.width || origin.width - 48, h: rect.height || 64 };
+  }
+  state = { ...state, canvas: { v: 1, snap: false, width: main.clientWidth,
+    height: Math.max(main.scrollHeight + 200, 900), blocks, stickers: [] } };
+  return state.canvas;
+}
+
+function canvasScale() {
+  return state.canvas ? drive.querySelector(".drive-main").clientWidth / state.canvas.width : 1;
+}
+
+function isSticker(id = selected) {
+  return Boolean(state.canvas?.stickers.some(item => item.id === id));
+}
+
+function canvasPatch(id, patch) {
+  const canvas = ensureCanvas();
+  if (isSticker(id)) {
+    const stickers = canvas.stickers.map(item => item.id === id ? { ...item, ...patch } : item);
+    return { ...state, canvas: { ...canvas, height: Math.max(canvas.height,
+      ...stickers.map(item => item.y + item.h + 40)), stickers } };
+  }
+  const rect = { ...canvas.blocks[id], ...patch };
+  return { ...state, canvas: { ...canvas,
+    height: Math.max(canvas.height, rect.y + rect.h + 40),
+    blocks: { ...canvas.blocks, [id]: rect } } };
+}
+
+function renderCanvas(source) {
+  const main = drive.querySelector(".drive-main");
+  const canvas = source.canvas;
+  main.classList.toggle("free-canvas", Boolean(canvas));
+  main.classList.toggle("grid-visible", Boolean(canvas?.snap && editing));
+  $("#snap-grid").checked = Boolean(canvas?.snap);
+  if (!canvas) {
+    main.style.minHeight = "";
+    for (const node of Object.values(modules)) {
+      for (const prop of ["position", "left", "top", "width", "height", "z-index"]) node.style.removeProperty(prop);
+    }
+  } else {
+    const scale = main.clientWidth / canvas.width;
+    let height = canvas.height;
+    for (const [id, rect] of Object.entries(canvas.blocks)) {
+      const node = modules[id];
+      if (!node || id === "topbar") continue;
+      Object.assign(node.style, { position: "absolute", left: rect.x * scale + "px",
+        top: rect.y * scale + "px", width: rect.w * scale + "px", minHeight: rect.h * scale + "px",
+        zIndex: String(source.order.indexOf(id) + 1) });
+      height = Math.max(height, rect.y + Math.max(rect.h, node.offsetHeight / scale) + 40);
+    }
+    // 与生产画布相同，文字换行造成增高时只顺延原先不重叠的下方模块。
+    const rows = Object.entries(canvas.blocks).filter(([id]) =>
+      modules[id] && block(id, source).visible).map(([id, rect]) => ({
+        node: modules[id], rect, top: rect.y * scale
+      })).sort((a, b) => a.rect.y - b.rect.y);
+    rows.forEach((row, index) => {
+      rows.slice(0, index).forEach(above => {
+        const gap = row.rect.y - above.rect.y - above.rect.h;
+        const intersects = row.rect.x < above.rect.x + above.rect.w &&
+          row.rect.x + row.rect.w > above.rect.x;
+        if (intersects && gap >= -1) {
+          row.top = Math.max(row.top, above.top + above.node.offsetHeight + Math.max(0, gap) * scale);
+        }
+      });
+      row.node.style.top = row.top + "px";
+      height = Math.max(height, (row.top + row.node.offsetHeight) / scale + 40);
+    });
+    for (const item of canvas.stickers) height = Math.max(height, item.y + item.h + 40);
+    main.style.minHeight = height * scale + "px";
+  }
+  const ids = new Set(canvas?.stickers.map(item => item.id) || []);
+  for (const [id, node] of stickerNodes) {
+    if (!ids.has(id)) { node.remove(); stickerNodes.delete(id); }
+  }
+  for (const item of canvas?.stickers || []) {
+    let node = stickerNodes.get(item.id);
+    if (!node) {
+      node = drive.createElement("div");
+      node.className = "canvas-sticker";
+      node.dataset.sticker = item.id;
+      node.innerHTML = '<img alt="独立贴图"><button class="sticker-resize" aria-label="调整贴图尺寸">↘</button>';
+      node.addEventListener("pointerdown", event => {
+        if (!event.target.closest("button")) startGesture(event, item.id, "move", true);
+      });
+      node.addEventListener("focus", () => selectBlock(item.id));
+      node.addEventListener("click", event => { event.stopPropagation(); selectBlock(item.id); });
+      attachHandle(node.querySelector("button"), item.id, "size", true);
+      main.append(node);
+      stickerNodes.set(item.id, node);
+    }
+    const scale = main.clientWidth / canvas.width;
+    Object.assign(node.style, { left: item.x * scale + "px", top: item.y * scale + "px",
+      width: item.w * scale + "px", height: item.h * scale + "px" });
+    node.querySelector("img").src = item.image;
+    node.querySelector("button").hidden = !editing || selected !== item.id;
+    node.classList.toggle("selected", editing && selected === item.id);
+    node.tabIndex = editing ? 0 : -1;
+  }
+}
+
+function renderStickerLayers() {
+  const box = $("#sticker-layers");
+  const existing = new Map([...box.children].map(node => [node.dataset.sticker, node]));
+  const ids = new Set((state.canvas?.stickers || []).map(item => item.id));
+  for (const [id, node] of existing) if (!ids.has(id)) node.remove();
+  for (const [index, sticker] of (state.canvas?.stickers || []).entries()) {
+    let button = existing.get(sticker.id);
+    if (!button) {
+      button = document.createElement("button");
+      button.className = "layer-name";
+      button.dataset.sticker = sticker.id;
+      button.addEventListener("focus", () => selectBlock(sticker.id));
+      button.addEventListener("click", () => selectBlock(sticker.id, true));
+      box.append(button);
+    }
+    button.textContent = "贴图 " + (index + 1);
+    button.setAttribute("aria-pressed", String(selected === sticker.id));
+  }
+}
+
+function coordinateFields(rect) {
+  return numberField("cx", "水平坐标 (px)", 0, 6000, 1, Math.round(rect.x)) +
+    numberField("cy", "垂直坐标 (px)", 0, 12000, 1, Math.round(rect.y)) +
+    numberField("cw", "宽度 (px)", 24, 6000, 1, Math.round(rect.w)) +
+    numberField("ch", "高度 (px)", 24, 12000, 1, Math.round(rect.h));
+}
+
+async function addSticker(file, point) {
+  ensureCanvas();
+  try {
+    const image = await prepareImage(file);
+    const canvas = state.canvas || ensureCanvas();
+    const id = "sticker-" + crypto.randomUUID();
+    const w = Math.min(192, canvas.width - 32);
+    const snap = value => canvas.snap ? Math.round(value / 8) * 8 : value;
+    const sticker = { id, image, x: clamp(snap(point?.x ?? 32), 0, canvas.width - w),
+      y: snap(point?.y ?? 32), w, h: w * 2 / 3 };
+    selected = id;
+    commit({ ...state, canvas: { ...canvas, height: Math.max(canvas.height, sticker.y + sticker.h + 40),
+      stickers: [...canvas.stickers, sticker] } });
+    notice("已添加独立贴图");
+  } catch { notice("无法读取图片，请选择 20 MB 以内的图片"); }
+}
+
+function notice(message) {
+  $("#status").textContent = message;
+  clearTimeout(noticeTimer);
+  noticeTimer = setTimeout(() => { $("#status").textContent = ""; }, 2500);
+}
+
+function commit(next) {
+  if (JSON.stringify(next) === JSON.stringify(state)) return false;
+  past.push(state);
+  if (past.length > 40) past.shift();
+  future.length = 0;
+  state = next;
+  render();
+  return true;
+}
+
+function stepHistory(undo) {
+  if (gesture) return;
+  const from = undo ? past : future;
+  const to = undo ? future : past;
+  if (!from.length) return;
+  to.push(state);
+  state = from.pop();
+  positioning = false;
+  render();
+  notice(undo ? "已撤销" : "已重做");
+}
+
+function selectBlock(id, open = false) {
+  if (!editing) return;
+  if (id !== selected) {
+    selected = id;
+    positioning = false;
+    render();
+  }
+  if (open && matchMedia("(max-width: 899px)").matches) setDrawer("inspector", true);
+}
+
+function setDrawer(next, focus = false) {
+  drawer = next;
+  for (const name of ["layers", "inspector"]) {
+    const open = drawer === name;
+    $(".rail." + name).classList.toggle("is-open", open);
+    $("#" + name + "-toggle").setAttribute("aria-expanded", String(open));
+  }
+  if (focus && drawer && matchMedia("(max-width: 899px)").matches) {
+    $("#" + drawer + "-close").focus();
+  }
+}
+
+function showEffect(value) {
+  editing = !value;
+  positioning = false;
+  setDrawer(null);
+  document.body.classList.toggle("show-effect", value);
+  $("#preview").setAttribute("aria-pressed", String(value));
+  $("#preview").textContent = value ? "返回编辑" : "查看效果";
+  renderDrive();
+}
+
+function renderDrive(source = state) {
+  if (!drive) return;
+  const root = drive.documentElement;
+  root.dataset.theme = source.preset === "dark" ? "dark" : "light";
+  root.dataset.palette = source.preset;
+  editorBoot?.refreshAccent?.(root);
+  if (editorBoot) drive.body.style.backgroundColor = source.themeChanged
+    ? (source.preset === "paper" ? "#f4eee1" : "") : previewBackground;
+  root.classList.toggle("editing", editing);
+  const main = drive.querySelector(".drive-main");
+  const domOrder = [...main.querySelectorAll(":scope > .module")];
+  if (source.order.some((id, index) => modules[id] !== domOrder[index])) {
+    const focused = drive.activeElement;
+    for (const id of source.order) main.append(modules[id]);
+    if (main.contains(focused)) focused.focus({ preventScroll: true });
+  }
+  for (const [id, node] of Object.entries(modules)) {
+    const props = block(id, source);
+    const active = selected === id && editing;
+    node.classList.toggle("module-selected", active);
+    node.tabIndex = editing ? 0 : -1;
+    node.style.display = props.visible ? "" : "none";
+    node.style.order = String(source.order.indexOf(id));
+    node.style.backgroundColor = props.bg;
+    node.style.color = props.fg;
+    node.style.setProperty("--module-fg", props.fg || "currentColor");
+    node.classList.toggle("custom-fg", Boolean(props.fg));
+    node.style.borderRadius = props.radius === null ? "" : props.radius + "px";
+    node.style.setProperty("--module-width", props.width + "%");
+    node.style.minHeight = props.height ? props.height + "px" : "";
+    node.style.backgroundImage = props.image ? 'url("' + props.image + '")' : "";
+    node.style.backgroundSize = props.fit;
+    node.style.backgroundPosition = props.x + "% " + props.y + "%";
+    const controls = handles[id];
+    if (controls) {
+      controls.group.hidden = !active;
+      controls.pin.hidden = !(active && positioning && props.image);
+      controls.pin.style.left = clamp(props.x, 4, 96) + "%";
+      controls.pin.style.top = clamp(props.y, 8, 92) + "%";
+    }
+  }
+  renderCanvas(source);
+}
+
+function renderLayers() {
+  const layerList = $("#layers");
+  const ids = ["topbar", ...state.order];
+  if (!ids.every((id, index) => layerList.children[index]?.dataset.id === id)) {
+    const focused = document.activeElement;
+    for (const id of ids) layerList.append(layerList.querySelector('[data-id="' + id + '"]'));
+    if (layerList.contains(focused)) focused.focus({ preventScroll: true });
+  }
+  for (const item of layerList.children) {
+    const id = item.dataset.id;
+    item.classList.toggle("is-selected", id === selected);
+    item.querySelector(".layer-name").setAttribute("aria-pressed", String(id === selected));
+    item.querySelector(".layer-meta").textContent = id === "topbar" ? "固定"
+      : !block(id).visible ? "已隐藏" : "";
+  }
+}
+
+const resetButton = (key, label) =>
+  '<button class="icon clear" data-reset="' + key + '" title="重置' + label +
+  '" aria-label="重置' + label + '">↺</button>';
+const field = (key, label, input) =>
+  '<div class="field"><label for="prop-' + key + '">' + label + '</label>' +
+  input + resetButton(key, label) + '</div>';
+const numberField = (key, label, min, max, step, value) => field(key, label,
+  '<input id="prop-' + key + '" data-prop="' + key + '" type="number" min="' + min +
+  '" max="' + max + '" step="' + step + '" value="' + value + '">');
+function colorField(key, label, value, fallback) {
+  return field(key, label, '<div class="color-control"><input id="prop-' + key +
+    '" data-prop="' + key + '" type="text" maxlength="7" spellcheck="false" placeholder="默认" value="' +
+    value + '"><input data-prop="' + key + '" type="color" aria-label="选择' + label + '" value="' +
+    (value || fallback) + '"></div>');
+}
+
+function renderInspector() {
+  const panel = $("#inspector");
+  const focus = panel.contains(document.activeElement) ? document.activeElement : null;
+  const focusSelector = focus?.id ? "#" + focus.id
+    : focus?.dataset.reset ? '[data-reset="' + focus.dataset.reset + '"]'
+    : focus?.dataset.action ? '[data-action="' + focus.dataset.action + '"]'
+    : focus?.type === "color" ? 'input[type=color][data-prop="' + focus.dataset.prop + '"]'
+    : null;
+  if (!selected) {
+    panel.innerHTML = '<p class="empty-inspector">在画布或模块列表中选择一个模块。</p>';
+    return;
+  }
+  if (isSticker()) {
+    const sticker = state.canvas.stickers.find(item => item.id === selected);
+    panel.innerHTML = '<div class="selected-head"><h3>独立贴图</h3><p>可拖到画布任意位置</p></div>' +
+      '<section class="group">' + coordinateFields(sticker) +
+      '<div class="field-buttons"><button data-action="delete-sticker">删除贴图</button></div></section>';
+    if (focusSelector) panel.querySelector(focusSelector)?.focus({ preventScroll: true });
+    return;
+  }
+  const id = selected;
+  const props = block(id);
+  const fixed = id === "topbar";
+  const group = (name, content) => '<section class="group"><h3>' + name + '</h3>' + content + '</section>';
+  const fill = state.preset === "dark" ? "#20232c" : "#ffffff";
+  const ink = state.preset === "dark" ? "#f1f0ed" : "#252421";
+  const layout = fixed ? "" : group("布局",
+    field("visible", "显示模块", '<input id="prop-visible" data-prop="visible" type="checkbox" ' +
+      (props.visible ? "checked" : "") + ">") +
+    (state.canvas?.blocks[id] ? coordinateFields(state.canvas.blocks[id]) :
+      numberField("width", "宽度 (%)", 10, 100, 1, props.width) +
+      numberField("height", "最小高度 (px)", 0, 480, 4, props.height) +
+      (props.height ? "" : '<p class="hint">高度 0 表示随内容调整。</p>')) +
+    '<div class="field-buttons"><button data-action="up" ' +
+    (state.order[0] === id ? "disabled" : "") + '>上移</button><button data-action="down" ' +
+    (state.order.at(-1) === id ? "disabled" : "") + '>下移</button>' +
+    resetButton("order", "顺序") + "</div>");
+  const style = group("外观", colorField("bg", "背景色", props.bg, fill) +
+    colorField("fg", "文字色", props.fg, ink) +
+    (fixed ? "" : numberField("radius", "圆角 (px)", 0, 32, 1, props.radius ?? 8)));
+  const sticker = fixed ? "" : group("贴图",
+    (props.image ? '<img class="sticker-preview" alt="当前贴图">' :
+      '<p class="hint">上传图片，也可以从示例开始。</p>') +
+    '<div class="field-buttons"><button data-action="upload">' + (props.image ? "换图" : "添加贴图") +
+    '</button><button data-action="sample">试用示例</button>' +
+    (props.image ? '<button data-reset="image">删除贴图</button>' : "") + "</div>" +
+    (props.image ? field("fit", "填充方式", '<select id="prop-fit" data-prop="fit"><option value="cover"' +
+      (props.fit === "cover" ? " selected" : "") + '>铺满</option><option value="contain"' +
+      (props.fit === "contain" ? " selected" : "") + '>完整显示</option></select>') +
+      numberField("x", "水平位置 (%)", 0, 100, 1, props.x) +
+      numberField("y", "垂直位置 (%)", 0, 100, 1, props.y) +
+      '<div class="field-buttons"><button class="sticker-target" data-action="position" aria-pressed="' +
+      positioning + '"' + (props.visible ? "" : " disabled") + '>在画布定位</button></div>' : ""));
+  panel.innerHTML = '<div class="selected-head"><h3>' + labels[id] + "</h3><p>" +
+    (fixed ? "固定模块，可调整配色" : props.visible ? "显示于网盘" : "已隐藏，可在这里恢复") +
+    "</p></div>" + layout + style + sticker;
+  if (props.image) panel.querySelector(".sticker-preview").src = props.image;
+  if (focusSelector) panel.querySelector(focusSelector)?.focus({ preventScroll: true });
+}
+
+function render() {
+  if (selected && !labels[selected] && !isSticker()) selected = null;
+  renderDrive();
+  renderLayers();
+  renderStickerLayers();
+  renderInspector();
+  $("#undo").disabled = !past.length;
+  $("#redo").disabled = !future.length;
+}
+
+function moveBlock(id, offset) {
+  const index = state.order.indexOf(id);
+  if (index < 0) return;
+  const next = clamp(index + offset, 0, state.order.length - 1);
+  if (index === next) return;
+  const order = [...state.order];
+  order.splice(index, 1);
+  order.splice(next, 0, id);
+  let canvas = state.canvas;
+  if (canvas) {
+    const blocks = { ...canvas.blocks };
+    order.forEach((key, position) => {
+      const destination = canvas.blocks[state.order[position]];
+      const current = canvas.blocks[key];
+      if (current && destination) blocks[key] = { ...current,
+        x: clamp(destination.x, 0, Math.max(0, canvas.width - current.w)), y: destination.y };
+    });
+    canvas = { ...canvas, blocks };
+  }
+  commit({ ...state, order, ...(canvas ? { canvas } : {}) });
+  notice(labels[id] + "移至第 " + (next + 1) + " 位");
+}
+
+function reorderFromPointer(current, event) {
+  const { id, inFrame } = current;
+  const remaining = state.order.filter(key => key !== id);
+  const surface = inFrame ? drive : document;
+  const getNode = key => inFrame ? modules[key] : $('#layers [data-id="' + key + '"]');
+  const candidates = remaining.filter(key => !inFrame || block(key).visible);
+  const before = candidates.find(key => {
+    const rect = getNode(key).getBoundingClientRect();
+    return event.clientY < rect.top + rect.height / 2;
+  });
+  const after = before ? null : candidates.at(-1);
+  surface.querySelectorAll(".insert-before, .insert-after").forEach(node => {
+    node.classList.remove("insert-before", "insert-after");
+  });
+  if (before || after) getNode(before || after).classList.add(before ? "insert-before" : "insert-after");
+  const destination = before ? remaining.indexOf(before) : after ? remaining.indexOf(after) + 1 : -1;
+  if (destination >= 0) remaining.splice(destination, 0, id);
+  current.order = destination >= 0 ? remaining : state.order;
+}
+
+function startGesture(event, id, kind, inFrame) {
+  if (!editing || gesture || event.button !== 0) return;
+  event.preventDefault();
+  event.stopPropagation();
+  selectBlock(id);
+  const handle = event.currentTarget;
+  handle.setPointerCapture(event.pointerId);
+  if (inFrame && kind !== "position") ensureCanvas();
+  const node = modules[id] || stickerNodes.get(id);
+  const rect = node.getBoundingClientRect();
+  const parentWidth = drive.querySelector(".drive-main").clientWidth -
+    parseFloat(iframe.contentWindow.getComputedStyle(drive.querySelector(".drive-main")).paddingInlineStart) * 2;
+  gesture = { handle, id, kind, inFrame, rect, parentWidth, x: event.clientX,
+    y: event.clientY, pointerId: event.pointerId, moved: false };
+  if (inFrame && kind !== "position") {
+    gesture.original = isSticker(id) ? state.canvas.stickers.find(item => item.id === id) : state.canvas.blocks[id];
+    gesture.scale = canvasScale();
+  }
+  handle.addEventListener("pointermove", updateGesture);
+  handle.addEventListener("pointerup", finishGesture);
+  handle.addEventListener("pointercancel", cancelGesture);
+  handle.addEventListener("lostpointercapture", cancelGesture);
+}
+
+function updateGesture(event) {
+  if (!gesture || event.pointerId !== gesture.pointerId) return;
+  const current = gesture;
+  const dx = event.clientX - current.x;
+  const dy = event.clientY - current.y;
+  if (!current.moved && Math.hypot(dx, dy) < 4) return;
+  current.moved = true;
+  if (current.inFrame && current.original && ["move", "size"].includes(current.kind)) {
+    const rect = current.original;
+    const scale = current.scale;
+    const snap = value => state.canvas.snap ? Math.round(value / 8) * 8 : Math.round(value);
+    const patch = current.kind === "move"
+      ? { x: Math.max(0, snap(rect.x + dx / scale)), y: Math.max(0, snap(rect.y + dy / scale)) }
+      : { w: Math.max(24, snap(rect.w + dx / scale)), h: Math.max(24, snap(rect.h + dy / scale)) };
+    patch.x = patch.x === undefined ? undefined : Math.min(patch.x, Math.max(0, state.canvas.width - rect.w));
+    if (patch.x === undefined) delete patch.x;
+    if (patch.w !== undefined) patch.w = Math.min(patch.w, state.canvas.width - rect.x);
+    current.canvasPatch = patch;
+    renderDrive(canvasPatch(current.id, patch));
+    return;
+  }
+  if (current.kind === "order") {
+    reorderFromPointer(current, event);
+    if (current.inFrame) {
+      const height = drive.documentElement.clientHeight;
+      if (event.clientY < 32) iframe.contentWindow.scrollBy(0, -16);
+      if (event.clientY > height - 32) iframe.contentWindow.scrollBy(0, 16);
+    }
+    return;
+  }
+  const { rect, parentWidth, id } = current;
+  const px = value => Math.round(value / 4) * 4;
+  if (current.kind === "size") {
+    const patch = {};
+    if (Math.abs(dx) >= 4) {
+      patch.width = clamp(px((rect.width + dx) * 100 / parentWidth), parentWidth < 500 ? 80 : 56, 100);
+    }
+    if (Math.abs(dy) >= 4) patch.height = clamp(px(rect.height + dy), 0, 480);
+    current.patch = patch;
+  } else {
+    current.patch = {
+      x: clamp(Math.round((event.clientX - rect.left) * 100 / rect.width), 0, 100),
+      y: clamp(Math.round((event.clientY - rect.top) * 100 / rect.height), 0, 100)
+    };
+  }
+  renderDrive(withBlock(id, current.patch));
+}
+
+function clearGesture() {
+  const current = gesture;
+  if (!current) return null;
+  gesture = null;
+  const { handle, pointerId } = current;
+  handle.removeEventListener("pointermove", updateGesture);
+  handle.removeEventListener("pointerup", finishGesture);
+  handle.removeEventListener("pointercancel", cancelGesture);
+  handle.removeEventListener("lostpointercapture", cancelGesture);
+  if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
+  for (const surface of [document, drive]) {
+    surface?.querySelectorAll(".insert-before, .insert-after").forEach(node =>
+      node.classList.remove("insert-before", "insert-after"));
+  }
+  return current;
+}
+function finishGesture() {
+  const current = clearGesture();
+  if (!current) return;
+  if (current.canvasPatch) {
+    commit(canvasPatch(current.id, current.canvasPatch));
+  } else if (current.order && current.order.some((id, index) => id !== state.order[index])) {
+    commit({ ...state, order: current.order });
+    notice(labels[current.id] + "已换序");
+  } else if (current.patch && Object.keys(current.patch).length) {
+    commit(withBlock(current.id, current.patch));
+  }
+  renderDrive();
+}
+function cancelGesture() {
+  clearGesture();
+  renderDrive();
+}
+
+function keyboard(event) {
+  if (event.defaultPrevented || event.isComposing || $("#reset-dialog").open) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    if (gesture) cancelGesture();
+    else if (!editing) showEffect(false);
+    else if (positioning) { positioning = false; render(); }
+    else {
+      if (drawer) setDrawer(null);
+      if (selected) selectBlock(null);
+    }
+    return;
+  }
+  if (event.target.closest("input, select, textarea, [contenteditable=true]") || !editing) return;
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+    event.preventDefault();
+    stepHistory(!event.shiftKey);
+  }
+  if (selected && event.altKey && ["ArrowUp", "ArrowDown"].includes(event.key)) {
+    event.preventDefault();
+    moveBlock(selected, event.key === "ArrowUp" ? -1 : 1);
+  }
+  if (selected && state.canvas && !event.altKey && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
+    const rect = isSticker() ? state.canvas.stickers.find(item => item.id === selected) : state.canvas.blocks[selected];
+    if (rect) {
+      event.preventDefault();
+      const amount = event.shiftKey ? 8 : 1;
+      const x = rect.x + (event.key === "ArrowRight" ? amount : event.key === "ArrowLeft" ? -amount : 0);
+      const y = rect.y + (event.key === "ArrowDown" ? amount : event.key === "ArrowUp" ? -amount : 0);
+      commit(canvasPatch(selected, { x: clamp(x, 0, state.canvas.width - rect.w), y: Math.max(0, y) }));
+    }
+  }
+  if (isSticker() && ["Delete", "Backspace"].includes(event.key)) {
+    event.preventDefault();
+    deleteSticker();
+  }
+}
+
+function attachHandle(button, id, kind, inFrame) {
+  button.addEventListener("pointerdown", event => startGesture(event, id, kind, inFrame));
+}
+
+function buildLayers() {
+  for (const [id, label] of Object.entries(labels)) {
+    const item = document.createElement("div");
+    item.className = "layer";
+    item.dataset.id = id;
+    item.innerHTML = '<button class="layer-handle" tabindex="-1" aria-label="拖动' + label + '">' +
+      (id === "topbar" ? "·" : "⠿") + '</button><button class="layer-name"><span>' + label +
+      '</span><span class="layer-meta"></span></button>';
+    const grip = item.firstElementChild;
+    if (id === "topbar") grip.disabled = true;
+    else attachHandle(grip, id, "order", false);
+    const button = item.querySelector(".layer-name");
+    button.addEventListener("focus", () => selectBlock(id));
+    button.addEventListener("click", () => selectBlock(id, true));
+    $("#layers").append(item);
+  }
+}
+
+function initDrive() {
+  drive = iframe.contentDocument;
+  previewBackground = drive.body.style.backgroundColor;
+  drive.querySelectorAll("button, input, a").forEach(node => { node.tabIndex = -1; });
+  for (const [id, selector] of Object.entries(selectors)) {
+    const node = drive.querySelector(selector);
+    node.classList.add("module");
+    node.setAttribute("aria-label", labels[id]);
+    if (id !== "topbar") {
+      const group = drive.createElement("div");
+      group.className = "module-controls";
+      group.innerHTML = '<button class="module-grip" tabindex="-1" title="自由拖动" aria-label="自由拖动">⠿</button>' +
+        '<button class="module-size" tabindex="-1" title="拖动调整尺寸" aria-label="拖动调整尺寸">↘</button>' +
+        '<button class="module-pin" tabindex="-1" title="拖动贴图定位" aria-label="拖动贴图定位">＋</button>';
+      const [grip, resize, pin] = group.children;
+      node.append(group);
+      attachHandle(grip, id, "move", true);
+      attachHandle(resize, id, "size", true);
+      attachHandle(pin, id, "position", true);
+      handles[id] = { group, pin };
+    }
+    modules[id] = node;
+    node.addEventListener("focus", () => selectBlock(id));
+    node.addEventListener("click", event => {
+      if (!editing || event.target.closest(".module-controls")) return;
+      selectBlock(id);
+      if (drawer === "layers") setDrawer(null);
+    });
+    if (id !== "topbar") {
+      node.addEventListener("pointerdown", event => {
+        if (!event.target.closest(".module-controls, input, button, a")) startGesture(event, id, "move", true);
+      });
+      node.addEventListener("dragover", event => {
+        if (editing && event.dataTransfer.types.includes("Files")) {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "copy";
+          node.classList.add("sticker-drop");
+        }
+      });
+      node.addEventListener("dragleave", event => {
+        if (!node.contains(event.relatedTarget)) node.classList.remove("sticker-drop");
+      });
+      node.addEventListener("drop", event => {
+        if (!editing) return;
+        event.preventDefault();
+        node.classList.remove("sticker-drop");
+        selectBlock(id);
+        // 图片统一由画布处理，以落点创建独立贴图。
+      });
+    }
+  }
+  drive.addEventListener("dragover", event => event.preventDefault());
+  drive.addEventListener("drop", event => {
+    event.preventDefault();
+    if (!editing) return;
+    const file = event.dataTransfer.files[0];
+    if (!file) return;
+    ensureCanvas();
+    const rect = drive.querySelector(".drive-main").getBoundingClientRect();
+    const scale = canvasScale();
+    addSticker(file, { x: clamp((event.clientX - rect.left) / scale, 0, state.canvas.width - 24),
+      y: Math.max(0, (event.clientY - rect.top) / scale) });
+  });
+  drive.addEventListener("click", event => {
+    if (event.target.closest("button, a, input")) event.preventDefault();
+    if (editing && !event.target.closest(".module, .canvas-sticker")) selectBlock(null);
+  });
+  drive.addEventListener("keydown", keyboard);
+  new ResizeObserver(() => { if (!gesture) renderDrive(); }).observe(drive.querySelector(".drive-main"));
+  renderDrive();
+}
+
+$("#inspector").addEventListener("input", event => {
+  const input = event.target;
+  if (input.dataset.prop?.startsWith("c") && ["cx", "cy", "cw", "ch"].includes(input.dataset.prop)) {
+    if (input.value !== "" && input.validity.valid) renderDrive(canvasPatch(selected, { [input.dataset.prop.slice(1)]: input.valueAsNumber }));
+    return;
+  }
+  if (input.type === "color") {
+    renderDrive(withBlock(selected, { [input.dataset.prop]: input.value }));
+    $("#prop-" + input.dataset.prop).value = input.value;
+  } else if (input.type === "number" && input.value !== "" && input.validity.valid) {
+    renderDrive(withBlock(selected, { [input.dataset.prop]: input.valueAsNumber }));
+  }
+});
+$("#inspector").addEventListener("change", event => {
+  const input = event.target;
+  const key = input.dataset.prop;
+  if (!key || !selected) return;
+  if (["cx", "cy", "cw", "ch"].includes(key)) {
+    if (!Number.isFinite(input.valueAsNumber)) { render(); return; }
+    const canvas = ensureCanvas();
+    const rect = isSticker() ? canvas.stickers.find(item => item.id === selected) : canvas.blocks[selected];
+    const max = key === "cx" ? canvas.width - rect.w : key === "cw" ? canvas.width - rect.x : Number(input.max);
+    commit(canvasPatch(selected, { [key.slice(1)]: clamp(input.valueAsNumber, Number(input.min), max) }));
+    return;
+  }
+  let value = input.value;
+  if (input.type === "number") {
+    if (!Number.isFinite(input.valueAsNumber)) { render(); return; }
+    const step = Number(input.step);
+    value = clamp(Number(input.min) + Math.round((input.valueAsNumber - Number(input.min)) / step) * step,
+      Number(input.min), Number(input.max));
+  } else if (input.type === "checkbox") {
+    value = input.checked;
+    if (!value) positioning = false;
+  }
+  else if (input.type === "text" && value && !/^#[a-f\d]{6}$/i.test(value)) {
+    notice("请输入六位十六进制颜色，例如 #5038BD");
+    render();
+    return;
+  }
+  if (!commit(withBlock(selected, { [key]: value }))) render();
+});
+
+$("#inspector").addEventListener("click", event => {
+  const button = event.target.closest("button");
+  if (!button || !selected) return;
+  const key = button.dataset.reset;
+  const id = selected;
+  if (["cx", "cy", "cw", "ch"].includes(key)) {
+    const value = { cx: 24, cy: 24, cw: 192, ch: 128 }[key];
+    commit(canvasPatch(id, { [key.slice(1)]: value }));
+    return;
+  }
+  if (button.dataset.action === "delete-sticker") { deleteSticker(); return; }
+  if (key === "order") moveBlock(id, defaultOrder.indexOf(id) - state.order.indexOf(id));
+  else if (key === "image") {
+    positioning = false;
+    commit(withBlock(id, { image: "", fit: "cover", x: 50, y: 50 }));
+  } else if (key) commit(withBlock(id, { [key]: defaults[key] }));
+  const action = button.dataset.action;
+  if (action === "up" || action === "down") moveBlock(id, action === "up" ? -1 : 1);
+  if (action === "sample") commit(withBlock(id, { image: sampleSticker, fit: "cover", x: 50, y: 50 }));
+  if (action === "upload") { pendingImage = id; $("#image-file").click(); }
+  if (action === "position") {
+    positioning = !positioning;
+    if (positioning) {
+      setDrawer(null);
+      modules[id].scrollIntoView({ block: "nearest" });
+      notice("拖动画布上的定位点");
+    }
+    render();
+  }
+});
+
+async function prepareImage(file) {
+  if (!file.type.startsWith("image/") || file.size > 20 * 1024 * 1024) throw new Error();
+  const bitmap = await createImageBitmap(file);
+  try {
+    const scale = Math.min(1, 1440 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/webp", 0.82);
+  } finally { bitmap.close(); }
+}
+
+async function applyImage(id, file) {
+  const before = state;
+  try {
+    const image = await prepareImage(file);
+    if (state !== before) {
+      notice("外观已更改，请重新添加贴图");
+      return;
+    }
+    commit(withBlock(id, { image, fit: "cover", x: 50, y: 50 }));
+    notice("已添加贴图");
+  } catch {
+    notice("无法读取图片，请选择 20 MB 以内的 PNG、JPEG 或 WebP");
+  }
+}
+$("#image-file").addEventListener("change", event => {
+  const file = event.target.files[0];
+  event.target.value = "";
+  if (pendingImage === "canvas" && file) addSticker(file);
+  else if (pendingImage && file) applyImage(pendingImage, file);
+});
+
+function deleteSticker() {
+  const id = selected;
+  selected = null;
+  commit({ ...state, canvas: { ...state.canvas,
+    stickers: state.canvas.stickers.filter(item => item.id !== id) } });
+}
+
+$("#add-sticker").addEventListener("click", () => {
+  pendingImage = "canvas";
+  $("#image-file").click();
+});
+$("#snap-grid").addEventListener("change", event => {
+  const canvas = ensureCanvas();
+  commit({ ...state, canvas: { ...canvas, snap: event.target.checked } });
+});
+if (editorBoot) {
+  $("#save-editor").hidden = false;
+  $("#close-editor").hidden = false;
+  $(".stage-label span").textContent = "实时预览";
+  $("#save-editor").addEventListener("click", () =>
+    { ensureCanvas(); parent.postMessage({ type: "subdrive-editor-save", state, themeChanged: state.themeChanged === true }, location.origin); });
+  $("#close-editor").addEventListener("click", () =>
+    parent.postMessage({ type: "subdrive-editor-close" }, location.origin));
+}
+window.addEventListener("message", event => {
+  if (event.source === parent && event.origin === location.origin && event.data?.type === "subdrive-editor-error") {
+    notice(event.data.message);
+  }
+});
+
+$("#copy").addEventListener("click", async () => {
+  let payload;
+  try {
+    if (editorBoot) ensureCanvas();
+    payload = editorBoot ? editorBoot.draftPackage(state, state.themeChanged === true)
+      : { kind: "subdrive-blocks-prototype", v: 1, ...state };
+  } catch {
+    notice("外观过大，无法复制");
+    return;
+  }
+  const copy = JSON.stringify(payload, null, 2);
+  try {
+    await navigator.clipboard.writeText(copy);
+    notice("已复制外观");
+  } catch {
+    const url = URL.createObjectURL(new Blob([copy], { type: "application/json" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = editorBoot ? "subdrive-look.json" : "subdrive-appearance-draft.json";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    notice("已下载外观");
+  }
+});
+
+$("#preset").addEventListener("change", event => {
+  const name = event.target.value;
+  if (!name) return;
+  positioning = false;
+  commit({ ...presets[name](), themeChanged: true });
+  notice("已应用「" + event.target.selectedOptions[0].textContent + "」");
+  event.target.value = "";
+});
+$("#reset").addEventListener("click", () => $("#reset-dialog").showModal());
+$("#reset-dialog").addEventListener("close", event => {
+  if (event.target.returnValue !== "reset") return;
+  event.target.returnValue = "";
+  positioning = false;
+  commit({ ...light(), themeChanged: true });
+  notice("已恢复默认");
+});
+$("#undo").addEventListener("click", () => stepHistory(true));
+$("#redo").addEventListener("click", () => stepHistory(false));
+$("#preview").addEventListener("click", () => showEffect(editing));
+for (const name of ["layers", "inspector"]) {
+  $("#" + name + "-toggle").addEventListener("click", () => setDrawer(drawer === name ? null : name, true));
+  $("#" + name + "-close").addEventListener("click", () => {
+    setDrawer(null);
+    $("#" + name + "-toggle").focus();
+  });
+}
+for (const name of ["desktop", "phone"]) {
+  $("#" + name).addEventListener("click", () => {
+    document.body.classList.toggle("phone", name === "phone");
+    $("#desktop").setAttribute("aria-pressed", String(name === "desktop"));
+    $("#phone").setAttribute("aria-pressed", String(name === "phone"));
+  });
+}
+$("#zoom").addEventListener("change", event => {
+  const ratio = Number(event.target.value);
+  iframe.style.zoom = String(ratio);
+  document.body.style.setProperty("--zoom", String(ratio));
+});
+document.addEventListener("keydown", keyboard);
+buildLayers();
+render();
+iframe.addEventListener("load", initDrive, { once: true });
+iframe.srcdoc = editorBoot?.preview || previewDocument;
+
+</script>
+</body>
+</html>

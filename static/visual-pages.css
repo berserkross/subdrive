@@ -1,0 +1,25 @@
+/* 页面基线与窄屏布局。 */
+.drive-main { padding: 24px 24px 32px; }
+.quota-card, .shared-card { padding: 16px; }
+.quota-text, .shared-head { display:flex; align-items:center; gap:8px; }
+.toolbar { align-items:center; flex-wrap:wrap; gap:8px; }
+.toolbar-actions { flex-wrap:wrap; gap:8px; }
+.seg-scope { flex-wrap:wrap; }
+.list-head, .row { padding-inline:16px; }
+.list-head .col-size, .row .col-size { text-align:right; }
+.list-head .col-time, .row .col-time { text-align:right; }
+.row-main { gap:8px; }
+.drive-foot { font-size:12px; line-height:20px; margin-top:16px; }
+@media(max-width:720px) {
+  .drive-main { padding:16px 12px 24px; }
+  .row { grid-template-columns:20px minmax(0,1fr) 24px; gap:8px; padding-inline:12px; }
+  .row .col-act { grid-column:3; }
+  .row .col-size, .row .col-time { display:none; }
+  .row-sub { display:block; }
+  .set-row { grid-template-columns:minmax(0,1fr); gap:12px; }
+  .set-row > * { min-width:0; max-width:100%; }
+  .set-row > button { justify-self:start; }
+}
+@media(prefers-reduced-motion:reduce) {
+  *,*::before,*::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; }
+}

@@ -5,7 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>SubDrive · 子用户网盘</title>
 <link rel="icon" type="image/png" href="/static/favicon.png">
-<link rel="stylesheet" href="/static/style.css?v=31">
+<link rel="stylesheet" href="/static/style.css?v=40">
+<link rel="stylesheet" href="/static/visual-tokens.css?v=37">
+<link rel="stylesheet" href="/static/visual-components.css?v=37">
+<link rel="stylesheet" href="/static/canvas-runtime.css?v=37">
+<link rel="stylesheet" href="/static/visual-pages.css?v=37">
+  <link rel="stylesheet" href="/static/visual-ux.css?v=39">
+  <link rel="stylesheet" href="/static/visual-finish.css?v=40">
+  <link rel="stylesheet" href="/static/visual-accent.css?v=40">
 </head>
 <body>
 
@@ -126,6 +133,7 @@
           </div>
         </div>
         <button id="btn-speed" class="btn-soft" type="button" data-i18n="toolbar.speed">⚡ 测速</button>
+        <button id="upload-queue-toggle" class="btn-ghost hidden" type="button" aria-controls="upload-panel" aria-expanded="false" data-i18n="ux.uploadQueue"></button>
         <input id="file-input" type="file" multiple hidden>
         <input id="folder-input" type="file" webkitdirectory directory hidden>
       </div>
@@ -157,9 +165,15 @@
         </div>
         <span id="public-count" class="public-count"></span>
       </header>
-      <div id="public-list" class="public-grid"></div>
+      <div id="public-list" class="public-grid" aria-busy="false"></div>
+      <div id="public-loading" class="list-state hidden" role="status" data-i18n="list.loading"></div>
+      <div id="public-error" class="list-state hidden">
+        <h3 data-i18n="ux.sharedError"></h3>
+        <p id="public-error-detail" role="alert"></p>
+        <button id="public-retry" type="button" class="btn-soft" data-i18n="ux.retry"></button>
+      </div>
       <div id="public-empty" class="public-empty hidden">
-        <div class="public-empty-icon">📁</div>
+        <div class="public-empty-icon" aria-hidden="true"></div>
         <p data-i18n="public.emptyTitle">还没有你能进的共享文件夹</p>
         <small data-i18n="public.emptyHint">管理员可以在「＋ 新建」里勾「公开共享」建一个。</small>
       </div>
@@ -168,6 +182,20 @@
     <div class="list-card" id="dropzone">
       <div class="drop-hint" id="drop-hint">
         <div class="drop-hint-inner" data-i18n="list.dropHint">松开，把文件或文件夹放进来</div>
+      </div>
+      <div class="file-tools" id="file-tools">
+        <input id="file-search" type="search" data-i18n-placeholder="ux.search" data-i18n-aria-label="ux.search">
+        <select id="file-kind" data-i18n-aria-label="ux.kind">
+          <option value="" data-i18n="ux.kindAll"></option>
+          <option value="file" data-i18n="ux.kindFile"></option>
+          <option value="dir" data-i18n="ux.kindFolder"></option>
+        </select>
+        <select id="file-sort" data-i18n-aria-label="ux.sort">
+          <option value="" data-i18n="ux.sortDefault"></option>
+          <option value="name" data-i18n="ux.sortName"></option>
+          <option value="modified" data-i18n="ux.sortDate"></option>
+          <option value="size" data-i18n="ux.sortSize"></option>
+        </select>
       </div>
       <div class="list-head">
         <label class="sel-cell" title="全选" data-i18n-title="list.selectAll"><input type="checkbox" id="sel-all"></label>
@@ -182,7 +210,16 @@
         <p><span data-i18n="vault.lockedBody1">文件名与内容都经过加密，服务器上只存有密文。</span><br><span data-i18n="vault.lockedBody2">输入这个文件夹的密码才能查看——密码只在你的浏览器里使用，不会发送给服务器。</span></p>
         <button id="btn-vault-unlock" class="btn-primary" type="button" data-i18n="vault.unlockBtn">输入密码解锁</button>
       </div>
-      <div id="file-list"></div>
+      <div id="file-list" aria-busy="false"></div>
+      <div id="file-no-matches" class="list-state hidden">
+        <h3 role="status" data-i18n="ux.noMatches"></h3>
+        <button id="file-clear-filters" type="button" class="btn-soft" data-i18n="ux.clearFilters"></button>
+      </div>
+      <div id="list-error" class="list-state hidden">
+        <h3 data-i18n="ux.listError"></h3>
+        <p id="list-error-detail" role="alert"></p>
+        <button id="list-retry" type="button" class="btn-soft" data-i18n="ux.retry"></button>
+      </div>
       <div id="empty-state" class="empty hidden">
         <svg viewBox="0 0 120 90" class="empty-art" aria-hidden="true">
           <defs>
@@ -198,7 +235,7 @@
         <h3 data-i18n="list.emptyTitle">这里空空如也</h3>
         <p data-i18n="list.emptyHint">点「上传文件 / 上传文件夹」，或把文件、文件夹直接拖到这里</p>
       </div>
-      <div id="list-loading" class="list-loading hidden" data-i18n="list.loading">加载中…</div>
+      <div id="list-loading" class="list-loading hidden" role="status" data-i18n="list.loading">加载中…</div>
     </div>
     <p class="drive-foot" data-i18n="list.foot">文件保存在你的专属空间里，只有你能访问。</p>
   </main>
@@ -469,9 +506,10 @@
 </aside>
 
 <div id="modal-overlay" class="overlay hidden">
-  <div class="modal" role="dialog" aria-modal="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <h3 id="modal-title" data-i18n="modal.title">标题</h3>
     <div id="modal-body"></div>
+    <p id="modal-error" class="modal-error hidden" role="alert"></p>
     <div class="modal-actions">
       <button id="modal-cancel" class="btn-soft" type="button" data-i18n="common.cancel">取消</button>
       <button id="modal-ok" class="btn-primary" type="button" data-i18n="common.ok">确定</button>
@@ -480,7 +518,7 @@
 </div>
 
 <div id="preview-overlay" class="overlay hidden">
-  <div class="preview-box" role="dialog" aria-modal="true">
+  <div class="preview-box" role="dialog" aria-modal="true" aria-labelledby="preview-title">
     <div class="preview-head">
       <span id="preview-title" data-i18n="preview.title">预览</span>
       <span class="preview-actions">
@@ -515,11 +553,21 @@
 </div>
 
 <div id="upload-panel" class="upload-panel hidden">
-  <div class="upload-panel-head"><strong data-i18n="upload.title">上传进度</strong><button id="upload-close" type="button">✕</button></div>
+  <div class="upload-panel-head">
+    <strong data-i18n="upload.title">上传进度</strong>
+    <div class="upload-panel-actions">
+      <button id="upload-clear" type="button" data-i18n="ux.uploadClear"></button>
+      <button id="upload-close" type="button" data-i18n-aria-label="ux.closeNotice">✕</button>
+    </div>
+  </div>
   <div id="upload-items"></div>
 </div>
 
-<div id="toast" class="toast hidden"></div>
+<div id="toast" class="toast hidden">
+  <span id="toast-text" aria-live="polite"></span>
+  <button id="toast-action" type="button" class="hidden"></button>
+  <button id="toast-close" type="button" data-i18n-aria-label="ux.closeNotice">×</button>
+</div>
 
 <!-- 批量操作条：勾选任意行后浮出 -->
 <div id="batch-bar" class="hidden">
@@ -530,8 +578,11 @@
   <button id="batch-clear" type="button" class="ghost" data-i18n="common.cancel">取消</button>
 </div>
 
-<script src="/static/vault.js?v=31"></script>
-<script src="/static/uploadplan.js?v=31"></script>
-<script src="/static/app.js?v=31"></script>
+<script src="/static/vault.js?v=37"></script>
+<script src="/static/uploadplan.js?v=37"></script>
+<script src="/static/canvas-runtime.js?v=37"></script>
+<script src="/static/app.js?v=40"></script>
+<script src="/static/editor-bridge.js?v=40"></script>
+<script src="/static/visual-accent.js?v=40"></script>
 </body>
 </html>

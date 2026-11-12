@@ -418,25 +418,7 @@ function renderCanvas(source) {
   }
 }
 
-function renderStickerLayers() {
-  const box = $("#sticker-layers");
-  const existing = new Map([...box.children].map(node => [node.dataset.sticker, node]));
-  const ids = new Set((state.canvas?.stickers || []).map(item => item.id));
-  for (const [id, node] of existing) if (!ids.has(id)) node.remove();
-  for (const [index, sticker] of (state.canvas?.stickers || []).entries()) {
-    let button = existing.get(sticker.id);
-    if (!button) {
-      button = document.createElement("button");
-      button.className = "layer-name";
-      button.dataset.sticker = sticker.id;
-      button.addEventListener("focus", () => selectBlock(sticker.id));
-      button.addEventListener("click", () => selectBlock(sticker.id, true));
-      box.append(button);
-    }
-    button.textContent = "貼圖 " + (index + 1);
-    button.setAttribute("aria-pressed", String(selected === sticker.id));
-  }
-}
+function renderStickerLayers() {}
 
 function coordinateFields(rect) {
   return numberField("cx", "水平座標 (px)", 0, 6000, 1, Math.round(rect.x)) +
@@ -568,19 +550,33 @@ function renderDrive(source = state) {
 
 function renderLayers() {
   const layerList = $("#layers");
-  const ids = ["topbar", ...state.order];
-  if (!ids.every((id, index) => layerList.children[index]?.dataset.id === id)) {
-    const focused = document.activeElement;
-    for (const id of ids) layerList.append(layerList.querySelector('[data-id="' + id + '"]'));
-    if (layerList.contains(focused)) focused.focus({ preventScroll: true });
-  }
-  for (const item of layerList.children) {
-    const id = item.dataset.id;
+  const canvasIds = state.canvas ? zList().slice().reverse() : [];
+  const flowIds = state.order.filter(id => !state.canvas?.blocks[id]);
+  const ids = ["topbar", ...canvasIds, ...flowIds];
+  const seen = new Set();
+  for (const id of ids) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    let item = layerList.querySelector('[data-id="' + id + '"]');
+    if (!item) {
+      if (isSticker(id)) item = stickerLayerRow(id);
+      else if (labels[id]) item = moduleLayerRow(id);
+      if (!item) continue;
+      layerList.append(item);
+    }
+    item.querySelector(".layer-name span").textContent = isSticker(id) ? "貼圖" : labels[id];
+    item.querySelector(".layer-meta").textContent = id === "topbar" ? "固定"
+      : isSticker(id) ? "貼圖" : !block(id).visible ? "已隱藏" : "";
     item.classList.toggle("is-selected", id === selected);
     item.querySelector(".layer-name").setAttribute("aria-pressed", String(id === selected));
-    item.querySelector(".layer-meta").textContent = id === "topbar" ? "固定"
-      : !block(id).visible ? "已隱藏" : "";
   }
+  for (const item of [...layerList.children]) if (!seen.has(item.dataset.id)) item.remove();
+  for (const id of ids) {
+    const el = layerList.querySelector('[data-id="' + id + '"]');
+    if (el) layerList.append(el);
+  }
+  const legacy = $("#sticker-layers");
+  if (legacy) legacy.innerHTML = "";
 }
 
 const resetButton = (key, label) =>
@@ -839,6 +835,11 @@ function keyboard(event) {
     return;
   }
   if (event.target.closest("input, select, textarea, [contenteditable=true]") || !editing) return;
+  if (selected && !event.altKey && !event.ctrlKey && !event.metaKey && (event.key === "]" || event.key === "[")) {
+    event.preventDefault();
+    shiftZ(selected, event.key === "]" ? (event.shiftKey ? "front" : "up") : (event.shiftKey ? "back" : "down"));
+    return;
+  }
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
     event.preventDefault();
     stepHistory(!event.shiftKey);
@@ -867,22 +868,38 @@ function attachHandle(button, id, kind, inFrame) {
   button.addEventListener("pointerdown", event => startGesture(event, id, kind, inFrame));
 }
 
+function moduleLayerRow(id) {
+  const label = labels[id];
+  const item = document.createElement("div");
+  item.className = "layer";
+  item.dataset.id = id;
+  item.innerHTML = '<button class="layer-handle" tabindex="-1" aria-label="拖動 ' + label + '">' +
+    (id === "topbar" ? "·" : "⠿") + '</button><button class="layer-name"><span>' + label +
+    '</span><span class="layer-meta"></span></button>';
+  const grip = item.firstElementChild;
+  if (id === "topbar") grip.disabled = true;
+  else attachHandle(grip, id, "order", false);
+  const button = item.querySelector(".layer-name");
+  button.addEventListener("focus", () => selectBlock(id));
+  button.addEventListener("click", () => selectBlock(id, true));
+  return item;
+}
+
+function stickerLayerRow(id) {
+  const item = document.createElement("div");
+  item.className = "layer";
+  item.dataset.id = id;
+  item.innerHTML = '<button class="layer-handle" tabindex="-1" aria-label="貼圖">◧</button>' +
+    '<button class="layer-name"><span>貼圖</span><span class="layer-meta">貼圖</span></button>';
+  item.firstElementChild.disabled = true;
+  const button = item.querySelector(".layer-name");
+  button.addEventListener("focus", () => selectBlock(id));
+  button.addEventListener("click", () => selectBlock(id, true));
+  return item;
+}
+
 function buildLayers() {
-  for (const [id, label] of Object.entries(labels)) {
-    const item = document.createElement("div");
-    item.className = "layer";
-    item.dataset.id = id;
-    item.innerHTML = '<button class="layer-handle" tabindex="-1" aria-label="拖動' + label + '">' +
-      (id === "topbar" ? "·" : "⠿") + '</button><button class="layer-name"><span>' + label +
-      '</span><span class="layer-meta"></span></button>';
-    const grip = item.firstElementChild;
-    if (id === "topbar") grip.disabled = true;
-    else attachHandle(grip, id, "order", false);
-    const button = item.querySelector(".layer-name");
-    button.addEventListener("focus", () => selectBlock(id));
-    button.addEventListener("click", () => selectBlock(id, true));
-    $("#layers").append(item);
-  }
+  for (const id of Object.keys(labels)) $("#layers").append(moduleLayerRow(id));
 }
 
 function initDrive() {

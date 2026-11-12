@@ -44,7 +44,7 @@
   box-shadow: inset 3px 0 var(--accent);
 }
 .set-main { min-width: 0; padding: var(--space-2) var(--space-6) var(--space-4); }
-.set-panel h3 { font-size: var(--font-title); line-height: var(--line-title); margin: var(--space-4) 0 var(--space-3); }
+.set-panel h3 { font-size: var(--font-heading); line-height: var(--line-title); margin: var(--space-4) 0 var(--space-3); }
 .set-row { gap: var(--space-6); padding: var(--space-3) 0; }
 .set-row > * { min-width: 0; }
 .set-label { gap: var(--space-1); }
@@ -58,7 +58,7 @@
 .admin-main { padding: var(--space-6) var(--space-6) 48px; gap: var(--space-4); min-width: 0; }
 .admin-card { padding: var(--space-6); min-width: 0; }
 .admin-card-head { gap: var(--space-4); margin-bottom: var(--space-4); align-items: center; }
-.admin-card-head h2 { font-size: var(--font-title); line-height: var(--line-title); }
+.admin-card-head h2 { font-size: var(--font-heading); line-height: var(--line-title); }
 .admin-total { font-size: var(--font-label); line-height: var(--line-body); }
 .invite-form { gap: var(--space-2); align-items: center; }
 .new-code { gap: var(--space-3); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-4); }

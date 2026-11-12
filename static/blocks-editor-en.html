@@ -164,6 +164,20 @@ dialog p { margin: 8px 0 16px; color: var(--muted); }
       </select>
       <button id="copy">Copy appearance</button>
       <button id="reset" class="quiet">Restore defaults</button>
+      </div>
+      <div class="panel-section">
+        <label>Background</label>
+        <div class="field-buttons">
+          <input id="bg-color" type="color" value="#f4eee1" title="Colour">
+          <button id="bg-image" type="button">Choose image</button>
+          <button id="bg-clear" type="button" class="quiet">Clear</button>
+        </div>
+        <select id="bg-fit" aria-label="Fit">
+          <option value="cover">cover</option>
+          <option value="contain">contain</option>
+          <option value="repeat">repeat</option>
+        </select>
+        <input id="bg-file" type="file" accept="image/*" hidden>
     </div>
   </aside>
   <main class="stage" aria-label="Drive canvas">
@@ -279,6 +293,37 @@ function canvasScale() {
   return state.canvas ? drive.querySelector(".drive-main").clientWidth / state.canvas.width : 1;
 }
 
+function nodeZ(id, source = state) {
+  const c = source.canvas; if (!c) return 0;
+  const b = c.blocks[id];
+  if (b && Number.isFinite(b.z)) return b.z;
+  const st = (c.stickers || []).find(s => s.id === id);
+  if (st && Number.isFinite(st.z)) return st.z;
+  const i = source.order.indexOf(id);
+  return i >= 0 ? i + 1 : 999;
+}
+function zList(source = state) {
+  const c = source.canvas; if (!c) return [];
+  return [...Object.keys(c.blocks).filter(id => id !== "topbar"),
+    ...(c.stickers || []).map(s => s.id)].sort((a, b) => nodeZ(a, source) - nodeZ(b, source));
+}
+function withZ(id, z, source) {
+  const c = source.canvas;
+  if ((c.stickers || []).some(s => s.id === id))
+    return { ...source, canvas: { ...c, stickers: c.stickers.map(s => s.id === id ? { ...s, z } : s) } };
+  return { ...source, canvas: { ...c, blocks: { ...c.blocks, [id]: { ...(c.blocks[id] || {}), z } } } };
+}
+function shiftZ(id, mode) {
+  if (!state.canvas) return;
+  const list = zList(); const i = list.indexOf(id); if (i < 0) return;
+  const j = mode === "front" ? list.length - 1 : mode === "back" ? 0 : mode === "up" ? i + 1 : i - 1;
+  if (j < 0 || j >= list.length || j === i) return;
+  list.splice(j, 0, list.splice(i, 1)[0]);
+  let next = state;
+  list.forEach((nid, index) => { next = withZ(nid, index + 1, next); });
+  commit(next);
+}
+
 function isSticker(id = selected) {
   return Boolean(state.canvas?.stickers.some(item => item.id === id));
 }
@@ -315,7 +360,7 @@ function renderCanvas(source) {
       if (!node || id === "topbar") continue;
       Object.assign(node.style, { position: "absolute", left: rect.x * scale + "px",
         top: rect.y * scale + "px", width: rect.w * scale + "px", minHeight: rect.h * scale + "px",
-        zIndex: String(source.order.indexOf(id) + 1) });
+        zIndex: String(nodeZ(id, source)) });
       height = Math.max(height, rect.y + Math.max(rect.h, node.offsetHeight / scale) + 40);
     }
     // 与生产画布相同，文字换行造成增高时只顺延原先不重叠的下方Modules。
@@ -335,6 +380,11 @@ function renderCanvas(source) {
       row.node.style.top = row.top + "px";
       height = Math.max(height, (row.top + row.node.offsetHeight) / scale + 40);
     });
+    const bg = canvas.bg || {};
+    main.style.backgroundColor = bg.color || "";
+    main.style.backgroundImage = bg.image ? 'url("' + bg.image + '")' : "";
+    main.style.backgroundSize = bg.fit === "contain" ? "contain" : bg.fit === "repeat" ? "auto" : "cover";
+    main.style.backgroundRepeat = bg.fit === "repeat" ? "repeat" : "no-repeat";
     for (const item of canvas.stickers) height = Math.max(height, item.y + item.h + 40);
     main.style.minHeight = height * scale + "px";
   }
@@ -360,7 +410,7 @@ function renderCanvas(source) {
     }
     const scale = main.clientWidth / canvas.width;
     Object.assign(node.style, { left: item.x * scale + "px", top: item.y * scale + "px",
-      width: item.w * scale + "px", height: item.h * scale + "px" });
+      width: item.w * scale + "px", height: item.h * scale + "px", zIndex: String(nodeZ(item.id, source)) });
     node.querySelector("img").src = item.image;
     node.querySelector("button").hidden = !editing || selected !== item.id;
     node.classList.toggle("selected", editing && selected === item.id);
@@ -565,6 +615,9 @@ function renderInspector() {
     const sticker = state.canvas.stickers.find(item => item.id === selected);
     panel.innerHTML = '<div class="selected-head"><h3>Canvas image</h3><p>Move anywhere on the canvas</p></div>' +
       '<section class="group">' + coordinateFields(sticker) +
+      '<div class="field-buttons z-buttons"><button data-action="z-front">Bring to front</button>' +
+      '<button data-action="z-up">Bring forward</button><button data-action="z-down">Send backward</button>' +
+      '<button data-action="z-back">Send to back</button></div>' +
       '<div class="field-buttons"><button data-action="delete-sticker">Delete image</button></div></section>';
     if (focusSelector) panel.querySelector(focusSelector)?.focus({ preventScroll: true });
     return;
@@ -586,6 +639,10 @@ function renderInspector() {
     (state.order[0] === id ? "disabled" : "") + '>Move up</button><button data-action="down" ' +
     (state.order.at(-1) === id ? "disabled" : "") + '>Move down</button>' +
     resetButton("order", "Order") + "</div>");
+  const layers = group("Layers",
+    '<div class="field-buttons z-buttons"><button data-action="z-front">Bring to front</button>' +
+    '<button data-action="z-up">Bring forward</button><button data-action="z-down">Send backward</button>' +
+    '<button data-action="z-back">Send to back</button></div>');
   const style = group("Appearance", colorField("bg", "Background", props.bg, fill) +
     colorField("fg", "Text color", props.fg, ink) +
     (fixed ? "" : numberField("radius", "Radius (px)", 0, 32, 1, props.radius ?? 8)));
@@ -604,7 +661,7 @@ function renderInspector() {
       positioning + '"' + (props.visible ? "" : " disabled") + '>Position on canvas</button></div>' : ""));
   panel.innerHTML = '<div class="selected-head"><h3>' + labels[id] + "</h3><p>" +
     (fixed ? "Fixed module with editable colors" : props.visible ? "Visible in drive" : "Hidden. You can restore it here.") +
-    "</p></div>" + layout + style + sticker;
+    "</p></div>" + layout + layers + style + sticker;
   if (props.image) panel.querySelector(".sticker-preview").src = props.image;
   if (focusSelector) panel.querySelector(focusSelector)?.focus({ preventScroll: true });
 }
@@ -961,6 +1018,7 @@ $("#inspector").addEventListener("click", event => {
   } else if (key) commit(withBlock(id, { [key]: defaults[key] }));
   const action = button.dataset.action;
   if (action === "up" || action === "down") moveBlock(id, action === "up" ? -1 : 1);
+  if (["z-front", "z-up", "z-down", "z-back"].includes(action)) { shiftZ(id, action.slice(2)); return; }
   if (action === "sample") commit(withBlock(id, { image: sampleSticker, fit: "cover", x: 50, y: 50 }));
   if (action === "upload") { pendingImage = id; $("#image-file").click(); }
   if (action === "position") {
@@ -1107,6 +1165,30 @@ render();
 iframe.addEventListener("load", initDrive, { once: true });
 iframe.srcdoc = editorBoot?.preview || previewDocument;
 
+
+$("#bg-color").addEventListener("input", event => {
+  const c = ensureCanvas();
+  commit({ ...state, canvas: { ...c, bg: { ...(c.bg || {}), color: event.target.value } } });
+});
+$("#bg-fit").addEventListener("change", event => {
+  const c = ensureCanvas();
+  commit({ ...state, canvas: { ...c, bg: { ...(c.bg || {}), fit: event.target.value } } });
+});
+$("#bg-image").addEventListener("click", () => $("#bg-file").click());
+$("#bg-file").addEventListener("change", async event => {
+  const file = event.target.files && event.target.files[0];
+  event.target.value = "";
+  if (!file) return;
+  try {
+    const image = await prepareImage(file);
+    const c = ensureCanvas();
+    commit({ ...state, canvas: { ...c, bg: { ...(c.bg || {}), image, fit: c.bg?.fit || "cover" } } });
+  } catch { notice("图片无法读取"); }
+});
+$("#bg-clear").addEventListener("click", () => {
+  const c = ensureCanvas();
+  commit({ ...state, canvas: { ...c, bg: {} } });
+});
 </script>
 </body>
 </html>

@@ -40,3 +40,11 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
+
+/* D57 图层与背景控件 */
+.panel-section { padding: 12px 14px; border-top: 1px solid var(--line, rgba(0,0,0,.08)); display: flex; flex-direction: column; gap: 8px; }
+.panel-section label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted, #6b6b6b); }
+.z-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.z-buttons button { width: 100%; }
+#bg-color { width: 34px; height: 30px; padding: 2px; border-radius: 8px; border: 1px solid rgba(0,0,0,.15); background: transparent; }
+#bg-fit { width: 100%; }

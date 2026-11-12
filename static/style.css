@@ -935,3 +935,9 @@ body.public-scope .drive-foot { display: none !important; }
 .limit-inline input { flex: 1; min-width: 0; }
 .limit-inline select { width: 78px; flex: 0 0 auto; }
 @media (max-width: 560px) { .limit-row { grid-template-columns: 1fr; } }
+
+/* 关于：标签左、值右，等宽字体右对齐（D56） */
+.settings-wrap .set-value { justify-self: end; font: 12.5px/1.4 var(--mono); color: var(--text-2); }
+.speed-controls { flex-wrap: wrap; align-items: flex-end; }
+.speed-controls .inv-field { min-width: 132px; }
+#speed-size-custom { width: 96px; }

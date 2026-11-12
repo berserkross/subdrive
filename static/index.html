@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>SubDrive · 子用户网盘</title>
 <link rel="icon" type="image/png" href="/static/favicon.png">
-<link rel="stylesheet" href="/static/style.css?v=40">
+<link rel="stylesheet" href="/static/style.css?v=46">
 <link rel="stylesheet" href="/static/visual-tokens.css?v=37">
 <link rel="stylesheet" href="/static/visual-components.css?v=37">
 <link rel="stylesheet" href="/static/canvas-runtime.css?v=37">
@@ -379,9 +379,9 @@
 
       <section class="set-panel hidden" data-panel="about">
         <h3 data-i18n="set.navAbout">关于</h3>
-        <div class="set-row"><div class="set-label"><strong data-i18n="set.version">版本</strong><span id="set-version">—</span></div></div>
-        <div class="set-row"><div class="set-label"><strong data-i18n="set.license">许可证</strong><span>MIT</span></div></div>
-        <div class="set-row"><div class="set-label"><strong data-i18n="set.storageMode">存储模式</strong><span id="set-storage-mode">—</span></div></div>
+        <div class="set-row"><div class="set-label"><strong data-i18n="set.version">版本</strong></div><span class="set-value" id="set-version">—</span></div>
+        <div class="set-row"><div class="set-label"><strong data-i18n="set.license">许可证</strong></div><span class="set-value">MIT</span></div>
+        <div class="set-row"><div class="set-label"><strong data-i18n="set.storageMode">存储模式</strong></div><span class="set-value" id="set-storage-mode">—</span></div>
       </section>
     </div>
   </div>
@@ -569,10 +569,16 @@
   <div class="speed-controls">
     <label class="inv-field"><span data-i18n="speed.size">数据量</span>
       <select id="speed-size">
+        <option value="5">5 MB</option>
         <option value="10">10 MB</option>
         <option value="25" selected>25 MB</option>
         <option value="50">50 MB</option>
+        <option value="100">100 MB</option>
+        <option value="custom" data-i18n="speed.custom">自定义…</option>
       </select>
+    </label>
+    <label class="inv-field hidden" id="speed-custom-wrap"><span data-i18n="speed.customMb">自定义（MB）</span>
+      <input id="speed-size-custom" type="number" min="1" max="1024" step="1" value="25">
     </label>
     <button id="speed-run" class="btn-primary" type="button" data-i18n="speed.run">开始测速</button>
   </div>
@@ -614,7 +620,7 @@
 <script src="/static/vault.js?v=37"></script>
 <script src="/static/uploadplan.js?v=37"></script>
 <script src="/static/canvas-runtime.js?v=37"></script>
-<script src="/static/app.js?v=44"></script>
+<script src="/static/app.js?v=45"></script>
 <script src="/static/editor-bridge.js?v=40"></script>
 <script src="/static/visual-accent.js?v=40"></script>
 </body>

@@ -15,6 +15,8 @@ let lang = (function () {
 // 字典按「屏」分组，key 用点分命名；zh 是基准，en 必须与之等长（tests/e2e 会校验）。
 const I18N = {
   zh: {
+    "speed.custom": "自定义…",
+    "speed.customMb": "自定义（MB）",
     "menu.groupAccount": "账户",
     "menu.groupPrefs": "偏好",
     "org.text": "管理员发布了新的外观",
@@ -467,6 +469,8 @@ const I18N = {
     "modal.title": "标题",
   },
   hant: {
+    "speed.custom": "自訂…",
+    "speed.customMb": "自訂（MB）",
     "menu.groupPrefs": "偏好",
     "menu.groupAccount": "帳戶",
     "org.text": "管理員發布了新的外觀",
@@ -920,6 +924,8 @@ const I18N = {
   },
 
   en: {
+    "speed.custom": "Custom…",
+    "speed.customMb": "Custom (MB)",
     "menu.groupPrefs": "Preferences",
     "menu.groupAccount": "Account",
     "org.text": "An administrator published a new look",
@@ -3791,9 +3797,16 @@ function fmtSpeed(bytes, seconds) {
   const mbs = bytes / seconds / 1048576;
   return `${mbs.toFixed(2)} MB/s · ${mbps.toFixed(1)} Mbps`;
 }
+$("#speed-size").addEventListener("change", () => {
+  const custom = $("#speed-size").value === "custom";
+  $("#speed-custom-wrap").classList.toggle("hidden", !custom);
+  if (custom) $("#speed-size-custom").focus();
+});
 $("#speed-run").addEventListener("click", async () => {
   const btn = $("#speed-run");
-  const mb = Number($("#speed-size").value || 25);
+  const sel = $("#speed-size").value;
+  const raw = sel === "custom" ? Number($("#speed-size-custom").value) : Number(sel);
+  const mb = Math.max(1, Math.min(1024, Number.isFinite(raw) && raw > 0 ? raw : 25));
   const total = mb * 1024 * 1024;
   const dFill = $("#speed-down-fill"), uFill = $("#speed-up-fill");
   const dVal = $("#speed-down-val"), uVal = $("#speed-up-val");

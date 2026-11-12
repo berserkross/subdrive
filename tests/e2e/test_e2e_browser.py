@@ -24,6 +24,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
+# Windows 控制台默认 GBK，PASS 行里的 emoji 会抛 UnicodeEncodeError 中断整轮。
+# 统一走 UTF-8 输出（Linux 下是无操作）。
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 try:
     import httpx
     from playwright.sync_api import sync_playwright

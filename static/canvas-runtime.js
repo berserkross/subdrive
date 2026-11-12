@@ -59,7 +59,8 @@
       const rect = rectangle(value.blocks?.[id], width, height);
       if (rect) {
         const item = value.blocks[id];
-        blocks[id] = { ...rect, fit: item.fit === "contain" ? "contain" : "cover",
+        blocks[id] = { ...rect, z: Number.isFinite(item.z) ? bounded(item.z, 0, 999) : undefined,
+          fit: item.fit === "contain" ? "contain" : "cover",
           imageX: Number.isFinite(item.imageX) ? bounded(item.imageX, 0, 100) : 50,
           imageY: Number.isFinite(item.imageY) ? bounded(item.imageY, 0, 100) : 50 };
       }
@@ -77,9 +78,20 @@
       let id = originalId;
       while (ids.has(id)) id += "-copy";
       ids.add(id);
-      stickers.push({ id, image: candidate.image, ...rect });
+      stickers.push({ id, image: candidate.image, ...rect,
+        z: Number.isFinite(candidate.z) ? bounded(candidate.z, 0, 999) : undefined });
     }
-    return { v: 1, snap: value.snap === true, width, height, blocks, stickers };
+    let bg = null;
+    if (value.bg && typeof value.bg === "object") {
+      const color = /^#[0-9a-f]{6}$/i.test(value.bg.color || "") ? value.bg.color : "";
+      const image = safeImage(value.bg.image) ? value.bg.image : "";
+      const fit = ["cover", "contain", "repeat"].includes(value.bg.fit) ? value.bg.fit : "cover";
+      if (color || image) {
+        if (image) totalLength += image.length;
+        if (totalLength <= MAX_TOTAL_IMAGE_LENGTH) bg = { color, image, fit };
+      }
+    }
+    return { v: 1, snap: value.snap === true, width, height, blocks, stickers, bg };
   }
 
   function read() {
@@ -117,6 +129,12 @@
     resizeObserver = null;
     mutationObserver = null;
     stickerLayer?.remove();
+    if (main) {
+      main.style.removeProperty("background-color");
+      main.style.removeProperty("background-image");
+      main.style.removeProperty("background-size");
+      main.style.removeProperty("background-repeat");
+    }
     stickerLayer = null;
     for (const node of nodes.values()) {
       node.classList.remove("canvas-module");
@@ -150,6 +168,11 @@
     if (!current || !main || !main.clientWidth || !main.getClientRects().length) return;
     main.classList.add("canvas-desktop");
     const ratio = main.clientWidth / current.width;
+    const bg = current.bg || {};
+    main.style.backgroundColor = bg.color || "";
+    main.style.backgroundImage = bg.image ? 'url("' + bg.image + '")' : "";
+    main.style.backgroundSize = bg.fit === "contain" ? "contain" : bg.fit === "repeat" ? "auto" : "cover";
+    main.style.backgroundRepeat = bg.fit === "repeat" ? "repeat" : "no-repeat";
     const flowHeight = [...main.children].filter(node =>
       node !== stickerLayer && !node.classList.contains("canvas-module") && visible(node)
     ).reduce((total, node) => {
@@ -162,6 +185,7 @@
       if (node.style.backgroundSize !== rect.fit) node.style.backgroundSize = rect.fit;
       const imagePosition = rect.imageX + "% " + rect.imageY + "%";
       if (node.style.backgroundPosition !== imagePosition) node.style.backgroundPosition = imagePosition;
+      if (Number.isFinite(rect.z)) node.style.zIndex = String(rect.z);
       setPixel(node, "--canvas-x", rect.x * ratio);
       setPixel(node, "--canvas-width", rect.w * ratio);
       setPixel(node, "--canvas-height", rect.h * ratio);
@@ -188,6 +212,7 @@
     for (let index = 0; index < current.stickers.length; index++) {
       const sticker = current.stickers[index];
       const image = stickerLayer.children[index];
+      if (Number.isFinite(sticker.z)) image.style.zIndex = String(sticker.z);
       setPixel(image, "--canvas-x", sticker.x * ratio);
       setPixel(image, "--canvas-y", sticker.y * ratio + flowHeight);
       setPixel(image, "--canvas-width", sticker.w * ratio);

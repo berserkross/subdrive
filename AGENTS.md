@@ -11,7 +11,7 @@ SubDrive —— FastAPI 后端 + 原生 JS 单页前端的多用户网盘。文�
 
 | 路径 | 职责 |
 |---|---|
-| `app/main.py` | 全部路由：auth / files（含预览、Range）/ quota / admin / speedtest，外加会话、审计、限速、配额校准。1047 行单文件，**没有 router 拆分** |
+| `app/main.py` | 全部路由：auth / files（含预览、Range）/ quota / admin / speedtest，外加会话、审计、限速、配额校准。1754 行单文件，**没有 router 拆分** |
 | `app/paths.py` | 路径规范化与前缀锁死（**全系统唯一实现**）：`normalize_rel_path` / `full_path` / `validate_name` / `validate_username` / `PathRejected` |
 | `app/storage.py` | Seafile 适配层，`stub` / `live` 双实现；`StorageError` 家族自带 `code` / `status` |
 | `static/` | 前端（`index.html` / `style.css` / `app.js` / `vault.js` / `uploadplan.js`）+ 品牌二进制 `logo.png` / `favicon.png` |
@@ -25,6 +25,8 @@ SubDrive —— FastAPI 后端 + 原生 JS 单页前端的多用户网盘。文�
 | `CRYPTO.md` | SDV1 加密格式规范（Web / Flutter / Python 三端共用） |
 | `docs/` | 本项目的长期记忆：`DECISIONS.md`（已定决策+为什么）/ `DEAD-ENDS.md`（试过并放弃的方案）/ `STATUS.md`（现状+未决问题）。**动手前先读 `docs/STATUS.md` 的「未决问题」，别把已否掉的方案重新提一遍**。`PROPOSAL-shared-folders.md` 是**待拍板**的共享目录权限模型提案——不是已定方案，别照着它开写 |
 | `scripts/codex-setup.sh` | 云端环境的依赖安装脚本（Codex 环境里设为 setup 脚本） |
+| `scripts/check_docs.py` | 文档事实检查：行数、用例数、路径引用必须与仓库一致（CI 会跑） |
+| `.github/workflows/check.yml` | CI：文档检查 + stub 模式后端测试 + JS 测试（不跑浏览器 e2e） |
 | `screenshots/` | README 引用的 13 张界面截图（明/暗 × 登录/文件/后台/测速/保险库/预览 + 移动端） |
 | `Dockerfile` / `docker-compose.yml` / `.env.example` | 部署与配置（镜像内监听 8000，compose 把 `127.0.0.1:8001` 映射到容器的 8000） |
 
@@ -101,7 +103,8 @@ DATA_DIR=./data SEAFILE_MODE=stub .venv/bin/python -m uvicorn app.main:app --hos
 `testdata/crypto_vector.json`，跑完必须让三端测试重新全绿）。
 
 前六项全绿才算完成（`tests/test_storage_live.py` 用 `httpx.MockTransport` 打桩，不联网、不需要真 Seafile）；
-任一失败就是真失败，不要跳过、不要改断言来凑。没有 CI，这几条就是唯一门禁。
+任一失败就是真失败，不要跳过、不要改断言来凑。CI（`.github/workflows/check.yml`）会跑文档检查与前六项；
+本地这几条仍是发版前必须亲手过一遍的门禁。
 
 第七项是**浏览器端到端**，额外需要一个包（不在 `requirements.txt` 里，它只是测试工具）：
 
@@ -111,7 +114,7 @@ DATA_DIR=./data SEAFILE_MODE=stub .venv/bin/python -m uvicorn app.main:app --hos
 
 它**不下载浏览器**——用本机已装的 Chrome（`channel="chrome"`，失败自动退 Edge）。没装 Chrome/Edge
 或没装 playwright 时它会打印 `[SKIP]` 并以 0 退出，所以改前端的人不该被它卡住；**发版前必须真跑
-一遍并看到 26 项 PASS**，它是「页面能不能用」的唯一证据（后端测试全绿也不代表页面能点通）。
+一遍并看到全部 PASS（2026-11-12 实测 108 项），它是「页面能不能用」的唯一证据（后端测试全绿也不代表页面能点通）。
 
 ## 代码风格与错误契约（从现有代码归纳，新增代码照做）
 
@@ -220,9 +223,9 @@ $env:PYTHONIOENCODING="utf-8"
 .\.venv\Scripts\python.exe tests/test_storage_live.py  # 15 项，exit 0
 node tests/test_crypto.mjs                             # 10 项，exit 0
 node tests/test_uploadplan.mjs                         # 13 项，exit 0
-.\.venv\Scripts\python.exe tests/e2e/test_e2e_browser.py # 74 项，exit 0（要本机 Chrome）
+.\.venv\Scripts\python.exe tests/e2e/test_e2e_browser.py # 108 项，exit 0（要本机 Chrome）
 ```
 
-- 六条全 exit 0 且项数对得上才算通过；没有 CI，这就是唯一门禁。
+- 六条全 exit 0 且项数对得上才算通过；CI 会跑前六项（e2e 除外），本地全绿仍是发版前必须确认的门禁。
 - 动过 `app/main.py` 或 `static/` 再加一条：起服务后 `GET /` 得 200、`GET /api/auth/me` 未登录得 401。
 - 收尾 `git status --short` 只应看到你打算改的文件（`data/`、`__pycache__/` 等不应出现）。

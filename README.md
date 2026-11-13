@@ -197,3 +197,11 @@ scripts/check_docs.py  文档事实检查（CI 会跑）
 screenshots/     界面截图（明/暗 × 登录/文件/后台 + 移动端）
 Dockerfile / docker-compose.yml / .env.example
 ```
+
+## Contributors
+
+- **Wang Weizhe** — the mapping idea: run a multi-user drive on top of an existing Seafile
+  library, one folder per user, every rule kept in our own database; implemented the
+  storage layer (`app/storage.py`, stub + Seafile adapters).
+- **Yang Tianrui** — the policy layer on top (quota, sharing grants, client-side encryption),
+  the interface and the full-screen block editor, and the presentation materials in `演讲-v7/`.
